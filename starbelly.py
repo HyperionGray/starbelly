@@ -1,6 +1,7 @@
 import asyncio
 from bisect import bisect
 from collections import defaultdict
+import json
 from io import BytesIO
 import logging
 import sys
@@ -9,6 +10,7 @@ from urllib.parse import urljoin, urlparse
 
 import aiohttp
 import lxml.html
+import websockets
 
 
 log_format = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
@@ -21,7 +23,7 @@ logger.addHandler(log_handler)
 
 
 class DomainRateLimiter():
-    def __init__(self, domain_intervals, default_interval=5):
+    def __init__(self, default_interval=5):
         self._all_domains = set()
         self._intervals = defaultdict(lambda: default_interval)
         self._ready_domains = set()
@@ -29,10 +31,16 @@ class DomainRateLimiter():
         self._wait_domains = list()
         self._wait_times = list()
 
-        for domain, interval in domain_intervals.items():
-            self._intervals[domain] = interval
-            self._all_domains.add(domain)
-            self._ready_domains.add(domain)
+    def finish_url(self, url):
+        domain = urlparse(url).hostname
+        next_time = time() + self._intervals[domain]
+        index = bisect(self._wait_times, next_time)
+        self._wait_times.insert(index, next_time)
+        self._wait_domains.insert(index, domain)
+        self._url_finished.set_result(None)
+        self._url_finished = asyncio.Future()
+
+        logger.debug('Touched {}'.format(url))
 
     async def select_domain(self, choices):
         # Add any domains that we don't already know about.
@@ -81,20 +89,14 @@ class DomainRateLimiter():
                 if not sleeper.done():
                     sleeper.cancel()
 
-    def finish_url(self, url):
-        domain = urlparse(url).hostname
-        next_time = time() + self._intervals[domain]
-        index = bisect(self._wait_times, next_time)
-        self._wait_times.insert(index, next_time)
-        self._wait_domains.insert(index, domain)
-        self._url_finished.set_result(None)
-        self._url_finished = asyncio.Future()
-
-        logger.debug('Touched {}'.format(url))
+    def set_domain(self, domain, interval):
+        self._intervals[domain] = interval
+        self._all_domains.add(domain)
+        self._ready_domains.add(domain)
 
 
 class Frontier:
-    def __init__(self, rate_limiter, seeds):
+    def __init__(self, rate_limiter):
         self._domains = set()
         self._domain_queues = defaultdict(asyncio.PriorityQueue)
         self._queue_empty = asyncio.Future()
@@ -103,10 +105,10 @@ class Frontier:
         self._seen = set()
         self._url_added = asyncio.Future()
 
-        for seed in seeds:
-            domain = urlparse(seed).hostname
-            self._domains.add(domain)
-            self._domain_queues[domain].put_nowait(seed)
+    def add_seed(self, seed):
+        domain = urlparse(seed).hostname
+        self._domains.add(domain)
+        self._domain_queues[domain].put_nowait(seed)
 
     def add_url(self, url):
         domain = urlparse(url).hostname
@@ -166,6 +168,7 @@ class Downloader:
         self._download_slot = asyncio.Semaphore(concurrent)
         self._downloader_finished = asyncio.Future()
         self._frontier = frontier
+        self.is_running = False
 
     async def get(self, url):
         conn = aiohttp.TCPConnector(verify_ssl=False)
@@ -175,6 +178,9 @@ class Downloader:
                 await self._handle_response(url, response)
 
     async def run(self):
+        self.is_running = True
+        logger.debug('Downloader is starting...')
+
         while True:
             logger.debug('Waiting for download slot...')
             await self._download_slot.acquire()
@@ -199,6 +205,9 @@ class Downloader:
 
             logger.info('Fetching {}'.format(url))
             task = asyncio.ensure_future(self.get(url))
+
+        logger.debug('Downloader has stopped.')
+        self.is_running = False
 
     async def _handle_response(self, url, response):
         logger.info('{} {}'.format(response.status, url))
@@ -225,31 +234,111 @@ class Downloader:
             self._downloader_finished = asyncio.Future()
 
 
+class Server:
+    def __init__(self, host, port, frontier, downloader, rate_limiter):
+        self._downloader = downloader
+        self._frontier = frontier
+        self._host = host
+        self._port = port
+        self._rate_limiter = rate_limiter
+
+        self._handlers = {
+            'start_crawl': self._start_crawl,
+        }
+
+    async def handle_connection(self, websocket, path):
+        logger.info('Websocket connection from {}:{}, path={}'.format(
+            websocket.remote_address[0],
+            websocket.remote_address[1],
+            path
+        ))
+        while True:
+            try:
+                request = json.loads(await websocket.recv())
+                logger.debug('Received command: '.format(request))
+                command = request['command']
+                args = request['args']
+                response = {'id': request['id'], 'type': 'response'}
+                try:
+                    response['data'] = await self._dispatch_command(
+                        self._handlers[command],
+                        args
+                    )
+                    response['success'] = True
+                except Exception as e:
+                    if isinstance(e, KeyError):
+                        msg = 'Invalid command: {}'
+                        response['error'] = msg.format(command)
+                    else:
+                        response['error'] = str(e)
+                    response['success'] = False
+                    msg = 'Error while handling request: {}'
+                    logger.exception(msg.format(request))
+                await websocket.send(json.dumps(response))
+            except websockets.exceptions.ConnectionClosed:
+                logger.info('Connection closed: {}:{}'.format(
+                    websocket.remote_address[0],
+                    websocket.remote_address[1],
+                ))
+                return
+
+    def start(self):
+        return websockets.serve(
+            self.handle_connection,
+            self._host,
+            self._port
+        )
+
+    async def _dispatch_command(self, handler, args):
+        if asyncio.iscoroutine(handler):
+            return await handler(**args)
+        else:
+            return handler(**args)
+
+    def _start_crawl(self, seeds):
+        # Add to frontier.
+        for seed in seeds:
+            url = seed['url']
+            rate_limit = seed.get('rate_limit', None)
+
+            if rate_limit is not None:
+                rate_limit = float(rate_limit)
+                parsed = urlparse(url)
+                self._rate_limiter.set_domain(parsed.hostname, rate_limit)
+
+            self._frontier.add_seed(url)
+
+        # Make sure the downloader is running.
+        if not self._downloader.is_running:
+            asyncio.ensure_future(self._downloader.run())
+
+        return 'Crawling from {} seeds'.format(len(seeds))
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '-d':
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
 
-    # Configure rate limits for each domain. These are the minimum elapsed time
-    # (in seconds) between requests to the same domain.
-    rate_limiter = DomainRateLimiter({
-        'markhaa.se': 2,
-        'blog.notmyidea.org': 3,
-        'dirkjan.ochtman.nl': 4,
-    })
-
-    seeds = [
-        'https://markhaa.se',
-        'https://blog.notmyidea.org',
-        'https://dirkjan.ochtman.nl',
-        'http://azizmb.in',
-    ]
-
-    frontier = Frontier(rate_limiter, seeds)
+    rate_limiter = DomainRateLimiter()
+    frontier = Frontier(rate_limiter)
     downloader = Downloader(frontier)
+    server = Server('localhost', 8001, frontier, downloader, rate_limiter)
+
     loop = asyncio.get_event_loop()
-    logger.info('Starting crawler')
-    loop.run_until_complete(downloader.run())
-    logger.info('Crawler stopped')
+    logger.info('Starting server')
+    loop.run_until_complete(server.start())
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        logger.info('Received interrupt... trying graceful shutdown.')
+        remaining_tasks = asyncio.Task.all_tasks()
+        for task in remaining_tasks:
+            task.cancel()
+        if len(remaining_tasks) > 0:
+            loop.run_until_complete(asyncio.wait(remaining_tasks))
+
     loop.close()
+    logger.info('Server is stopped.')
+

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'/>
+  <title>Starbelly UI</title>
+  <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/css/materialize.min.css'>
+  <link rel='stylesheet' href='https://fonts.googleapis.com/icon?family=Material+Icons'>
+  <!--<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css'>-->
+  <script src='https://code.jquery.com/jquery-3.0.0.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/js/materialize.min.js'></script>
+  <link rel='stylesheet' href='crawler-ui.css'>
+  <script src='crawler-ui.js'></script>
+</head>
+<body>
+  <div class='navbar-fixed'>
+    <nav>
+      <div class='nav-wrapper'>
+        <a href='#' class='left brand-logo'>Starbelly: Crawler UI</a>
+      </div>
+    </nav>
+  </div>
+  <div class='container'>
+    <div>
+      <h1>Start a Crawl</h1>
+      <div class='row'>
+        <form id='crawl-form' class='col s12' action='#'>
+          <div class='row'>
+            <div class='input-field col s6'>
+              <input id='seed-url' type='url' class='validate' required>
+              <label for='seed-url'
+                     data-error='That is not a valid URL.'>
+                Seed URL
+              </label>
+            </div>
+            <div class='input-field col s3'>
+              <input id='rate-limit' type='number' min='0'>
+              <label for='rate-limit'
+                     data-error='That is not a valid URL.'>
+                Rate Limit  (optional)
+              </label>
+            </div>
+            <div class='input-field col s3'>
+              <button type='submit' class='waves-effect btn'>
+                <i class='material-icons right'>input</i>
+                Crawl
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div>
+      <h1>Crawl Status</h1>
+      <table class='striped'>
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>Status</th>
+            <th>Success</th>
+            <th>Redirect</th>
+            <th>Not Found</th>
+            <th>Server Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>http://foo.com</td>
+            <td>Running</td>
+            <td>1,219</td>
+            <td>289</td>
+            <td>47</td>
+            <td>81</td>
+          </tr>
+          <tr>
+            <td>http://bar.com</td>
+            <td>Finished</td>
+            <td>3,219</td>
+            <td>827</td>
+            <td>131</td>
+            <td>256</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
