@@ -33,7 +33,7 @@
               </label>
             </div>
             <div class='input-field col s3'>
-              <input id='rate-limit' type='number' min='0'>
+              <input id='rate-limit' type='number' min='0' step='0.1'>
               <label for='rate-limit'
                      data-error='That is not a valid URL.'>
                 Rate Limit  (optional)
@@ -51,7 +51,7 @@
     </div>
     <div>
       <h1>Crawl Status</h1>
-      <table class='striped'>
+      <table id='crawl-status' class='striped'>
         <thead>
           <tr>
             <th>URL</th>
@@ -62,24 +62,7 @@
             <th>Server Error</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>http://foo.com</td>
-            <td>Running</td>
-            <td>1,219</td>
-            <td>289</td>
-            <td>47</td>
-            <td>81</td>
-          </tr>
-          <tr>
-            <td>http://bar.com</td>
-            <td>Finished</td>
-            <td>3,219</td>
-            <td>827</td>
-            <td>131</td>
-            <td>256</td>
-          </tr>
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
   </div>

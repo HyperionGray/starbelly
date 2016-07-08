@@ -9,6 +9,7 @@ from time import time
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
+import blinker
 import lxml.html
 import websockets
 
@@ -22,25 +23,186 @@ logger = logging.getLogger()
 logger.addHandler(log_handler)
 
 
+class Crawl():
+    _next_id = 0
+    _status_digit_to_name = {
+        1: 'information',
+        2: 'success',
+        3: 'redirect',
+        4: 'not_found',
+        5: 'error',
+    }
+
+    @classmethod
+    def next_id(cls):
+        id_ = cls._next_id
+        cls._next_id += 1
+        return id_
+
+    def __init__(self, seeds, downloader, frontier, max_depth=3):
+        self.id_ = self.next_id()
+        self.max_depth = max_depth
+        self.stats_updated = blinker.signal('stats-updated')
+        self.when_complete = asyncio.Future()
+
+        self._completed_items = list()
+        self._downloader = downloader
+        self._frontier = frontier
+        self._pending_items = set()
+        self._seeds = seeds
+
+        self.stats = {
+            'seed': self._seeds[0], # TODO should store list of seeds
+            'status': 'running',
+            'information': 0,
+            'success': 0,
+            'redirect': 0,
+            'not_found': 0,
+            'error': 0,
+        }
+
+    async def run(self):
+        logger.info('Crawl #{} starting...'.format(self.id_))
+        for seed in self._seeds:
+            crawl_item = CrawlItem(seed, depth=0)
+            self._add_item(crawl_item, seed=True)
+
+        if not self._downloader.is_running:
+            asyncio.ensure_future(self._downloader.run())
+
+        await self.when_complete
+        logger.info('Crawl #{} complete.'.format(self.id_))
+
+    def _add_item(self, crawl_item, seed=False):
+        try:
+            if seed:
+                self._frontier.add_seed(crawl_item)
+            else:
+                self._frontier.add_item(crawl_item)
+            self._pending_items.add(crawl_item)
+            crawl_item.when_complete.add_done_callback(self._complete_item)
+        except FrontierException:
+            pass
+
+    def _complete_item(self, crawl_item_future):
+        crawl_item = crawl_item_future.result()
+        self._pending_items.remove(crawl_item)
+        self._completed_items.append(crawl_item)
+        self._update_stats(crawl_item)
+
+        if crawl_item.depth < self.max_depth:
+            for new_url in self._parse_urls(crawl_item):
+                parsed = urlparse(new_url)
+                if parsed.path.endswith('.html'):
+                    self._add_item(
+                        CrawlItem(new_url, depth=crawl_item.depth + 1)
+                    )
+
+        if len(self._pending_items) == 0:
+            self.when_complete.set_result(None)
+            self.status = 'complete'
+            updates = {'status': self.status}
+            self.stats_updated.send((self, updates))
+
+    def _parse_urls(self, crawl_item):
+        doc = lxml.html.document_fromstring(crawl_item.body)
+        for link in doc.iterlinks():
+            new_url = urljoin(crawl_item.url, link[2])
+            yield new_url
+
+    def _update_stats(self, crawl_item):
+        status_first_digit = crawl_item.status_code // 100
+        stat_category = Crawl._status_digit_to_name[status_first_digit]
+        self.stats[stat_category] += 1
+        updates = {stat_category: self.stats[stat_category]}
+        self.stats_updated.send((self, updates))
+
+
+class CrawlItem():
+    def __init__(self, url, depth):
+        self.body = None
+        self.complete = False
+        self.depth = depth
+        self.headers = None
+        self.parsed_url = urlparse(url)
+        self.started_at = None
+        self.status_code = None
+        self.url = url
+        self.when_complete = asyncio.Future()
+
+    def finish(self, status_code, headers, body):
+        self.body = body
+        self.completed_at = time()
+        self.duration = self.completed_at - self.started_at
+        self.headers = headers
+        self.status = 'complete'
+        self.status_code = status_code
+        self.when_complete.set_result(self)
+
+    def start(self):
+        self.started_at = time()
+
+
+class CrawlStatsListener():
+    _next_id = 0
+
+    @classmethod
+    def next_id(cls):
+        id_ = cls._next_id
+        cls._next_id += 1
+        return id_
+
+    def __init__(self, socket, min_interval):
+        self.id_ = self.next_id()
+        self._has_update = asyncio.Future()
+        self._min_interval = min_interval
+        self._socket = socket
+        self._stats = dict()
+        self._to_remove = set()
+
+    def add_crawl(self, crawl):
+        self._stats[crawl.id_] = dict(crawl.stats)
+        crawl.stats_updated.connect(self._update_crawl_stats)
+
+    def remove_crawl(self, crawl):
+        self._to_remove.add(crawl)
+        crawl.stats_updated.disconnect(self._update_crawl_stats)
+
+    async def run(self):
+        while True:
+            if len(self._stats) > 0:
+                message = {
+                    'type': 'event',
+                    'subscription_id': self.id_,
+                    'data': dict(self._stats),
+                }
+
+                self._stats = dict()
+                await self._socket.send(json.dumps(message))
+
+            sleeper = asyncio.sleep(self._min_interval)
+            await asyncio.wait((sleeper, self._has_update))
+
+    def _update_crawl_stats(self, crawl_stats):
+        crawl, new_stats = crawl_stats
+
+        if crawl.id_ not in self._stats:
+            self._stats[crawl.id_] = new_stats
+        else:
+            self._stats[crawl.id_].update(new_stats)
+
+        self._has_update.set_result(None)
+        self._has_update = asyncio.Future()
+
+
 class DomainRateLimiter():
     def __init__(self, default_interval=5):
         self._all_domains = set()
+        self._domain_touched = asyncio.Future()
         self._intervals = defaultdict(lambda: default_interval)
         self._ready_domains = set()
-        self._url_finished = asyncio.Future()
         self._wait_domains = list()
         self._wait_times = list()
-
-    def finish_url(self, url):
-        domain = urlparse(url).hostname
-        next_time = time() + self._intervals[domain]
-        index = bisect(self._wait_times, next_time)
-        self._wait_times.insert(index, next_time)
-        self._wait_domains.insert(index, domain)
-        self._url_finished.set_result(None)
-        self._url_finished = asyncio.Future()
-
-        logger.debug('Touched {}'.format(url))
 
     async def select_domain(self, choices):
         # Add any domains that we don't already know about.
@@ -78,62 +240,156 @@ class DomainRateLimiter():
             # Wait until the next domain becomes ready.
             logger.debug('No domains available! Waiting for a rate limit to expire...')
             if len(self._wait_times) == 0:
-                await self._url_finished
+                await self._domain_touched
             else:
                 delay = self._wait_times[0] - now
                 sleeper = asyncio.ensure_future(asyncio.sleep(delay))
                 await asyncio.wait(
-                    [sleeper, self._url_finished],
+                    [sleeper, self._domain_touched],
                     return_when=asyncio.FIRST_COMPLETED
                 )
                 if not sleeper.done():
                     sleeper.cancel()
 
-    def set_domain(self, domain, interval):
+    def set_domain_limit(self, domain, interval):
         self._intervals[domain] = interval
         self._all_domains.add(domain)
         self._ready_domains.add(domain)
+
+    def touch_domain(self, domain):
+        interval = self._intervals[domain]
+
+        if interval == 0:
+            self._ready_domains.add(domain)
+        else:
+            next_time = time() + self._intervals[domain]
+            index = bisect(self._wait_times, next_time)
+            self._wait_times.insert(index, next_time)
+            self._wait_domains.insert(index, domain)
+
+        if not self._domain_touched.done():
+            self._domain_touched.set_result(None)
+
+        self._domain_touched = asyncio.Future()
+        logger.debug('Touched domain {}'.format(domain))
+
+
+class Downloader:
+    def __init__(self, frontier, concurrent=10, max_depth=10):
+        self.is_running = False
+
+        self._download_count = 0
+        self._download_slot = asyncio.Semaphore(concurrent)
+        self._downloader_finished = asyncio.Future()
+        self._frontier = frontier
+
+    async def fetch_item(self, crawl_item):
+        msg = 'Fetching {} (depth={})'
+        logger.info(msg.format(crawl_item.url, crawl_item.depth))
+        self._download_count += 1
+        connector = aiohttp.TCPConnector(verify_ssl=False)
+        with aiohttp.ClientSession(connector=connector) as session:
+            crawl_item.start()
+            async with session.get(crawl_item.url) as response:
+                await self._handle_response(crawl_item, response)
+
+    async def run(self):
+        self.is_running = True
+        logger.debug('Downloader is starting...')
+
+        while True:
+            logger.debug('Waiting for download slot...')
+            await self._download_slot.acquire()
+
+            logger.debug('Waiting for next domain & URL...')
+            crawl_item_future = asyncio.ensure_future(self._frontier.get_item())
+
+            finished_future = asyncio.wait(
+                (self._frontier.join(), self._downloader_finished)
+            )
+
+            done, pending = await asyncio.wait(
+                (crawl_item_future, finished_future),
+                return_when=asyncio.FIRST_COMPLETED
+            )
+
+            if crawl_item_future.done():
+                crawl_item = crawl_item_future.result()
+            else:
+                crawl_item_future.cancel()
+                break
+
+            task = asyncio.ensure_future(self.fetch_item(crawl_item))
+
+        logger.debug('Downloader has stopped.')
+        self.is_running = False
+
+    async def _handle_response(self, crawl_item, response):
+        url = crawl_item.url
+        status = response.status
+        logger.info('{} {}'.format(status, url))
+        body = await response.read()
+        crawl_item.finish(status, response.headers, body)
+        self._release_download_slot()
+
+    def _release_download_slot(self):
+        self._download_slot.release()
+        self._download_count -= 1
+        if self._download_count == 0:
+            logger.debug('Downloader is out of downloads!')
+            # TODO I've used this pattern of using a future to unblock a
+            # coroutine in several places, but I think asyncio.Condition is
+            # more appropriate.
+            self._downloader_finished.set_result(None)
+            self._downloader_finished = asyncio.Future()
 
 
 class Frontier:
     def __init__(self, rate_limiter):
         self._domains = set()
-        self._domain_queues = defaultdict(asyncio.PriorityQueue)
+        self._domain_queues = defaultdict(asyncio.Queue)
         self._queue_empty = asyncio.Future()
         self._queue_size = 0
         self._rate_limiter = rate_limiter
         self._seen = set()
         self._url_added = asyncio.Future()
 
-    def add_seed(self, seed):
-        domain = urlparse(seed).hostname
-        self._domains.add(domain)
-        self._domain_queues[domain].put_nowait(seed)
+    def add_item(self, crawl_item):
+        url = crawl_item.url
+        parsed = crawl_item.parsed_url
+        domain = parsed.hostname
+        normalized_url = '{}://{}{}?{}'.format(
+            parsed.scheme, parsed.hostname, parsed.path, parsed.query
+        )
 
-    def add_url(self, url):
-        domain = urlparse(url).hostname
+        if domain not in self._domains or normalized_url in self._seen:
+            raise FrontierException()
 
-        if domain in self._domains and url.endswith('.html') and \
-           url not in self._seen:
+        logger.debug('Pushing {}'.format(url))
+        self._domain_queues[domain].put_nowait(crawl_item)
+        self._queue_size += 1
+        self._seen.add(normalized_url)
+        self._url_added.set_result(None)
+        self._url_added = asyncio.Future()
+        crawl_item.when_complete.add_done_callback(self.complete_item)
 
-            logger.debug('Pushing {}'.format(url))
-            self._domain_queues[domain].put_nowait(url)
-            self._queue_size += 1
-            self._seen.add(url)
-            self._url_added.set_result(None)
-            self._url_added = asyncio.Future()
+    def add_seed(self, crawl_item):
+        self._domains.add(crawl_item.parsed_url.hostname)
+        self.add_item(crawl_item)
 
-    def finish_url(self, url):
-        domain = urlparse(url).hostname
+    def complete_item(self, crawl_item_future):
+        crawl_item = crawl_item_future.result()
+        url = crawl_item.url
+        domain = crawl_item.parsed_url.hostname
         self._domain_queues[domain].task_done()
-        self._rate_limiter.finish_url(url)
+        self._rate_limiter.touch_domain(domain)
         self._queue_size -= 1
 
-        if self._queue_size == 0:
-            self._queue_empty.set_result(None)
-            self._queue_empty = asyncio.Future()
+        # Check if the queue is empty, but wait until after other callbacks on
+        # crawl item have completed -- they may add more items to the queue.
+        asyncio.get_event_loop().call_soon(self._check_queue_empty)
 
-    async def get_url(self):
+    async def get_item(self):
         while True:
             choices = {d for d,q in self._domain_queues.items() if q.qsize() > 0}
             domain_future = asyncio.ensure_future(
@@ -151,99 +407,40 @@ class Frontier:
                 domain = domain_future.result()
 
                 try:
-                    url = self._domain_queues[domain].get_nowait()
+                    crawl_item = self._domain_queues[domain].get_nowait()
                 except asyncio.QueueEmpty:
                     continue
 
-                logger.debug('Popping {}'.format(url))
-                return url
+                msg = 'Popping {} (depth={})'
+                logger.debug(msg.format(crawl_item.url, crawl_item.depth))
+                return crawl_item
 
     async def join(self):
         await self._queue_empty
 
+    def _check_queue_empty(self):
+        if self._queue_size == 0:
+            self._queue_empty.set_result(None)
+            self._queue_empty = asyncio.Future()
 
-class Downloader:
-    def __init__(self, frontier, concurrent=10):
-        self._download_count = 0
-        self._download_slot = asyncio.Semaphore(concurrent)
-        self._downloader_finished = asyncio.Future()
-        self._frontier = frontier
-        self.is_running = False
 
-    async def get(self, url):
-        conn = aiohttp.TCPConnector(verify_ssl=False)
-        self._download_count += 1
-        with aiohttp.ClientSession(connector=conn) as session:
-            async with session.get(url) as response:
-                await self._handle_response(url, response)
-
-    async def run(self):
-        self.is_running = True
-        logger.debug('Downloader is starting...')
-
-        while True:
-            logger.debug('Waiting for download slot...')
-            await self._download_slot.acquire()
-
-            logger.debug('Waiting for next domain & URL...')
-            url_future = asyncio.ensure_future(self._frontier.get_url())
-
-            finished_future = asyncio.wait(
-                (self._frontier.join(), self._downloader_finished)
-            )
-
-            done, pending = await asyncio.wait(
-                (url_future, finished_future),
-                return_when=asyncio.FIRST_COMPLETED
-            )
-
-            if url_future.done():
-                url = url_future.result()
-            else:
-                url_future.cancel()
-                break
-
-            logger.info('Fetching {}'.format(url))
-            task = asyncio.ensure_future(self.get(url))
-
-        logger.debug('Downloader has stopped.')
-        self.is_running = False
-
-    async def _handle_response(self, url, response):
-        logger.info('{} {}'.format(response.status, url))
-        body = await response.read()
-
-        for new_url in self._parse_urls(url, body):
-            self._frontier.add_url(new_url)
-
-        self._release_download_slot()
-        self._frontier.finish_url(url)
-
-    def _parse_urls(self, url, html):
-        doc = lxml.html.document_fromstring(html)
-        for link in doc.iterlinks():
-            new_url = urljoin(url, link[2])
-            yield new_url
-
-    def _release_download_slot(self):
-        self._download_slot.release()
-        self._download_count -= 1
-        if self._download_count == 0:
-            logger.debug('Downloader is out of downloads!')
-            self._downloader_finished.set_result(None)
-            self._downloader_finished = asyncio.Future()
+class FrontierException(Exception):
+    pass
 
 
 class Server:
     def __init__(self, host, port, frontier, downloader, rate_limiter):
+        self._crawls = list()
         self._downloader = downloader
         self._frontier = frontier
         self._host = host
         self._port = port
         self._rate_limiter = rate_limiter
+        self._stats_subscriptions = set()
 
         self._handlers = {
             'start_crawl': self._start_crawl,
+            'subscribe_crawl_stats': self._subscribe_crawl_stats,
         }
 
     async def handle_connection(self, websocket, path):
@@ -258,7 +455,13 @@ class Server:
                 logger.debug('Received command: '.format(request))
                 command = request['command']
                 args = request['args']
-                response = {'id': request['id'], 'type': 'response'}
+                args['socket'] = websocket
+
+                response = {
+                    'command_id': request['command_id'],
+                    'type': 'response',
+                }
+
                 try:
                     response['data'] = await self._dispatch_command(
                         self._handlers[command],
@@ -281,6 +484,16 @@ class Server:
                     websocket.remote_address[1],
                 ))
                 return
+            except asyncio.CancelledError:
+                msg = 'Connection handler canceled; closing socket {}:{}.'
+                logger.info(msg.format(
+                    websocket.remote_address[0],
+                    websocket.remote_address[1],
+                ))
+                try:
+                    await websocket.close()
+                except websockets.exceptions.InvalidState:
+                    pass
 
     def start(self):
         return websockets.serve(
@@ -295,24 +508,37 @@ class Server:
         else:
             return handler(**args)
 
-    def _start_crawl(self, seeds):
-        # Add to frontier.
+    def _start_crawl(self, socket, seeds):
+        seed_urls = list()
+
         for seed in seeds:
             url = seed['url']
+            seed_urls.append(url)
             rate_limit = seed.get('rate_limit', None)
 
-            if rate_limit is not None:
+            if rate_limit.strip() != '':
                 rate_limit = float(rate_limit)
                 parsed = urlparse(url)
-                self._rate_limiter.set_domain(parsed.hostname, rate_limit)
+                self._rate_limiter.set_domain_limit(parsed.hostname, rate_limit)
 
-            self._frontier.add_seed(url)
+        crawl = Crawl(seed_urls, downloader, frontier)
+        asyncio.ensure_future(crawl.run())
+        self._crawls.append(crawl)
 
-        # Make sure the downloader is running.
-        if not self._downloader.is_running:
-            asyncio.ensure_future(self._downloader.run())
+        for subscription in self._stats_subscriptions:
+            subscription.add_crawl(crawl)
 
-        return 'Crawling from {} seeds'.format(len(seeds))
+        return {'crawl_id': crawl.id_}
+
+    def _subscribe_crawl_stats(self, socket, min_interval=1):
+        subscription = CrawlStatsListener(socket, min_interval)
+        self._stats_subscriptions.add(subscription)
+
+        for crawl in self._crawls:
+            subscription.add_crawl(crawl)
+
+        asyncio.ensure_future(subscription.run())
+        return {'subscription_id': subscription.id_}
 
 
 if __name__ == '__main__':
@@ -341,4 +567,3 @@ if __name__ == '__main__':
 
     loop.close()
     logger.info('Server is stopped.')
-

@@ -1,3 +1,4 @@
 aiohttp
+blinker
 lxml
 websockets
