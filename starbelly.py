@@ -177,14 +177,9 @@ class CrawlItemsListener(CrawlListener):
         for item in self._crawl.items(self._index):
             self._queue.put_nowait(item)
 
-        print('finished init, qsize={}'.format(self._queue.qsize()))
-
     async def run(self):
         while True:
-            print('item listener: waiting for queue...')
-            print(self._queue.qsize())
             crawl_item = await self._queue.get()
-            print('after await')
             self._index += 1
             index_bytes = str(self._index).encode('utf8')
             sync_token = base64.b64encode(index_bytes).decode('utf8')
@@ -205,7 +200,6 @@ class CrawlItemsListener(CrawlListener):
                     'url': crawl_item.url,
                 },
             }
-            print('item listener: sending message'.format(message))
             await self._socket.send(json.dumps(message))
 
 
