@@ -1,4 +1,5 @@
 import asyncio
+import base64
 from bisect import bisect
 from collections import defaultdict
 import json
@@ -9,7 +10,6 @@ from time import time
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
-import blinker
 import lxml.html
 import websockets
 
@@ -23,7 +23,7 @@ logger = logging.getLogger()
 logger.addHandler(log_handler)
 
 
-class Crawl():
+class Crawl:
     _next_id = 0
     _status_digit_to_name = {
         1: 'information',
@@ -40,9 +40,10 @@ class Crawl():
         return id_
 
     def __init__(self, seeds, downloader, frontier, max_depth=3):
+        self.crawl_item_completed = PubSub()
         self.id_ = self.next_id()
         self.max_depth = max_depth
-        self.stats_updated = blinker.signal('stats-updated')
+        self.stats_updated = PubSub()
         self.when_complete = asyncio.Future()
 
         self._completed_items = list()
@@ -60,6 +61,9 @@ class Crawl():
             'not_found': 0,
             'error': 0,
         }
+
+    def items(self, start_index):
+        return self._completed_items[start_index:]
 
     async def run(self):
         logger.info('Crawl #{} starting...'.format(self.id_))
@@ -89,6 +93,7 @@ class Crawl():
         self._pending_items.remove(crawl_item)
         self._completed_items.append(crawl_item)
         self._update_stats(crawl_item)
+        self.crawl_item_completed.publish(crawl_item)
 
         if crawl_item.depth < self.max_depth:
             for new_url in self._parse_urls(crawl_item):
@@ -100,9 +105,9 @@ class Crawl():
 
         if len(self._pending_items) == 0:
             self.when_complete.set_result(None)
-            self.status = 'complete'
-            updates = {'status': self.status}
-            self.stats_updated.send((self, updates))
+            self.stats['status'] = 'complete'
+            updates = {'status': 'complete'}
+            self.stats_updated.publish(self, updates)
 
     def _parse_urls(self, crawl_item):
         doc = lxml.html.document_fromstring(crawl_item.body)
@@ -115,13 +120,13 @@ class Crawl():
         stat_category = Crawl._status_digit_to_name[status_first_digit]
         self.stats[stat_category] += 1
         updates = {stat_category: self.stats[stat_category]}
-        self.stats_updated.send((self, updates))
+        self.stats_updated.publish(self, updates)
 
 
-class CrawlItem():
+class CrawlItem:
     def __init__(self, url, depth):
         self.body = None
-        self.complete = False
+        self.completed_at = None
         self.depth = depth
         self.headers = None
         self.parsed_url = urlparse(url)
@@ -143,30 +148,81 @@ class CrawlItem():
         self.started_at = time()
 
 
-class CrawlStatsListener():
+class CrawlListener:
     _next_id = 0
 
     @classmethod
     def next_id(cls):
-        id_ = cls._next_id
-        cls._next_id += 1
+        id_ = CrawlListener._next_id
+        CrawlListener._next_id += 1
         return id_
 
+
+class CrawlItemsListener(CrawlListener):
+
+    def __init__(self, socket, crawl, sync_token=None):
+        self.id_ = self.next_id()
+        self._crawl = crawl
+        self._queue = asyncio.Queue()
+        self._socket = socket
+        self._crawl.crawl_item_completed.listen(self._queue.put_nowait)
+
+        # Decode sync token and immediately load any unsynced items from
+        # the crawl into our local queue.
+        if sync_token is None:
+            self._index = 0
+        else:
+            self._index = int(base64.b64decode(sync_token))
+
+        for item in self._crawl.items(self._index):
+            self._queue.put_nowait(item)
+
+        print('finished init, qsize={}'.format(self._queue.qsize()))
+
+    async def run(self):
+        while True:
+            print('item listener: waiting for queue...')
+            print(self._queue.qsize())
+            crawl_item = await self._queue.get()
+            print('after await')
+            self._index += 1
+            index_bytes = str(self._index).encode('utf8')
+            sync_token = base64.b64encode(index_bytes).decode('utf8')
+            body = base64.b64encode(crawl_item.body).decode('utf8')
+            message = {
+                'type': 'event',
+                'subscription_id': self.id_,
+                'data': {
+                    'body': body,
+                    'completed_at': crawl_item.completed_at,
+                    'crawl_id': self._crawl.id_,
+                    'depth': crawl_item.depth,
+                    'duration': crawl_item.duration,
+                    'headers': dict(crawl_item.headers),
+                    'started_at': crawl_item.started_at,
+                    'status_code': crawl_item.status_code,
+                    'sync_token': sync_token,
+                    'url': crawl_item.url,
+                },
+            }
+            print('item listener: sending message'.format(message))
+            await self._socket.send(json.dumps(message))
+
+
+class CrawlStatsListener(CrawlListener):
     def __init__(self, socket, min_interval):
         self.id_ = self.next_id()
         self._has_update = asyncio.Future()
         self._min_interval = min_interval
         self._socket = socket
         self._stats = dict()
-        self._to_remove = set()
 
     def add_crawl(self, crawl):
         self._stats[crawl.id_] = dict(crawl.stats)
-        crawl.stats_updated.connect(self._update_crawl_stats)
+        crawl.stats_updated.listen(self._update_crawl_stats)
 
     def remove_crawl(self, crawl):
-        self._to_remove.add(crawl)
-        crawl.stats_updated.disconnect(self._update_crawl_stats)
+        crawl.stats_updated.cancel(self._update_crawl_stats)
 
     async def run(self):
         while True:
@@ -183,9 +239,7 @@ class CrawlStatsListener():
             sleeper = asyncio.sleep(self._min_interval)
             await asyncio.wait((sleeper, self._has_update))
 
-    def _update_crawl_stats(self, crawl_stats):
-        crawl, new_stats = crawl_stats
-
+    def _update_crawl_stats(self, crawl, new_stats):
         if crawl.id_ not in self._stats:
             self._stats[crawl.id_] = new_stats
         else:
@@ -195,7 +249,7 @@ class CrawlStatsListener():
         self._has_update = asyncio.Future()
 
 
-class DomainRateLimiter():
+class DomainRateLimiter:
     def __init__(self, default_interval=5):
         self._all_domains = set()
         self._domain_touched = asyncio.Future()
@@ -428,19 +482,37 @@ class FrontierException(Exception):
     pass
 
 
+class PubSub:
+    def __init__(self):
+        self._callbacks = set()
+
+    def cancel(self, callback):
+        self._callbacks.remove(callback)
+
+    def listen(self, callback):
+        self._callbacks.add(callback)
+
+    def publish(self, *args, **kwargs):
+        for callback in self._callbacks:
+            callback(*args, **kwargs)
+
+
 class Server:
     def __init__(self, host, port, frontier, downloader, rate_limiter):
         self._crawls = list()
+        self._crawl_started = PubSub()
         self._downloader = downloader
         self._frontier = frontier
         self._host = host
         self._port = port
         self._rate_limiter = rate_limiter
-        self._stats_subscriptions = set()
+        self._subscriptions = dict()
 
         self._handlers = {
             'start_crawl': self._start_crawl,
+            'subscribe_crawl_items': self._subscribe_crawl_items,
             'subscribe_crawl_stats': self._subscribe_crawl_stats,
+            'unsubscribe': self._unsubscribe,
         }
 
     async def handle_connection(self, websocket, path):
@@ -524,21 +596,41 @@ class Server:
         crawl = Crawl(seed_urls, downloader, frontier)
         asyncio.ensure_future(crawl.run())
         self._crawls.append(crawl)
-
-        for subscription in self._stats_subscriptions:
-            subscription.add_crawl(crawl)
-
+        self._crawl_started.publish(crawl)
         return {'crawl_id': crawl.id_}
+
+    def _subscribe_crawl_items(self, socket, crawl_id, sync_token=None):
+        crawl_id = int(crawl_id)
+        matching_crawls = [c for c in self._crawls if c.id_ == crawl_id]
+
+        if len(matching_crawls) != 1:
+            msg = 'Crawl ID={} matched {} crawls! (expected 1)'
+            raise ValueError(msg.format(crawl_id, len(matching_crawls)))
+
+        crawl = matching_crawls[0]
+        subscription = CrawlItemsListener(socket, crawl, sync_token)
+        coro = asyncio.ensure_future(subscription.run())
+        self._subscriptions[subscription.id_] = coro
+        return {'subscription_id': subscription.id_}
 
     def _subscribe_crawl_stats(self, socket, min_interval=1):
         subscription = CrawlStatsListener(socket, min_interval)
-        self._stats_subscriptions.add(subscription)
 
         for crawl in self._crawls:
             subscription.add_crawl(crawl)
 
-        asyncio.ensure_future(subscription.run())
+        def add_crawl(crawl):
+            subscription.add_crawl(crawl)
+
+        self._crawl_started.listen(add_crawl)
+        coro = asyncio.ensure_future(subscription.run())
+        self._subscriptions[subscription.id_] = coro
         return {'subscription_id': subscription.id_}
+
+    def _unsubscribe(self, socket, subscription_id):
+        subscription_id = int(subscription_id)
+        self._subscriptions[subscription_id].cancel()
+        return {'subscription_id': subscription_id}
 
 
 if __name__ == '__main__':

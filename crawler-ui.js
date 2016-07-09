@@ -39,6 +39,7 @@ function connect(host, port) {
     }
     socket.onopen = function (event) {
         Materialize.toast('Connected to server.', 2000);
+        crawls = {};
         sendCommand('subscribe_crawl_stats', {'min_interval': 1}, function (response) {
             subscriptions[response.data.subscription_id] = handleCrawlStats;
         });

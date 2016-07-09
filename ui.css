@@ -8,3 +8,16 @@ h6 {font-size: 1.0rem;}
 .brand-logo {
     padding-left: 1.5rem !important;
 }
+
+.clearfix {
+    clear: both;
+}
+
+.flashable {
+    transition: background-color 0.5s ease-in;
+}
+
+.flash-on {
+    transition: background-color 0.5s ease-out;
+    background-color: #ee6e73;
+}
