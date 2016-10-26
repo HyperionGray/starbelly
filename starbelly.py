@@ -636,7 +636,7 @@ if __name__ == '__main__':
     rate_limiter = DomainRateLimiter()
     frontier = Frontier(rate_limiter)
     downloader = Downloader(frontier)
-    server = Server('localhost', 8001, frontier, downloader, rate_limiter)
+    server = Server('localhost', 8000, frontier, downloader, rate_limiter)
 
     loop = asyncio.get_event_loop()
     logger.info('Starting server')

@@ -4,8 +4,8 @@ var pendingCallbacks = {};
 var socket;
 var subscriptions = {};
 
-function connect(host, port) {
-    socket = new WebSocket('ws://' + host + ':' + port);
+function connect(host) {
+    socket = new WebSocket('wss://' + host + '/ws/');
     socket.onmessage = function (event) {
         var response = JSON.parse(event.data);
         console.log('Received message:', response);
@@ -31,7 +31,7 @@ function connect(host, port) {
     }
     socket.onclose = function (event) {
         Materialize.toast('Server disconnected!', 2000);
-        setTimeout(function () {connect(host, port);}, 3000);
+        setTimeout(function () {connect(host);}, 3000);
     }
     socket.error = function (event) {
         Materialize.toast('Server error (see console)' + event, 2000);
@@ -114,8 +114,7 @@ function startCrawl(event) {
 
 $(function () {
     var host = 'localhost';
-    var port = 8001;
-    connect(host, port);
+    connect(host);
     renderCrawlTable();
     $('#crawl-form').submit(startCrawl);
 });
