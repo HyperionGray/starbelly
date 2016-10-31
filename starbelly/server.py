@@ -1,15 +1,18 @@
 import asyncio
 import json
+import logging
 from urllib.parse import urlparse
 
 import websockets
 
-from . import logger
 from .crawl import Crawl, CrawlItemsListener, CrawlStatsListener
 from .pubsub import PubSub
 
 
-class WebSocketServer:
+logger = logging.getLogger(__name__)
+
+
+class Server:
     def __init__(self, host, port, frontier, downloader, rate_limiter):
         self._crawls = list()
         self._crawl_started = PubSub()

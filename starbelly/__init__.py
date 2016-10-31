@@ -1,11 +1,8 @@
-import logging
-import sys
+import os
 
 
-log_format = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
-log_date_format = '%Y-%m-%d %H:%M:%S'
-log_formatter = logging.Formatter(log_format, log_date_format)
-log_handler = logging.StreamHandler(sys.stderr)
-log_handler.setFormatter(log_formatter)
-logger = logging.getLogger()
-logger.addHandler(log_handler)
+def get_path(relpath):
+    ''' Return absolute path for given path relative to project root. '''
+
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    return os.path.abspath(os.path.join(base_dir, relpath))

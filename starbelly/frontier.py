@@ -1,7 +1,9 @@
 import asyncio
+import logging
 from collections import defaultdict
 
-from . import logger
+
+logger = logging.getLogger(__name__)
 
 
 class FrontierException(Exception):

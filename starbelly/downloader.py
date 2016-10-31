@@ -1,8 +1,10 @@
 import asyncio
+import logging
 
 import aiohttp
 
-from . import logger
+
+logger = logging.getLogger(__name__)
 
 
 class Downloader:

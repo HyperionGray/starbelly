@@ -1,14 +1,17 @@
 import asyncio
 import base64
 import json
+import logging
 from time import time
 from urllib.parse import urljoin, urlparse
 
 import lxml.html
 
-from . import logger
 from .frontier import FrontierException
 from .pubsub import PubSub
+
+
+logger = logging.getLogger(__name__)
 
 
 class Crawl:

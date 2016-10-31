@@ -1,9 +1,12 @@
 import asyncio
 from bisect import bisect
 from collections import defaultdict
+import logging
 from time import time
 
-from . import logger
+
+logger = logging.getLogger(__name__)
+
 
 class DomainRateLimiter:
     def __init__(self, default_interval=5):
