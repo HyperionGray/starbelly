@@ -1,0 +1,45 @@
+<div>
+  <h1>Subscribe To Crawls…</h1>
+  <div class='row'>
+    <div class='col s12'>
+        <ul class='collection'>
+          <li *ngIf='crawls.length == 0' class='collection-item'>
+            No crawls have been started...
+          </li>
+          <li *ngFor='let crawl of crawls' class='collection-item'>
+            <a href='{{crawl["seed"]}}' target='_blank'>{{crawl["seed"]}}</a>
+            <div class='switch right'>
+              <label>
+                Ignore
+                <input #switch type='checkbox' (change)='toggleFollow(crawl)'>
+                <span class='lever'></span>
+                Follow
+              </label>
+            </div>
+          </li>
+        </ul>
+    </div>
+  </div>
+</div>
+<div>
+  <h1>Crawl Results</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>URL</th>
+        <th>Title</th>
+        <th>Duration (s)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf='items.length == 0'>
+        <td class='empty-table' colspan="999">There are no crawl results…</td>
+      </tr>
+      <tr *ngFor='let item of items' class='flashable' [class.flash-on]='item["flash_on"]'>
+        <td>{{item['url']}}</td>
+        <td>{{item['title']}}</td>
+        <td>{{item['duration']}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -1,11 +1,17 @@
 <!DOCTYPE html>
+<!--
+This file uses Dart source instead of cross-compiled JavaScript source.
+Keep this file in sync with index.html! The only lines that should be different
+are marked with the comment "Dart Only".
+-->
 <html>
   <head>
     <meta charset='utf-8'>
     <title>Loading…</title>
-    <base href='/dart/build/web/'>
-    <script defer src='./main.dart.js'></script>
-    <link rel='stylesheet' href='/style/combined.css'>
+    <base href='/'>
+    <!-- Dart Only: --><script defer src='/static/dart/web/main.dart' type='application/dart'></script>
+    <!-- Dart Only: --><script defer src='/static/dart/web/packages/browser/dart.js'></script>
+    <link rel='stylesheet' href='/static/style/combined.css'>
     <!-- TODO Temporary: remove these and replace with LESS/SASS source. -->
     <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/css/materialize.min.css'>
     <link rel='stylesheet' href='https://fonts.googleapis.com/icon?family=Material+Icons'>

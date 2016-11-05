@@ -103,8 +103,7 @@ class Server:
             seed_urls.append(url)
             rate_limit = seed.get('rate_limit', None)
 
-            if rate_limit.strip() != '':
-                rate_limit = float(rate_limit)
+            if rate_limit is not None:
                 parsed = urlparse(url)
                 self._rate_limiter.set_domain_limit(parsed.hostname, rate_limit)
 

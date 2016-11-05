@@ -43,10 +43,10 @@ initiate a command; the server may not.) The client sends a message like this:
 
     {
         "args": {
-            "seeds": {
+            "seeds": [
                 "rate_limit": 2.5,
                 "url": "http://foo.com"
-            }
+            ]
         },
         "command_id": 0,
         "command": "start_crawl"

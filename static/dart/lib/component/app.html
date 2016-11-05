@@ -1,0 +1,14 @@
+<div class='navbar-fixed'>
+  <nav>
+    <div class='nav-wrapper'>
+      <a class='left brand-logo'>Starbelly</a>
+        <ul id='nav-mobile' class='right hide-on-med-and-down'>
+          <li><a [routerLink]='["./Crawl"]'>Crawl</a></li>
+          <li><a [routerLink]='["./Items"]'>Items</a></li>
+        </ul>
+    </div>
+  </nav>
+</div>
+<div class='container'>
+  <router-outlet></router-outlet>
+</div>
