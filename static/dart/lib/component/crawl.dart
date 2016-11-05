@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:angular2/core.dart';
 
+import 'package:starbelly/service/document.dart';
 import 'package:starbelly/service/server.dart';
 
 /// View and manage crawls.
@@ -14,9 +17,10 @@ class CrawlComponent implements OnInit, OnDestroy {
 
     ServerService _server;
     StreamSubscription _subscription;
+    DocumentService _document;
 
     /// Constructor
-    CrawlComponent(this._server) {
+    CrawlComponent(this._document, this._server) {
         this.crawls = new List<Map>();
     }
 
@@ -46,6 +50,8 @@ class CrawlComponent implements OnInit, OnDestroy {
 
     /// Subscribe to crawl stats after the component is initialized.
     ngOnInit() async {
+        this._document.title = 'Crawl';
+
         var response = await this._server.command(
             'subscribe_crawl_stats',
             {'min_interval': 1}

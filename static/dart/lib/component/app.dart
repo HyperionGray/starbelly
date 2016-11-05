@@ -4,12 +4,13 @@ import 'package:angular2/router.dart';
 import 'package:starbelly/component/crawl.dart';
 import 'package:starbelly/component/items.dart';
 import 'package:starbelly/service/server.dart';
+import 'package:starbelly/service/document.dart';
 
 @Component(
     selector: 'app',
     templateUrl: 'app.html',
     directives: const [ROUTER_DIRECTIVES],
-    providers: const [ROUTER_PROVIDERS, ServerService]
+    providers: const [ROUTER_PROVIDERS, DocumentService, ServerService]
 )
 @RouteConfig(const [
     const Route(path: '/crawl', name: 'Crawl', component: CrawlComponent, useAsDefault: true),

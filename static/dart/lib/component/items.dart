@@ -3,6 +3,7 @@ import 'dart:html';
 
 import 'package:angular2/core.dart';
 
+import 'package:starbelly/service/document.dart';
 import 'package:starbelly/service/server.dart';
 
 /// View crawl items.
@@ -14,15 +15,16 @@ class ItemsComponent implements OnInit, OnDestroy {
     List<Map> crawls;
     List<Map> items;
 
+    DocumentService _document;
     ServerService _server;
-    Map<int,Stream> _subscriptions;
+    Map<int,StreamSubscription> _subscriptions;
     Map<int,String> _sync_tokens;
 
     /// Constructor
-    ItemsComponent(this._server) {
+    ItemsComponent(this._document, this._server) {
         this.crawls = new List<Map>();
         this.items = new List<Map>();
-        this._subscriptions = new Map<int,Stream>();
+        this._subscriptions = new Map<int,StreamSubscription>();
         this._sync_tokens = new Map<int,String>();
     }
 
@@ -33,6 +35,8 @@ class ItemsComponent implements OnInit, OnDestroy {
 
     /// Subscribe to crawl stats after the component is initialized.
     ngOnInit() async {
+        this._document.title = 'Items';
+
         var response = await this._server.command(
             'subscribe_crawl_stats',
             {'min_interval': 5}
@@ -104,6 +108,6 @@ class ItemsComponent implements OnInit, OnDestroy {
     void _getHtmlTitle(String body) {
         var parser = new DomParser();
         var doc = parser.parseFromString(body, 'text/html');
-        return doc.documentElement.querySelector('title').text;
+        return doc.querySelector('title').text;
     }
 }
