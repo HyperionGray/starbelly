@@ -40,14 +40,6 @@ class ProcessWatchdog(FileSystemEventHandler):
                 except ProcessLookupError:
                     pass # The process already died.
             self.start_process()
-        elif path.endswith('.less'):
-            print('Re-compiling LESS... ' + descr)
-            self.compile_less()
-
-    def compile_less(self):
-        main_less = get_path('static/style/main.less')
-        combined_css = get_path('static/style/combined.css')
-        subprocess.Popen(['lessc', main_less, combined_css])
 
     def start_process(self):
         ''' Start the subprocess. '''
@@ -156,7 +148,6 @@ def start_watchdog():
     ''' Start the watchdog (i.e. reloader). '''
 
     watchdog = ProcessWatchdog()
-    watchdog.compile_less()
     watchdog.start_process()
 
     observer = Observer()
