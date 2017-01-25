@@ -152,7 +152,6 @@ def start_watchdog():
 
     observer = Observer()
     observer.schedule(watchdog, get_path('starbelly'), recursive=True)
-    observer.schedule(watchdog, get_path('static'), recursive=True)
     observer.start()
 
     try:

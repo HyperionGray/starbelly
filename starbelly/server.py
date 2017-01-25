@@ -26,7 +26,7 @@ class Server:
         self._handlers = {
             'start_crawl': self._start_crawl,
             'subscribe_crawl_items': self._subscribe_crawl_items,
-            'subscribe_crawl_stats': self._subscribe_crawl_stats,
+            'subscribe_crawl_status': self._subscribe_crawl_status,
             'unsubscribe': self._unsubscribe,
         }
 
@@ -127,7 +127,7 @@ class Server:
         self._subscriptions[subscription.id_] = coro
         return {'subscription_id': subscription.id_}
 
-    def _subscribe_crawl_stats(self, socket, min_interval=1):
+    def _subscribe_crawl_status(self, socket, min_interval=1):
         subscription = CrawlStatsListener(socket, min_interval)
 
         for crawl in self._crawls:
