@@ -8,7 +8,10 @@ logger = logging.getLogger(__name__)
 
 
 class Downloader:
+    ''' This class is responsible for downloading crawl items. '''
+
     def __init__(self, frontier, concurrent=10, max_depth=10):
+        ''' Constructor. '''
         self.is_running = False
 
         self._download_count = 0
@@ -17,6 +20,7 @@ class Downloader:
         self._frontier = frontier
 
     async def fetch_item(self, crawl_item):
+        ''' Download a single crawl item. '''
         msg = 'Fetching {} (depth={})'
         logger.info(msg.format(crawl_item.url, crawl_item.depth))
         self._download_count += 1
@@ -27,6 +31,7 @@ class Downloader:
                 await self._handle_response(crawl_item, response)
 
     async def run(self):
+        ''' Start downloading items in the queue. '''
         self.is_running = True
         logger.debug('Downloader is starting...')
 
@@ -58,6 +63,7 @@ class Downloader:
         self.is_running = False
 
     async def _handle_response(self, crawl_item, response):
+        ''' Process the response from downloading a crawl item. '''
         url = crawl_item.url
         status = response.status
         logger.info('{} {}'.format(status, url))
@@ -66,6 +72,7 @@ class Downloader:
         self._release_download_slot()
 
     def _release_download_slot(self):
+        ''' Signal that a download slot is available. '''
         self._download_slot.release()
         self._download_count -= 1
         if self._download_count == 0:

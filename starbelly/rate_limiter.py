@@ -9,7 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class DomainRateLimiter:
+    '''
+    A class that is responsible for tracking rate limits for each domain.
+    '''
+
     def __init__(self, default_interval=5):
+        ''' Constructor. '''
         self._all_domains = set()
         self._domain_touched = asyncio.Future()
         self._intervals = defaultdict(lambda: default_interval)
@@ -18,6 +23,10 @@ class DomainRateLimiter:
         self._wait_times = list()
 
     async def select_domain(self, choices):
+        '''
+        From a set ``choices`` of domains that we have pending crawl items to
+        download, select one of the domains that is allowed by the rate limit.
+        '''
         # Add any domains that we don't already know about.
         new_domains = choices - self._all_domains
         self._all_domains.update(new_domains)
@@ -65,11 +74,16 @@ class DomainRateLimiter:
                     sleeper.cancel()
 
     def set_domain_limit(self, domain, interval):
+        ''' Set the rate limit for a given domain. '''
         self._intervals[domain] = interval
         self._all_domains.add(domain)
         self._ready_domains.add(domain)
 
     def touch_domain(self, domain):
+        '''
+        Mark a domain has having been accessed, so it will not be selected
+        again until its rate limit expires.
+        '''
         interval = self._intervals[domain]
 
         if interval == 0:

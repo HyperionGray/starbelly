@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import websockets
 
-from .crawl import Crawl, CrawlItemsListener, CrawlStatsListener
+from .crawl import Crawl, CrawlItemsListener, CrawlStatusListener
 from .pubsub import PubSub
 
 
@@ -128,7 +128,7 @@ class Server:
         return {'subscription_id': subscription.id_}
 
     def _subscribe_crawl_status(self, socket, min_interval=1):
-        subscription = CrawlStatsListener(socket, min_interval)
+        subscription = CrawlStatusListener(socket, min_interval)
 
         for crawl in self._crawls:
             subscription.add_crawl(crawl)

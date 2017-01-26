@@ -7,11 +7,17 @@ logger = logging.getLogger(__name__)
 
 
 class FrontierException(Exception):
+    ''' A generic exception that occurs in a ``Frontier`` instance. '''
     pass
 
 
 class Frontier:
+    '''
+    Manages the crawl queue, i.e. items that are planned to be downloaded.
+    '''
+
     def __init__(self, rate_limiter):
+        ''' Constructor. '''
         self._domains = set()
         self._domain_queues = defaultdict(asyncio.Queue)
         self._queue_empty = asyncio.Future()
@@ -21,6 +27,7 @@ class Frontier:
         self._url_added = asyncio.Future()
 
     def add_item(self, crawl_item):
+        ''' Add an item to be downloaded. '''
         url = crawl_item.url
         parsed = crawl_item.parsed_url
         domain = parsed.hostname
@@ -40,10 +47,12 @@ class Frontier:
         crawl_item.when_complete.add_done_callback(self.complete_item)
 
     def add_seed(self, crawl_item):
+        ''' Add a crawl seed to be downloaded. '''
         self._domains.add(crawl_item.parsed_url.hostname)
         self.add_item(crawl_item)
 
     def complete_item(self, crawl_item_future):
+        ''' Mark an item in the frontier as being completed. '''
         crawl_item = crawl_item_future.result()
         url = crawl_item.url
         domain = crawl_item.parsed_url.hostname
@@ -56,6 +65,7 @@ class Frontier:
         asyncio.get_event_loop().call_soon(self._check_queue_empty)
 
     async def get_item(self):
+        ''' Select the next item to download from the queue. '''
         while True:
             choices = {d for d,q in self._domain_queues.items() if q.qsize() > 0}
             domain_future = asyncio.ensure_future(
@@ -82,9 +92,11 @@ class Frontier:
                 return crawl_item
 
     async def join(self):
+        ''' Wait until the crawl queue is empty. '''
         await self._queue_empty
 
     def _check_queue_empty(self):
+        ''' If the queue is empty, trigger the ``_queue_empty`` future. '''
         if self._queue_size == 0:
             self._queue_empty.set_result(None)
             self._queue_empty = asyncio.Future()

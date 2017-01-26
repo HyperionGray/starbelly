@@ -94,7 +94,7 @@ about the crawl that it just kicked off. It sends a message like this:
             "min_interval": 2
         },
         "command_id": 1,
-        "command": "subscribe_crawl_stats"
+        "command": "subscribe_crawl_status"
     }
 
 This particular subscription provides high-level statistics for _all_ crawls, so
@@ -174,7 +174,7 @@ After 2 more seconds, the server sends another event:
 
 The crawler has now crawled two more resources since the last event, and it has
 also set its status to `complete`. The server won't send any more updates after
-this, since the crawl stats won't change if there are no crawls running. (If a
+this, since the crawl status won't change if there are no crawls running. (If a
 new crawl starts, then the server will start sending events to this subscriber
 again.)
 
