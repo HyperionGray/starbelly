@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import logging
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -34,7 +35,7 @@ class ProcessWatchdog(FileSystemEventHandler):
             print('Reloading server... ' + descr)
             if self._process is not None:
                 try:
-                    self._process.kill()
+                    self._process.send_signal(signal.SIGINT)
                     self._process.wait()
                     self._process = None
                 except ProcessLookupError:
