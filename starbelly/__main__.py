@@ -10,8 +10,8 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from . import get_path
+from .crawl import CrawlJob
 from .downloader import Downloader
-from .frontier import Frontier
 from .rate_limiter import DomainRateLimiter
 from .server import Server
 
@@ -41,6 +41,10 @@ class ProcessWatchdog(FileSystemEventHandler):
                     pass # The process already died.
             self.start_process()
 
+    def join(self):
+        ''' Wait for subprocess to exit. '''
+        self._process.wait()
+
     def start_process(self):
         ''' Start the subprocess. '''
 
@@ -50,8 +54,9 @@ class ProcessWatchdog(FileSystemEventHandler):
 
         time.sleep(1)
         args = [sys.executable, '-m', __package__] + sys.argv[1:]
-        env = {'WATCHDOG_RUNNING': '1'}
-        self._process = subprocess.Popen(args, env=env)
+        new_env = dict(os.environ)
+        new_env['WATCHDOG_RUNNING'] = '1'
+        self._process = subprocess.Popen(args, env=new_env)
 
 
 def configure_logging(log_level):
@@ -111,34 +116,35 @@ def main():
     args = get_args()
     logger = configure_logging(args.log_level)
 
-    rate_limiter = DomainRateLimiter()
-    frontier = Frontier(rate_limiter)
-    downloader = Downloader(frontier)
-    server = Server(args.ip, args.port, frontier, downloader, rate_limiter)
-
     if args.reload and os.getenv('WATCHDOG_RUNNING') is None:
         print('Running with reloader...')
         start_watchdog()
     else:
-        logger.info('Starting server on {}:{}'.format(args.ip, args.port))
-        start_server_loop(logger, server)
+        start_loop(args, logger)
 
 
-def start_server_loop(logger, server):
-    ''' Start event loop and and schedule the server to run. '''
+def start_loop(args, logger):
+    ''' Start event loop and and schedule high-level tasks. '''
 
     loop = asyncio.get_event_loop()
+    rate_limiter = DomainRateLimiter()
+    downloader = Downloader()
+    server = Server(args.ip, args.port, downloader, rate_limiter)
+
     loop.run_until_complete(server.start())
 
     try:
-        loop.run_forever()
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            logger.info('Caught SIGINT: trying graceful shutdown.')
+            # Shut down different components in a specific order, e.g. the
+            # download needs to finish before the rate limiter is stopped, etc.
+            loop.run_until_complete(server.stop())
+            loop.run_until_complete(CrawlJob.pause_all_jobs())
+            loop.run_until_complete(rate_limiter.stop())
     except KeyboardInterrupt:
-        logger.info('Caught SIGINT... trying graceful shutdown.')
-        remaining_tasks = asyncio.Task.all_tasks()
-        for task in remaining_tasks:
-            task.cancel()
-        if len(remaining_tasks) > 0:
-            loop.run_until_complete(asyncio.wait(remaining_tasks))
+        logger.info('Caught 2nd SIGINT: shutting down immediately.')
 
     loop.close()
     logger.info('Server has stopped.')
@@ -160,6 +166,8 @@ def start_watchdog():
     except KeyboardInterrupt:
         print('\nReloader caught SIGINT: shutting down.')
         observer.stop()
+
+    watchdog.join()
     observer.join()
 
 

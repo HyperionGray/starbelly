@@ -4,98 +4,136 @@ from collections import defaultdict
 import logging
 from time import time
 
-
 logger = logging.getLogger(__name__)
 
 
 class DomainRateLimiter:
     '''
     A class that is responsible for tracking rate limits for each domain.
+
+    The rate limiter handles 3 scenarios.
+
+    1. A task needs a domain and a domain is ready: that domain is returned
+       immediately from an internal list of ready domains.
+    2. A task needs a domain but the domain isn't ready: the task waits for a
+       rate limit to expire. Tasks are served in the same order that they are
+       called.
+    3. A rate limit expires but no task is waiting for it: the domain is added
+       an internal list of ready domains which is later used to serve scenario
+       #1.
     '''
 
-    def __init__(self, default_interval=5):
+    def __init__(self, default_interval=1):
         ''' Constructor. '''
-        self._all_domains = set()
-        self._domain_touched = asyncio.Future()
-        self._intervals = defaultdict(lambda: default_interval)
-        self._ready_domains = set()
-        self._wait_domains = list()
-        self._wait_times = list()
+        self._default_interval = default_interval
+        self._intervals = dict()
+        self._ready_domains = list()
+        self._sleepers = set()
+        self._seen_domains = set()
+        self._waiters = list()
 
     async def select_domain(self, choices):
         '''
-        From a set ``choices`` of domains that we have pending crawl items to
-        download, select one of the domains that is allowed by the rate limit.
+        From a list ``choices`` of domains return the first domain that is
+        allowed by the rate limit.
         '''
-        # Add any domains that we don't already know about.
-        new_domains = choices - self._all_domains
-        self._all_domains.update(new_domains)
-        self._ready_domains.update(new_domains)
 
-        while True:
-            # Peel off all domains that have become ready.
-            now = time()
-            while len(self._wait_times) > 0 and now >= self._wait_times[0]:
-                self._wait_times.pop(0)
-                self._ready_domains.add(self._wait_domains.pop(0))
+        # If there any domains we haven't seen before, add those to the ready
+        # list.
+        for choice in choices:
+            if not choice in self._seen_domains:
+                self._seen_domains.add(choice)
+                self._ready_domains.append(choice)
 
-            logger.debug('Domains choices: {}'.format(choices))
-            logger.debug('Domains ready: {}'.format(self._ready_domains))
-            logger.debug('Current time: {}'.format(time()))
-            logger.debug('Domains pending: {}'.format(
-                list(zip(self._wait_domains, self._wait_times))
-            ))
+        # Check if any domains are on the ready list.
+        if len(self._ready_domains) > 0:
+            # If any domains are ready, return the first match immediately.
+            for index, domain in enumerate(self._ready_domains):
+                if domain in choices:
+                    domain = self._ready_domains.pop(index)
+                    logger.debug('Domain {} is ready.'.format(domain))
+                    return domain
 
-            # Use a ready domain if possible.
-            #
-            # TODO: there should be a more orderly way to pick from several
-            # ready domains, e.g. the one that was least recently used, in order
-            # to ensure all domains are treated equally.
-            try:
-                domain = (self._ready_domains & choices).pop()
-                self._ready_domains.remove(domain)
-                logger.debug('Selected domain {}'.format(domain))
-                return domain
-            except KeyError as e:
-                pass
-
-            # Wait until the next domain becomes ready.
-            logger.debug('No domains available! Waiting for a rate limit to expire...')
-            if len(self._wait_times) == 0:
-                await self._domain_touched
-            else:
-                delay = self._wait_times[0] - now
-                sleeper = asyncio.ensure_future(asyncio.sleep(delay))
-                await asyncio.wait(
-                    [sleeper, self._domain_touched],
-                    return_when=asyncio.FIRST_COMPLETED
-                )
-                if not sleeper.done():
-                    sleeper.cancel()
+        # If we get here, then none of the choices is ready, so wait for one
+        # to become ready.
+        msg = 'No domain in choices={} is ready. Waiting for rate limit expiry.'
+        logger.debug(msg.format(choices))
+        waiter = DomainRateLimitFuture(choices)
+        self._waiters.append(waiter)
+        return await waiter
 
     def set_domain_limit(self, domain, interval):
         ''' Set the rate limit for a given domain. '''
+        msg = 'Setting rate limit for {} to {}.'
+        logger.debug(msg.format(domain, interval))
         self._intervals[domain] = interval
-        self._all_domains.add(domain)
-        self._ready_domains.add(domain)
+
+    def stop(self):
+        '''
+        Cancel all tasks created by this instance.
+
+        Returns a future that completes when all tasks have finished.
+        '''
+
+        logger.info('Rate limiter is stopping.')
+        
+        for sleeper in self._sleepers:
+            sleeper.cancel()
+
+        tasks = asyncio.gather(*self._sleepers, return_exceptions=True)
+        return tasks
 
     def touch_domain(self, domain):
         '''
-        Mark a domain has having been accessed, so it will not be selected
-        again until its rate limit expires.
+        Mark a domain has having been accessed.
+
+        After accessing, the domain will go back into the ready list after its
+        rate limit expires.
         '''
-        interval = self._intervals[domain]
 
-        if interval == 0:
-            self._ready_domains.add(domain)
-        else:
-            next_time = time() + self._intervals[domain]
-            index = bisect(self._wait_times, next_time)
-            self._wait_times.insert(index, next_time)
-            self._wait_domains.insert(index, domain)
+        def rate_limit_expired(_):
+            ''' This nested function is called when a rate limit expires. '''
+            found_waiter = False
+            self._sleepers.remove(sleeper)
 
-        if not self._domain_touched.done():
-            self._domain_touched.set_result(None)
+            # Check if any task is waiting for this domain.
+            for index, waiter in enumerate(self._waiters):
+                if waiter.is_waiting_for(domain):
+                    self._waiters.pop(index)
+                    if not waiter.cancelled():
+                        msg = 'Rate limit expired for {} and sent to waiter.'
+                        logger.debug(msg.format(domain))
+                        found_waiter = True
+                        waiter.set_result(domain)
 
-        self._domain_touched = asyncio.Future()
-        logger.debug('Touched domain {}'.format(domain))
+            # If nobody is waiting, add this domain to the ready list.
+            if not found_waiter:
+                msg = 'Rate limit expired for {} and added to ready list.'
+                logger.debug(msg.format(domain))
+                self._ready_domains.append(domain)
+
+        # Create a task that will sleep until the rate limit expires; when it
+        # wakes up, it will mark the domain as being ready.
+        rate_limit = self._intervals.get(domain, self._default_interval)
+        sleeper = asyncio.ensure_future(asyncio.sleep(rate_limit))
+        sleeper.add_done_callback(rate_limit_expired)
+        self._sleepers.add(sleeper)
+
+
+class DomainRateLimitFuture(asyncio.Future):
+    ''' A subclass of ``Future`` that holds a list of domains. '''
+
+    def __init__(self, domains):
+        '''
+        Constructor.
+
+        The future fires when of the ``domains`` is ready, i.e. its rate limit
+        has expired.
+        '''
+
+        super().__init__()
+        self._rate_limit_domains = domains
+
+    def is_waiting_for(self, domain):
+        ''' Return true if this waiter is waiting for ``domain``. '''
+        return domain in self._rate_limit_domains

@@ -1,3 +1,7 @@
+aiodns
 aiohttp
+async_timeout
+chardet
+rethinkdb
 watchdog
 websockets

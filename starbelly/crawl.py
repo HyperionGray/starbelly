@@ -7,15 +7,18 @@ from urllib.parse import urljoin, urlparse
 
 import lxml.html
 
-from .frontier import FrontierException
+from . import handle_future_exception
+from .frontier import Frontier
 from .pubsub import PubSub
 
 
 logger = logging.getLogger(__name__)
 
 
-class Crawl:
-    ''' Represents the state of a crawl. '''
+class CrawlJob:
+    ''' Implements core crawling behavior and state. '''
+
+    _running_jobs = dict()
 
     _next_id = 0
     _status_digit_to_name = {
@@ -26,29 +29,22 @@ class Crawl:
         5: 'error',
     }
 
-    @classmethod
-    def next_id(cls):
-        ''' Generate a unique ID for each crawl instance. '''
-        id_ = cls._next_id
-        cls._next_id += 1
-        return id_
-
-    def __init__(self, seeds, downloader, frontier, max_depth=3):
+    def __init__(self, downloader, rate_limiter, seeds, max_depth=3):
         ''' Constructor. '''
         self.crawl_item_completed = PubSub()
         self.id_ = self.next_id()
         self.max_depth = max_depth
         self.status_updated = PubSub()
-        self.when_complete = asyncio.Future()
+        self.seeds = seeds
 
-        self._completed_items = list()
+        self._completed_items = list() # TODO will replace with DB
         self._downloader = downloader
-        self._frontier = frontier
-        self._pending_items = set()
-        self._seeds = seeds
+        self._download_tasks = dict()
+        self._frontier = Frontier(rate_limiter)
+        self._running = False
 
         self.status = {
-            'seed': self._seeds[0], # TODO should store list of seeds
+            'seed': self.seeds[0], # TODO should store list of seeds
             'status': 'running',
             'information': 0,
             'success': 0,
@@ -57,71 +53,124 @@ class Crawl:
             'error': 0,
         }
 
+    @classmethod
+    def next_id(cls):
+        ''' Generate a unique ID for each crawl instance. '''
+        id_ = cls._next_id
+        cls._next_id += 1
+        return id_
+
+    @classmethod
+    def pause_all_jobs(cls):
+        '''
+        Pause all currently running jobs.
+
+        This will allow current downloads to finish.
+        '''
+
+        running_jobs = list(cls._running_jobs.values())
+
+        for job in running_jobs:
+            job.cancel()
+
+        return asyncio.gather(
+            *running_jobs,
+            return_exceptions=True
+        )
+
     def items(self, start_index):
-        ''' Retrive items from this crawl, beginning at ``start_index``. '''
+        ''' Retrieve items from this crawl, beginning at ``start_index``. '''
         return self._completed_items[start_index:]
 
-    async def run(self):
-        ''' Start running a crawl. '''
-        logger.info('Crawl #{} starting...'.format(self.id_))
-        for seed in self._seeds:
-            crawl_item = CrawlItem(seed, depth=0)
-            self._add_item(crawl_item, seed=True)
+    def start(self):
+        '''
+        Starts the crawl.
 
-        if not self._downloader.is_running:
-            asyncio.ensure_future(self._downloader.run())
+        Returns a future that fires when the crawl finishes.
+        '''
+        task = asyncio.ensure_future(self._run())
+        self.__class__._running_jobs[self] = task
+        handle_future_exception(task)
+        return task
 
-        await self.when_complete
-        logger.info('Crawl #{} complete.'.format(self.id_))
+    def _handle_download(self, crawl_item_future):
+        ''' Called when a download finishes. '''
 
-    def _add_item(self, crawl_item, seed=False):
-        ''' Add an item to be crawled. '''
-        try:
-            if seed:
-                self._frontier.add_seed(crawl_item)
-            else:
-                self._frontier.add_item(crawl_item)
-            self._pending_items.add(crawl_item)
-            crawl_item.when_complete.add_done_callback(self._complete_item)
-        except FrontierException:
-            pass
-
-    def _complete_item(self, crawl_item_future):
-        ''' Update state after successfully crawling an item. '''
         crawl_item = crawl_item_future.result()
-        self._pending_items.remove(crawl_item)
-        self._completed_items.append(crawl_item)
-        self._update_status(crawl_item)
-        self.crawl_item_completed.publish(crawl_item)
 
-        if crawl_item.depth < self.max_depth:
-            for new_url in self._parse_urls(crawl_item):
-                parsed = urlparse(new_url)
-                if parsed.path.endswith('.html'):
-                    self._add_item(
-                        CrawlItem(new_url, depth=crawl_item.depth + 1)
-                    )
-
-        if len(self._pending_items) == 0:
-            self.when_complete.set_result(None)
-            self.status['status'] = 'complete'
-            updates = {'status': 'complete'}
+        if crawl_item.exception is None:
+            status_first_digit = crawl_item.status_code // 100
+            status_category = self.__class__._status_digit_to_name[status_first_digit]
+            self.status[status_category] += 1
+            updates = {status_category: self.status[status_category]}
             self.status_updated.publish(self, updates)
+            self._completed_items.append(crawl_item)
+            self.crawl_item_completed.publish(crawl_item)
+
+            if self._running and crawl_item.depth < self.max_depth:
+                for new_url in self._parse_urls(crawl_item):
+                    parsed = urlparse(new_url)
+                    if parsed.path.endswith('.html'):
+                        self._frontier.add_item(
+                            CrawlItem(new_url, depth=crawl_item.depth + 1)
+                        )
+
+        del self._download_tasks[crawl_item]
+        self._frontier.complete_item(crawl_item)
 
     def _parse_urls(self, crawl_item):
-        ''' Extract links from a crawl item. '''
+        '''
+        Extract links from a crawl item.
+
+        TODO move into new link extractor class
+        '''
         doc = lxml.html.document_fromstring(crawl_item.body)
         for link in doc.iterlinks():
             new_url = urljoin(crawl_item.url, link[2])
             yield new_url
 
-    def _update_status(self, crawl_item):
-        ''' Update crawl status. '''
-        status_first_digit = crawl_item.status_code // 100
-        status_category = Crawl._status_digit_to_name[status_first_digit]
-        self.status[status_category] += 1
-        updates = {status_category: self.status[status_category]}
-        self.status_updated.publish(self, updates)
+    async def _run(self):
+        '''
+        Main crawling logic.
+
+        Returns when the crawl is finished.
+        '''
+
+        logger.info('Crawl #{} starting...'.format(self.id_))
+
+        for seed in self.seeds:
+            self._frontier.add_item(CrawlItem(seed, depth=0))
+
+        self._running = True
+
+        try:
+            while self._running:
+                crawl_item = await self._frontier.get_item()
+                dl_task = await self._downloader.schedule_download(crawl_item)
+                dl_task.add_done_callback(self._handle_download)
+                self._download_tasks[crawl_item] = dl_task
+
+                if len(self._frontier) == 0 and len(self._download_tasks) == 0:
+                    logger.debug('Crawl #{} is complete.'.format(self._id_))
+                    del self.__class__._running_jobs[self]
+                    self.status['status'] = 'complete'
+                    self.status_updated.publish(self, {'status': 'complete'})
+                    self._running = False
+        except asyncio.CancelledError:
+            logger.info('Crawl #{} is pausing...'.format(self.id_))
+            if len(self._download_tasks) > 0:
+                logger.info(
+                    'Crawl #{} is waiting for {} downloads to finish...'
+                    .format(self.id_, len(self._download_tasks))
+                )
+                await asyncio.gather(*self._download_tasks.values())
+                logger.info('Crawl #{} is pausing...'.format(self.id_))
+
+                self.status['status'] = 'paused'
+                self.status_updated.publish(self, {'status': 'paused'})
+
+        logger.info('Crawl #{} has stopped.'.format(self.id_))
+        del self.__class__._running_jobs[self]
 
 
 class CrawlItem:
@@ -132,12 +181,12 @@ class CrawlItem:
         self.body = None
         self.completed_at = None
         self.depth = depth
+        self.exception = None
         self.headers = None
         self.parsed_url = urlparse(url)
         self.started_at = None
         self.status_code = None
         self.url = url
-        self.when_complete = asyncio.Future()
 
     def finish(self, status_code, headers, body):
         ''' Update with crawl result. '''
@@ -147,7 +196,6 @@ class CrawlItem:
         self.headers = headers
         self.status = 'complete'
         self.status_code = status_code
-        self.when_complete.set_result(self)
 
     def start(self):
         '''
@@ -230,7 +278,7 @@ class CrawlStatusListener(CrawlListener):
     def __init__(self, socket, min_interval):
         ''' Constructor. '''
         self.id_ = self.next_id()
-        self._has_update = asyncio.Future()
+        self._has_update = asyncio.Event()
         self._min_interval = min_interval
         self._socket = socket
         self._status = dict()
@@ -258,7 +306,10 @@ class CrawlStatusListener(CrawlListener):
                 await self._socket.send(json.dumps(message))
 
             sleeper = asyncio.sleep(self._min_interval)
-            await asyncio.wait((sleeper, self._has_update))
+            done, pending = await asyncio.wait((sleeper, self._has_update.wait()))
+            for p in pending:
+                p.cancel()
+            self._has_update.clear()
 
     def _update_crawl_status(self, crawl, new_status):
         ''' Merge new crawl status into existing crawl status. '''
@@ -267,5 +318,4 @@ class CrawlStatusListener(CrawlListener):
         else:
             self._status[crawl.id_].update(new_status)
 
-        self._has_update.set_result(None)
-        self._has_update = asyncio.Future()
+        self._has_update.set()
