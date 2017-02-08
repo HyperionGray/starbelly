@@ -6,6 +6,7 @@ from time import time
 from urllib.parse import urljoin, urlparse
 
 import lxml.html
+import rethinkdb as r
 
 from . import handle_future_exception
 from .frontier import Frontier
@@ -29,7 +30,8 @@ class CrawlJob:
         5: 'error',
     }
 
-    def __init__(self, downloader, rate_limiter, seeds, max_depth=3):
+    def __init__(self, db_pool, downloader, rate_limiter, seeds,
+                 max_depth=3):
         ''' Constructor. '''
         self.crawl_item_completed = PubSub()
         self.id_ = self.next_id()
@@ -37,6 +39,7 @@ class CrawlJob:
         self.status_updated = PubSub()
         self.seeds = seeds
 
+        self._db_pool = db_pool
         self._completed_items = list() # TODO will replace with DB
         self._downloader = downloader
         self._download_tasks = dict()
@@ -93,17 +96,38 @@ class CrawlJob:
         handle_future_exception(task)
         return task
 
-    def _handle_download(self, crawl_item_future):
-        ''' Called when a download finishes. '''
+    async def _handle_download(self, dl_task):
+        '''
+        A coroutine that waits for a download task to finish and then processes
+        the result.
+        '''
 
-        crawl_item = crawl_item_future.result()
+        crawl_item = await dl_task
 
+        # Update crawl status.
+        status_first_digit = crawl_item.status_code // 100
+        status_category = self.__class__._status_digit_to_name[status_first_digit]
+        self.status[status_category] += 1
+        updates = {status_category: self.status[status_category]}
+        self.status_updated.publish(self, updates)
+
+        # Save to database.
+        async with self._db_pool.connection() as conn:
+            insert = r.table('crawl_items').insert({
+                'body': crawl_item.body,
+                'completed_at': crawl_item.completed_at,
+                'depth': crawl_item.depth,
+                'exception': crawl_item.exception,
+                'headers': crawl_item.headers,
+                'parsed_url': crawl_item.parsed_url,
+                'started_at': crawl_item.started_at,
+                'status_code': crawl_item.status_code,
+                'url': crawl_item.url,
+            })
+            await insert.run(conn)
+
+        # If successful, publish it as a completed item.
         if crawl_item.exception is None:
-            status_first_digit = crawl_item.status_code // 100
-            status_category = self.__class__._status_digit_to_name[status_first_digit]
-            self.status[status_category] += 1
-            updates = {status_category: self.status[status_category]}
-            self.status_updated.publish(self, updates)
             self._completed_items.append(crawl_item)
             self.crawl_item_completed.publish(crawl_item)
 
@@ -115,6 +139,7 @@ class CrawlJob:
                             CrawlItem(new_url, depth=crawl_item.depth + 1)
                         )
 
+        # Cleanup task before returning.
         del self._download_tasks[crawl_item]
         self._frontier.complete_item(crawl_item)
 
@@ -147,8 +172,9 @@ class CrawlJob:
             while self._running:
                 crawl_item = await self._frontier.get_item()
                 dl_task = await self._downloader.schedule_download(crawl_item)
-                dl_task.add_done_callback(self._handle_download)
-                self._download_tasks[crawl_item] = dl_task
+                self._download_tasks[crawl_item] = asyncio.ensure_future(
+                    self._handle_download(dl_task)
+                )
 
                 if len(self._frontier) == 0 and len(self._download_tasks) == 0:
                     logger.debug('Crawl #{} is complete.'.format(self._id_))
@@ -164,8 +190,13 @@ class CrawlJob:
                     .format(self.id_, len(self._download_tasks))
                 )
                 await asyncio.gather(*self._download_tasks.values())
-                logger.info('Crawl #{} is pausing...'.format(self.id_))
+                logger.info(
+                    'Crawl #{} all remaining downloads are finished.'
+                    .format(self.id_)
+                )
 
+                # TODO this makes no sense: all of the websockets are closed
+                # before this status is published, so no client ever sees it.
                 self.status['status'] = 'paused'
                 self.status_updated.publish(self, {'status': 'paused'})
 

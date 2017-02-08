@@ -2,11 +2,15 @@ import asyncio
 import os
 
 
-def get_path(relpath):
-    ''' Return absolute path for given path relative to project root. '''
+def get_path(relative_path=None):
+    """ Return an absolute path to a project relative path. """
 
-    base_dir = os.path.dirname(os.path.dirname(__file__))
-    return os.path.abspath(os.path.join(base_dir, relpath))
+    root_path = os.path.dirname(os.path.dirname(__file__))
+
+    if relative_path is None:
+        return root_path
+    else:
+        return os.path.abspath(os.path.join(root_path, relative_path))
 
 
 def handle_future_exception(future):
@@ -17,5 +21,4 @@ def handle_future_exception(future):
     Use this function to automatically raise an exception if a future fails.
     '''
 
-    print('handle_future_Exception')
     future.add_done_callback(lambda f: f.result())

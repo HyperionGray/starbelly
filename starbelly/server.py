@@ -15,11 +15,12 @@ logger = logging.getLogger(__name__)
 class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
-    def __init__(self, host, port, downloader, rate_limiter):
+    def __init__(self, host, port, downloader, rate_limiter, db_pool):
         ''' Constructor. '''
         self._clients = set()
         self._crawl_jobs = set()
         self._crawl_started = PubSub()
+        self._db_pool = db_pool
         self._downloader = downloader
         self._host = host
         self._port = port
@@ -139,7 +140,13 @@ class Server:
                 parsed = urlparse(url)
                 self._rate_limiter.set_domain_limit(parsed.hostname, rate_limit)
 
-        crawl_job = CrawlJob(self._downloader, self._rate_limiter, seed_urls)
+        crawl_job = CrawlJob(
+            self._db_pool,
+            self._downloader,
+            self._rate_limiter,
+            seed_urls
+        )
+
         crawl_task = crawl_job.start()
         self._crawl_jobs.add(crawl_job)
         self._crawl_started.publish(crawl_job)

@@ -7,10 +7,13 @@ import subprocess
 import sys
 import time
 
+import rethinkdb as r
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from . import get_path
+from .db import AsyncRethinkPool
+from .config import get_config
 from .crawl import CrawlJob
 from .downloader import Downloader
 from .rate_limiter import DomainRateLimiter
@@ -75,6 +78,21 @@ def configure_logging(log_level):
     return logger
 
 
+def db_factory(db_config):
+    ''' Returns a function that connects to the database. '''
+
+    def db_connect():
+        return r.connect(
+            host=db_config['host'],
+            port=db_config['port'],
+            db=db_config['db'],
+            user=db_config['user'],
+            password=db_config['password'],
+        )
+
+    return db_connect
+
+
 def get_args():
     ''' Parse command line arguments. '''
 
@@ -115,23 +133,26 @@ def main():
     ''' Launch the server. '''
 
     args = get_args()
+    config = get_config()
     logger = configure_logging(args.log_level)
 
     if args.reload and os.getenv('WATCHDOG_RUNNING') is None:
         print('Running with reloader...')
         start_watchdog()
     else:
-        start_loop(args, logger)
+        start_loop(config, args, logger)
 
 
-def start_loop(args, logger):
+def start_loop(config, args, logger):
     ''' Start event loop and and schedule high-level tasks. '''
 
-    loop = asyncio.get_event_loop()
-    rate_limiter = DomainRateLimiter()
+    r.set_loop_type('asyncio')
+    db_pool = AsyncRethinkPool(db_factory(config['database']))
     downloader = Downloader()
-    server = Server(args.ip, args.port, downloader, rate_limiter)
+    rate_limiter = DomainRateLimiter()
+    server = Server(args.ip, args.port, downloader, rate_limiter, db_pool)
 
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(server.start())
 
     try:
@@ -144,6 +165,7 @@ def start_loop(args, logger):
             loop.run_until_complete(server.stop())
             loop.run_until_complete(CrawlJob.pause_all_jobs())
             loop.run_until_complete(rate_limiter.stop())
+            loop.run_until_complete(db_pool.close())
     except KeyboardInterrupt:
         logger.info('Caught 2nd SIGINT: shutting down immediately.')
 
