@@ -1,21 +1,37 @@
 import asyncio
+from collections import defaultdict
+from datetime import datetime, timedelta
 import json
 import logging
 from urllib.parse import urlparse
 
 import websockets
 
-from .crawl import CrawlJob, CrawlItemsListener, CrawlStatusListener
+from . import raise_future_exception
+from .crawl import CrawlJob
 from .pubsub import PubSub
+from .subscription import CrawlSyncSubscription, JobStatusSubscription
 
 
 logger = logging.getLogger(__name__)
 
 
+def custom_json(obj):
+    '''
+    Handles JSON serialization for objects that are not natively supported.
+    '''
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, timedelta):
+        return obj.total_seconds()
+    raise TypeError('Type {} cannot be serialized in JSON.'
+        .format(obj.__class__.__name__))
+
+
 class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
-    def __init__(self, host, port, downloader, rate_limiter, db_pool):
+    def __init__(self, host, port, downloader, rate_limiter, db_pool, tracker):
         ''' Constructor. '''
         self._clients = set()
         self._crawl_jobs = set()
@@ -25,13 +41,14 @@ class Server:
         self._host = host
         self._port = port
         self._rate_limiter = rate_limiter
-        self._subscriptions = dict()
+        self._subscriptions = defaultdict(dict)
+        self._tracker = tracker
 
         self._handlers = {
             'ping': self._ping,
             'start_crawl': self._start_crawl,
-            'subscribe_crawl_items': self._subscribe_crawl_items,
-            'subscribe_crawl_status': self._subscribe_crawl_status,
+            'subscribe_crawl_sync': self._subscribe_crawl_sync,
+            'subscribe_job_status': self._subscribe_job_status,
             'unsubscribe': self._unsubscribe,
         }
 
@@ -75,14 +92,19 @@ class Server:
                     response['success'] = False
                     msg = 'Error while handling request: {}'
                     logger.exception(msg.format(request))
-                await websocket.send(json.dumps(response))
+                await websocket.send(json.dumps(response, default=custom_json))
             except websockets.exceptions.ConnectionClosed:
+                subscriptions = self._subscriptions[websocket].values()
+                for subscription in subscriptions:
+                    subscription.cancel()
+                await asyncio.gather(*subscriptions, return_exceptions=True)
+                del self._subscriptions[websocket]
                 self._clients.remove(websocket)
                 logger.info('Connection closed: {}:{}'.format(
                     websocket.remote_address[0],
                     websocket.remote_address[1],
                 ))
-                return
+                break
             except asyncio.CancelledError:
                 msg = 'Connection handler canceled; closing socket {}:{}.'
                 logger.info(msg.format(
@@ -102,8 +124,15 @@ class Server:
     async def stop(self):
         ''' Gracefully stop the websocket server. '''
 
-        for subscription in self._subscriptions.values():
-            subscription.cancel()
+        logger.info('Ending subscriptions...')
+        to_gather = list()
+        for socket, socket_subs in self._subscriptions.items():
+            for subscription_id, subscription in socket_subs.items():
+                subscription.cancel()
+                to_gather.append(subscription)
+        await asyncio.gather(*to_gather, return_exceptions=True)
+        self._subscriptions.clear()
+        logger.info('All subscriptions ended.')
 
         # Work on a copy of self._clients, because disconnects will modify the
         # set while we are iterating.
@@ -114,10 +143,11 @@ class Server:
 
     async def _dispatch_command(self, handler, args):
         ''' Dispatch a command received from a client. '''
-        if asyncio.iscoroutine(handler):
-            return await handler(**args)
+        if asyncio.iscoroutinefunction(handler):
+            response = await handler(**args)
         else:
-            return handler(**args)
+            response = handler(**args)
+        return response
 
     def _ping(self, socket):
         '''
@@ -127,63 +157,54 @@ class Server:
         '''
         pass
 
-    def _start_crawl(self, socket, seeds):
+    async def _start_crawl(self, socket, name, seeds):
         ''' Handle the start crawl command. '''
-        seed_urls = list()
+        logger.info('name={} seeds={}'.format(name, seeds))
 
-        for seed in seeds:
-            url = seed['url']
-            seed_urls.append(url)
-            rate_limit = seed.get('rate_limit', None)
-
-            if rate_limit is not None:
-                parsed = urlparse(url)
-                self._rate_limiter.set_domain_limit(parsed.hostname, rate_limit)
+        if name.strip() == '':
+            url = urlparse(seeds[0])
+            name = url.hostname
+            if len(seeds) > 1:
+                name += '& {} more'.format(len(seeds) - 1)
 
         crawl_job = CrawlJob(
+            name,
             self._db_pool,
             self._downloader,
             self._rate_limiter,
-            seed_urls
+            seeds
         )
 
+        await crawl_job.save_job()
         crawl_task = crawl_job.start()
         self._crawl_jobs.add(crawl_job)
         self._crawl_started.publish(crawl_job)
-        return {'crawl_id': crawl_job.id_}
+        return {'crawl_id': crawl_job.id}
 
-    def _subscribe_crawl_items(self, socket, crawl_id, sync_token=None):
+    def _subscribe_crawl_sync(self, socket, crawl_id, sync_token=None):
         ''' Handle the subscribe crawl items command. '''
-        crawl_id = int(crawl_id)
-        matching_crawls = [c for c in self._crawl_jobs if c.id_ == crawl_id]
-
-        if len(matching_crawls) != 1:
-            msg = 'Crawl ID={} matched {} crawls! (expected 1)'
-            raise ValueError(msg.format(crawl_id, len(matching_crawls)))
-
-        crawl = matching_crawls[0]
-        subscription = CrawlItemsListener(socket, crawl, sync_token)
+        subscription = CrawlSyncSubscription(
+            self._tracker, self._db_pool, socket, crawl_id, sync_token
+        )
         coro = asyncio.ensure_future(subscription.run())
-        self._subscriptions[subscription.id_] = coro
-        return {'subscription_id': subscription.id_}
+        self._subscriptions[socket][subscription.id] = coro
+        raise_future_exception(coro)
+        return {'subscription_id': subscription.id}
 
-    def _subscribe_crawl_status(self, socket, min_interval=1):
+    def _subscribe_job_status(self, socket, min_interval=1):
         ''' Handle the subscribe crawl status command. '''
-        subscription = CrawlStatusListener(socket, min_interval)
-
-        for crawl in self._crawl_jobs:
-            subscription.add_crawl(crawl)
-
-        def add_crawl(crawl):
-            subscription.add_crawl(crawl)
-
-        self._crawl_started.listen(add_crawl)
+        subscription = JobStatusSubscription(
+            self._tracker, socket, min_interval
+        )
         coro = asyncio.ensure_future(subscription.run())
-        self._subscriptions[subscription.id_] = coro
-        return {'subscription_id': subscription.id_}
+        self._subscriptions[socket][subscription.id] = coro
+        raise_future_exception(coro)
+        return {'subscription_id': subscription.id}
 
-    def _unsubscribe(self, socket, subscription_id):
+    async def _unsubscribe(self, socket, subscription_id):
         ''' Handle an unsubscribe command. '''
-        subscription_id = int(subscription_id)
-        self._subscriptions[subscription_id].cancel()
+        task = self._subscriptions[socket][subscription_id]
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        del self._subscriptions[socket][subscription_id]
         return {'subscription_id': subscription_id}

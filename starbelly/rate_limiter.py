@@ -23,7 +23,7 @@ class DomainRateLimiter:
        #1.
     '''
 
-    def __init__(self, default_interval=1):
+    def __init__(self, default_interval=0.1):
         ''' Constructor. '''
         self._default_interval = default_interval
         self._intervals = dict()
@@ -76,7 +76,7 @@ class DomainRateLimiter:
         '''
 
         logger.info('Rate limiter is stopping.')
-        
+
         for sleeper in self._sleepers:
             sleeper.cancel()
 

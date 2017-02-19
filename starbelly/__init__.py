@@ -13,12 +13,20 @@ def get_path(relative_path=None):
         return os.path.abspath(os.path.join(root_path, relative_path))
 
 
-def handle_future_exception(future):
+def raise_future_exception(future):
     '''
     If a future has no return value, then you probably won't call its
     ``result()``, but you still want to detect any exceptions that occur.
 
-    Use this function to automatically raise an exception if a future fails.
+    This silently swallows CanceledError, but any other exception is raised.
     '''
 
-    future.add_done_callback(lambda f: f.result())
+    def raise_exception(f):
+        try:
+            f.result()
+        except asyncio.CancelledError:
+            pass
+        except:
+            raise
+
+    future.add_done_callback(raise_exception)

@@ -15,12 +15,17 @@ class Downloader:
     TODO The constructor takes a ``concurrent`` argument that limits
     simultaneous downloads, but a better strategy would be to somehow monitor
     bandwidth and keep adding concurrent downloads until resources are maxed
-    out.
+    out. This also needs to take into account how quickly writes can be ingested
+    into the database.
     '''
 
     def __init__(self, concurrent=10):
         ''' Constructor. '''
         self._slot = asyncio.Semaphore(concurrent)
+
+    def release_slot(self):
+        ''' Release a download slot that is currently held open. '''
+        self._slot.release()
 
     async def schedule_download(self, crawl_item):
         '''
@@ -36,12 +41,7 @@ class Downloader:
         return asyncio.ensure_future(self._download(crawl_item))
 
     async def _download(self, crawl_item):
-        '''
-        Download a crawl item.
-
-        Releases a download slot when the download is finished, updates the
-        crawl item with the response data, and returns the crawl item.
-        '''
+        ''' Download a crawl item and update it with the response. '''
 
         msg = 'Fetching {} (depth={})'
         logger.info(msg.format(crawl_item.url, crawl_item.depth))
@@ -49,14 +49,13 @@ class Downloader:
 
         try:
             with aiohttp.ClientSession(connector=connector) as session:
-                crawl_item.start()
+                crawl_item.set_start()
                 with async_timeout.timeout(10):
                     async with session.get(crawl_item.url) as response:
                         status = response.status
                         logger.info('{} {}'.format(status, crawl_item.url))
                         body = await response.read()
-                        self._slot.release()
-                        crawl_item.finish(int(status), response.headers, body)
+                        crawl_item.set_response(status, response.headers, body)
                         return crawl_item
         except (aiohttp.ClientResponseError, asyncio.TimeoutError) as exc:
             logger.error('Failed downloading {}'.format(crawl_item.url))

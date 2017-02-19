@@ -1,14 +1,15 @@
 import asyncio
 import base64
-import json
+from collections import defaultdict
+from datetime import datetime
 import logging
-from time import time
 from urllib.parse import urljoin, urlparse
 
+from dateutil.tz import tzlocal
 import lxml.html
 import rethinkdb as r
 
-from . import handle_future_exception
+from . import raise_future_exception
 from .frontier import Frontier
 from .pubsub import PubSub
 
@@ -17,51 +18,33 @@ logger = logging.getLogger(__name__)
 
 
 class CrawlJob:
-    ''' Implements core crawling behavior and state. '''
+    ''' Implements core crawling behavior. '''
 
     _running_jobs = dict()
 
-    _next_id = 0
-    _status_digit_to_name = {
-        1: 'information',
-        2: 'success',
-        3: 'redirect',
-        4: 'not_found',
-        5: 'error',
-    }
-
-    def __init__(self, db_pool, downloader, rate_limiter, seeds,
-                 max_depth=3):
+    def __init__(self, name, db_pool, downloader, rate_limiter, seeds,
+                 max_depth=1):
         ''' Constructor. '''
-        self.crawl_item_completed = PubSub()
-        self.id_ = self.next_id()
-        self.max_depth = max_depth
-        self.status_updated = PubSub()
+        self.id = None
+        self.name = name
         self.seeds = seeds
+        self.policy = None
 
         self._db_pool = db_pool
-        self._completed_items = list() # TODO will replace with DB
         self._downloader = downloader
         self._download_tasks = dict()
         self._frontier = Frontier(rate_limiter)
-        self._running = False
+        self._insert_item_lock = asyncio.Lock()
+        self._insert_item_sequence = 1
+        self._max_depth = max_depth
+        self._short_id = None # First 4 octets of id, for readability.
+        self._status = 'pending'
 
-        self.status = {
-            'seed': self.seeds[0], # TODO should store list of seeds
-            'status': 'running',
-            'information': 0,
-            'success': 0,
-            'redirect': 0,
-            'not_found': 0,
-            'error': 0,
-        }
+    @staticmethod
+    async def load_job(id_):
+        ''' Load a crawl job from the database. '''
 
-    @classmethod
-    def next_id(cls):
-        ''' Generate a unique ID for each crawl instance. '''
-        id_ = cls._next_id
-        cls._next_id += 1
-        return id_
+        #TODO
 
     @classmethod
     def pause_all_jobs(cls):
@@ -81,9 +64,32 @@ class CrawlJob:
             return_exceptions=True
         )
 
-    def items(self, start_index):
-        ''' Retrieve items from this crawl, beginning at ``start_index``. '''
-        return self._completed_items[start_index:]
+    async def save_job(self):
+        ''' Insert or update job metadata in database. '''
+
+        job_data = {
+            'name': self.name,
+            'seeds': self.seeds,
+            'policy': self.policy,
+            'status': self._status,
+            'started_at': None,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {}
+        }
+
+        async with self._db_pool.connection() as conn:
+            if self.id is None:
+                result = await r.table('crawl_job').insert(job_data).run(conn)
+                self.id = result['generated_keys'][0]
+                self._short_id = self.id[:8]
+            else:
+                data['id'] = self.id
+                r.table('crawl_job').update(data).run(conn)
 
     def start(self):
         '''
@@ -93,7 +99,6 @@ class CrawlJob:
         '''
         task = asyncio.ensure_future(self._run())
         self.__class__._running_jobs[self] = task
-        handle_future_exception(task)
         return task
 
     async def _handle_download(self, dl_task):
@@ -104,44 +109,49 @@ class CrawlJob:
 
         crawl_item = await dl_task
 
-        # Update crawl status.
-        status_first_digit = crawl_item.status_code // 100
-        status_category = self.__class__._status_digit_to_name[status_first_digit]
-        self.status[status_category] += 1
-        updates = {status_category: self.status[status_category]}
-        self.status_updated.publish(self, updates)
+        # Note that all item writes for a single job are serialized so that we
+        # can insert an incrementing sequence number.
+        async with self._insert_item_lock:
+            async with self._db_pool.connection() as conn:
+                item_data = {
+                    'body': crawl_item.body,
+                    'completed_at': crawl_item.completed_at,
+                    'crawl_id': self.id,
+                    'depth': crawl_item.depth,
+                    'duration': crawl_item.duration.total_seconds(),
+                    'exception': crawl_item.exception,
+                    'headers': crawl_item.headers,
+                    'insert_sequence': self._insert_item_sequence,
+                    'is_success': crawl_item.status_code // 100 == 2,
+                    'started_at': crawl_item.started_at,
+                    'status_code': crawl_item.status_code,
+                    'url': crawl_item.url,
+                }
+                await r.table('crawl_item').insert(item_data).run(conn)
+                self._insert_item_sequence += 1
+                self._downloader.release_slot()
 
-        # Save to database.
-        async with self._db_pool.connection() as conn:
-            insert = r.table('crawl_items').insert({
-                'body': crawl_item.body,
-                'completed_at': crawl_item.completed_at,
-                'depth': crawl_item.depth,
-                'exception': crawl_item.exception,
-                'headers': crawl_item.headers,
-                'parsed_url': crawl_item.parsed_url,
-                'started_at': crawl_item.started_at,
-                'status_code': crawl_item.status_code,
-                'url': crawl_item.url,
-            })
-            await insert.run(conn)
+        await self._update_job_stats(crawl_item)
 
-        # If successful, publish it as a completed item.
-        if crawl_item.exception is None:
-            self._completed_items.append(crawl_item)
-            self.crawl_item_completed.publish(crawl_item)
+        # If successful, extract links.
+        if crawl_item.exception is None and \
+           self._status == 'running' and \
+           crawl_item.depth < self._max_depth:
 
-            if self._running and crawl_item.depth < self.max_depth:
-                for new_url in self._parse_urls(crawl_item):
-                    parsed = urlparse(new_url)
-                    if parsed.path.endswith('.html'):
-                        self._frontier.add_item(
-                            CrawlItem(new_url, depth=crawl_item.depth + 1)
-                        )
+            for new_url in self._parse_urls(crawl_item):
+                parsed = urlparse(new_url)
+                if parsed.hostname == 'markhaa.se' and parsed.path.endswith('.html'): #TODO
+                    self._frontier.add_item(
+                        CrawlItem(new_url, depth=crawl_item.depth + 1)
+                    )
 
-        # Cleanup task before returning.
+        # Cleanup download task.
         del self._download_tasks[crawl_item]
         self._frontier.complete_item(crawl_item)
+
+        # If this is the last item in this crawl, then the crawl is complete.
+        if len(self._frontier) == 0 and len(self._download_tasks) == 0:
+            await self._set_completed()
 
     def _parse_urls(self, crawl_item):
         '''
@@ -155,54 +165,128 @@ class CrawlJob:
             yield new_url
 
     async def _run(self):
-        '''
-        Main crawling logic.
+        ''' Main crawling logic. '''
 
-        Returns when the crawl is finished.
-        '''
-
-        logger.info('Crawl #{} starting...'.format(self.id_))
-
-        for seed in self.seeds:
-            self._frontier.add_item(CrawlItem(seed, depth=0))
-
-        self._running = True
+        logger.info('Crawl id={} starting...'.format(self._short_id))
+        await self._set_running()
 
         try:
-            while self._running:
+            while True:
                 crawl_item = await self._frontier.get_item()
                 dl_task = await self._downloader.schedule_download(crawl_item)
-                self._download_tasks[crawl_item] = asyncio.ensure_future(
-                    self._handle_download(dl_task)
-                )
-
-                if len(self._frontier) == 0 and len(self._download_tasks) == 0:
-                    logger.debug('Crawl #{} is complete.'.format(self._id_))
-                    del self.__class__._running_jobs[self]
-                    self.status['status'] = 'complete'
-                    self.status_updated.publish(self, {'status': 'complete'})
-                    self._running = False
+                handler = asyncio.ensure_future(self._handle_download(dl_task))
+                self._download_tasks[crawl_item] = handler
+                raise_future_exception(handler)
         except asyncio.CancelledError:
-            logger.info('Crawl #{} is pausing...'.format(self.id_))
-            if len(self._download_tasks) > 0:
-                logger.info(
-                    'Crawl #{} is waiting for {} downloads to finish...'
-                    .format(self.id_, len(self._download_tasks))
-                )
-                await asyncio.gather(*self._download_tasks.values())
-                logger.info(
-                    'Crawl #{} all remaining downloads are finished.'
-                    .format(self.id_)
-                )
+            if self._status != 'completed':
+                logger.info('Crawl id={} is pausing...'.format(self._short_id))
+                if len(self._download_tasks) > 0:
+                    logger.info(
+                        'Crawl id={} is waiting for {} downloads to finish...'
+                        .format(self._short_id, len(self._download_tasks))
+                    )
+                    await asyncio.gather(*self._download_tasks.values())
+                    logger.info(
+                        'Crawl id={} all remaining downloads are finished.'
+                        .format(self._short_id)
+                    )
+                await self._set_paused()
 
-                # TODO this makes no sense: all of the websockets are closed
-                # before this status is published, so no client ever sees it.
-                self.status['status'] = 'paused'
-                self.status_updated.publish(self, {'status': 'paused'})
-
-        logger.info('Crawl #{} has stopped.'.format(self.id_))
+        logger.info('Crawl id={} has stopped.'.format(self._short_id))
         del self.__class__._running_jobs[self]
 
+    async def _set_completed(self):
+        ''' Update status to indicate this job is complete. '''
+
+        self._status = 'completed'
+        completed_at = datetime.now(tzlocal())
+
+        new_data = {
+            'status': self._status,
+            'completed_at': completed_at,
+            'duration': completed_at - r.row['started_at'],
+        }
+
+        async with self._db_pool.connection() as conn:
+            query = r.table('crawl_job').get(self.id).update(new_data)
+            await query.run(conn)
+
+        self.__class__._running_jobs[self].cancel()
+        logger.info('Crawl id={} is complete.'.format(self._short_id))
+
+    async def _set_paused(self):
+        ''' Update status to indicate this job is paused. '''
+
+        self._status = 'paused'
+
+        new_data = {'status': self._status}
+
+        async with self._db_pool.connection() as conn:
+            query = r.table('crawl_job').get(self.id).update(new_data)
+            await query.run(conn)
+
+        logger.info('Crawl id={} is paused.'.format(self._short_id))
+
+    async def _set_running(self):
+        ''' Update status to indicate this job is running. '''
+
+        new_data = {}
+
+        if self._status == 'pending':
+            for seed in self.seeds:
+                self._frontier.add_item(CrawlItem(seed, depth=0))
+            self._status = 'running'
+            new_data['started_at'] = datetime.now(tzlocal())
+        elif self._status == 'paused':
+            self._status = 'running'
+        else:
+            raise Exception('Cannot start or resume a crawl: status={}'
+                .format(self._status))
+
+        new_data['status'] = self._status
+
+        async with self._db_pool.connection() as conn:
+            query = r.table('crawl_job').get(self.id).update(new_data)
+            await query.run(conn)
+
+        logger.info('Crawl id={} is running.'.format(self._short_id))
+
+    async def _update_job_stats(self, crawl_item):
+        '''
+        Update job stats with the result of this crawl item.
+
+        This function *should* make an atomic change to the database, e.g.
+        no competing task can partially update stats at the same time as this
+        task.
+        '''
+        status = str(crawl_item.status_code)
+        status_first_digit = status[0]
+        new_data = {'item_count': r.row['item_count'] + 1}
+
+        if crawl_item.exception is None:
+            if 'http_status_counts' not in new_data:
+                new_data['http_status_counts'] = {}
+
+            # Increment count for status. (Assume zero if it doesn't exist yet).
+            new_data['http_status_counts'][status] = (
+                1 + r.branch(
+                    r.row['http_status_counts'].has_fields(status),
+                    r.row['http_status_counts'][status],
+                    0
+                )
+            )
+
+            if status_first_digit == '2':
+                new_data['http_success_count'] = r.row['http_success_count'] + 1
+            else:
+                new_data['http_error_count'] = r.row['http_error_count'] + 1
+        else:
+            new_data['exception_count'] = r.row['exception_count'] + 1
+
+        query = r.table('crawl_job').get(self.id).update(new_data)
+
+        async with self._db_pool.connection() as conn:
+            await query.run(conn)
 
 class CrawlItem:
     ''' Represents a resource to be crawled and the result of crawling it. '''
@@ -219,134 +303,18 @@ class CrawlItem:
         self.status_code = None
         self.url = url
 
-    def finish(self, status_code, headers, body):
-        ''' Update with crawl result. '''
+    def set_response(self, status_code, headers, body):
+        ''' Update state from HTTP response. '''
         self.body = body
-        self.completed_at = time()
+        self.completed_at = datetime.now(tzlocal())
         self.duration = self.completed_at - self.started_at
         self.headers = headers
         self.status = 'complete'
         self.status_code = status_code
 
-    def start(self):
+    def set_start(self):
         '''
         This method should be called when the network request for the resource
         is sent.
         '''
-        self.started_at = time()
-
-
-class CrawlListener:
-    ''' A base class for implementing a subscription stream. '''
-    _next_id = 0
-
-    @classmethod
-    def next_id(cls):
-        ''' Generate a unique ID for a crawl listener. '''
-        id_ = CrawlListener._next_id
-        CrawlListener._next_id += 1
-        return id_
-
-
-class CrawlItemsListener(CrawlListener):
-    ''' A subscription stream that emits each item as it is crawled. '''
-
-    def __init__(self, socket, crawl, sync_token=None):
-        ''' Constructor. '''
-        self.id_ = self.next_id()
-        self._crawl = crawl
-        self._queue = asyncio.Queue()
-        self._socket = socket
-        self._crawl.crawl_item_completed.listen(self._queue.put_nowait)
-
-        # Decode sync token and immediately load any unsynced items from
-        # the crawl into our local queue.
-        if sync_token is None:
-            self._index = 0
-        else:
-            self._index = int(base64.b64decode(sync_token))
-
-        for item in self._crawl.items(self._index):
-            self._queue.put_nowait(item)
-
-    async def run(self):
-        ''' Start the subscription. '''
-        while True:
-            crawl_item = await self._queue.get()
-            self._index += 1
-            index_bytes = str(self._index).encode('utf8')
-            sync_token = base64.b64encode(index_bytes).decode('utf8')
-            body = base64.b64encode(crawl_item.body).decode('utf8')
-            message = {
-                'type': 'event',
-                'subscription_id': self.id_,
-                'data': {
-                    'body': body,
-                    'completed_at': crawl_item.completed_at,
-                    'crawl_id': self._crawl.id_,
-                    'depth': crawl_item.depth,
-                    'duration': crawl_item.duration,
-                    'headers': dict(crawl_item.headers),
-                    'started_at': crawl_item.started_at,
-                    'status_code': crawl_item.status_code,
-                    'sync_token': sync_token,
-                    'url': crawl_item.url,
-                },
-            }
-            await self._socket.send(json.dumps(message))
-
-
-class CrawlStatusListener(CrawlListener):
-    '''
-    A subscription stream that emits updates about the status of one or more
-    crawls.
-
-    The first emitted event will contain the complete status of the crawl;
-    subsequent events will only include fields that have changed since the
-    previous event.
-    '''
-
-    def __init__(self, socket, min_interval):
-        ''' Constructor. '''
-        self.id_ = self.next_id()
-        self._has_update = asyncio.Event()
-        self._min_interval = min_interval
-        self._socket = socket
-        self._status = dict()
-
-    def add_crawl(self, crawl):
-        ''' Add a crawl to this subscription. '''
-        self._status[crawl.id_] = dict(crawl.status)
-        crawl.status_updated.listen(self._update_crawl_status)
-
-    def remove_crawl(self, crawl):
-        ''' Remove a crawl from this subscription. '''
-        crawl.status_updated.cancel(self._update_crawl_status)
-
-    async def run(self):
-        ''' Start the subscription stream. '''
-        while True:
-            if len(self._status) > 0:
-                message = {
-                    'type': 'event',
-                    'subscription_id': self.id_,
-                    'data': dict(self._status),
-                }
-
-                self._status = dict()
-                await self._socket.send(json.dumps(message))
-
-            sleeper = asyncio.sleep(self._min_interval)
-            done, pending = await asyncio.wait((sleeper, self._has_update.wait()))
-            for p in pending:
-                p.cancel()
-            self._has_update.clear()
-
-    def _update_crawl_status(self, crawl, new_status):
-        ''' Merge new crawl status into existing crawl status. '''
-        if crawl.id_ not in self._status:
-            self._status[crawl.id_] = new_status
-        else:
-            self._status[crawl.id_].update(new_status)
-
-        self._has_update.set()
+        self.started_at = datetime.now(tzlocal())

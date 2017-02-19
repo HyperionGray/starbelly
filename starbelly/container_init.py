@@ -88,6 +88,8 @@ def connect_db(db_config):
             'RethinkDB authentication failure: {}'.format(e)
         )
 
+    logger.info('Connected to RethinkDB.')
+
     return conn
 
 def ensure_db(conn, name):
@@ -96,6 +98,16 @@ def ensure_db(conn, name):
         logger.info('Creating DB: {}'.format(name))
         r.db_create(name).run(conn)
     conn.use(name)
+
+
+def ensure_db_index(conn, table_name, index_name, index_cols=None):
+    ''' Create the named index, if it doesn't already exist. '''
+    if not r.table(table_name).index_list().contains(index_name).run(conn):
+        logger.info('Creating index: {}.{}'.format(table_name, index_name))
+        if index_cols is None:
+            r.table(table_name).index_create(index_name).run(conn)
+        else:
+            r.table(table_name).index_create(index_name, index_cols).run(conn)
 
 
 def ensure_db_table(conn, name):
@@ -175,7 +187,11 @@ def init_db(db_config):
     db_name = db_config['db']
     ensure_db(conn, db_name)
     ensure_db_user(conn, db_name, db_config['user'], db_config['password'])
-    ensure_db_table(conn, 'crawl_items')
+    ensure_db_table(conn, 'crawl_item')
+    ensure_db_index(conn, 'crawl_item', 'sync_index',
+        [r.row['crawl_id'], r.row['insert_sequence']])
+    ensure_db_table(conn, 'crawl_job')
+    ensure_db_index(conn, 'crawl_job', 'status')
     conn.close()
 
 
@@ -184,11 +200,13 @@ def main():
     init_config()
     config = get_config()
     init_db(config['database'])
+    logger.info('Container initialization finished.')
 
-    logger.info("Exec target process...")
     sys.argv.pop(0)
-    os.execvp(sys.argv[0], sys.argv)
-    print(cmd, sys.argv)
+    if len(sys.argv) > 0:
+        logger.info("Exec target process...")
+        os.execvp(sys.argv[0], sys.argv)
+        print(cmd, sys.argv)
 
 
 def random_password(length):

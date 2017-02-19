@@ -2,6 +2,7 @@ aiodns
 aiohttp
 async_timeout
 chardet
+python-dateutil
 rethinkdb
 watchdog
 websockets

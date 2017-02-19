@@ -18,6 +18,7 @@ from .crawl import CrawlJob
 from .downloader import Downloader
 from .rate_limiter import DomainRateLimiter
 from .server import Server
+from .tracker import Tracker
 
 
 class ProcessWatchdog(FileSystemEventHandler):
@@ -148,15 +149,17 @@ def start_loop(config, args, logger):
 
     r.set_loop_type('asyncio')
     db_pool = AsyncRethinkPool(db_factory(config['database']))
+    tracker = Tracker(db_pool)
     downloader = Downloader()
     rate_limiter = DomainRateLimiter()
-    server = Server(args.ip, args.port, downloader, rate_limiter, db_pool)
+    server = Server(args.ip, args.port, downloader, rate_limiter, db_pool, tracker)
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(server.start())
 
     try:
         try:
+            tracker.start()
             loop.run_forever()
         except KeyboardInterrupt:
             logger.info('Caught SIGINT: trying graceful shutdown.')
@@ -165,6 +168,7 @@ def start_loop(config, args, logger):
             loop.run_until_complete(server.stop())
             loop.run_until_complete(CrawlJob.pause_all_jobs())
             loop.run_until_complete(rate_limiter.stop())
+            loop.run_until_complete(tracker.stop())
             loop.run_until_complete(db_pool.close())
     except KeyboardInterrupt:
         logger.info('Caught 2nd SIGINT: shutting down immediately.')
