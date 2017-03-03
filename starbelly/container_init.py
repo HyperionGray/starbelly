@@ -8,7 +8,7 @@ tables), then it execs the command passed into it.
 import configparser
 import logging
 import os
-from random import SystemRandom
+import secrets
 import shutil
 import string
 import sys
@@ -22,7 +22,6 @@ from .config import get_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('container_init')
-random = SystemRandom()
 
 
 class ContainerInitException(Exception):
@@ -189,9 +188,12 @@ def init_db(db_config):
     ensure_db_user(conn, db_name, db_config['user'], db_config['password'])
     ensure_db_table(conn, 'crawl_item')
     ensure_db_index(conn, 'crawl_item', 'sync_index',
-        [r.row['crawl_id'], r.row['insert_sequence']])
+        [r.row['job_id'], r.row['insert_sequence']])
     ensure_db_table(conn, 'crawl_job')
     ensure_db_index(conn, 'crawl_job', 'status')
+    ensure_db_table(conn, 'crawl_frontier')
+    ensure_db_index(conn, 'crawl_frontier', 'cost_index',
+        [r.row['queued'], r.row['job_id'], r.row['cost']])
     conn.close()
 
 
@@ -211,7 +213,7 @@ def main():
 
 def random_password(length):
     alphabet = string.ascii_letters + string.digits
-    return ''.join(random.choice(alphabet) for i in range(length))
+    return ''.join(secrets.choice(alphabet) for i in range(length))
 
 
 if __name__ == '__main__':

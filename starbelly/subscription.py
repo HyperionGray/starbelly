@@ -35,12 +35,12 @@ class CrawlSyncSubscription:
     TOKEN_HEADER = 'BBB'
     TOKEN_BODY = '!L'
 
-    def __init__(self, tracker, db_pool, socket, crawl_id, sync_token=None):
+    def __init__(self, tracker, db_pool, socket, job_id, sync_token=None):
         ''' Constructor. '''
         self.id = uuid1().hex
         self._db_pool = db_pool
         self._socket = socket
-        self._crawl_id = crawl_id
+        self._job_id = job_id
         self._tracker = tracker
         self._crawl_status = None
         self._crawl_item_count = None
@@ -84,8 +84,8 @@ class CrawlSyncSubscription:
             # item.
             if out_of_order_count >= 5:
                 msg = 'Crawl sync received too many out-of-order results!' \
-                      ' (crawl={} waiting for sequence={})' \
-                      .format(self._crawl_id, self._sequence)
+                      ' (job={} waiting for sequence={})' \
+                      .format(self._job_id, self._sequence)
                 logger.error(msg)
                 self._sequence += 1
                 out_of_order_count = 0
@@ -122,8 +122,8 @@ class CrawlSyncSubscription:
         ''' Return the query used for getting items to sync. '''
         query = (
             r.table('crawl_item')
-             .between((self._crawl_id, self._sequence),
-                      (self._crawl_id, r.maxval),
+             .between((self._job_id, self._sequence),
+                      (self._job_id, r.maxval),
                       index='sync_index')
              .order_by(index='sync_index')
         )
@@ -150,7 +150,7 @@ class CrawlSyncSubscription:
 
     def _handle_job_status(self, job_id, job):
         ''' Handle job status updates. '''
-        if job_id == self._crawl_id:
+        if job_id == self._job_id:
             self._crawl_status = job['status']
             self._crawl_item_count = job['item_count']
 
@@ -162,7 +162,7 @@ class CrawlSyncSubscription:
             'data': {
                 'body': base64.b64encode(item['body']).decode('ascii'),
                 'completed_at': item['completed_at'].isoformat(),
-                'crawl_id': item['crawl_id'],
+                'job_id': item['job_id'],
                 'depth': item['depth'],
                 'duration': item['duration'],
                 'headers': item['headers'],
@@ -179,7 +179,7 @@ class CrawlSyncSubscription:
 
         query = (
             r.table('crawl_job')
-             .get(self._crawl_id)
+             .get(self._job_id)
              .pluck('status', 'item_count')
         )
 

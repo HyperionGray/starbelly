@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 import websockets
 
 from . import raise_future_exception
-from .crawl import CrawlJob
 from .pubsub import PubSub
 from .subscription import CrawlSyncSubscription, JobStatusSubscription
 
@@ -31,16 +30,13 @@ def custom_json(obj):
 class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
-    def __init__(self, host, port, downloader, rate_limiter, db_pool, tracker):
+    def __init__(self, host, port, db_pool, crawl_manager, tracker):
         ''' Constructor. '''
         self._clients = set()
-        self._crawl_jobs = set()
-        self._crawl_started = PubSub()
+        self._crawl_manager = crawl_manager
         self._db_pool = db_pool
-        self._downloader = downloader
         self._host = host
         self._port = port
-        self._rate_limiter = rate_limiter
         self._subscriptions = defaultdict(dict)
         self._tracker = tracker
 
@@ -159,32 +155,19 @@ class Server:
 
     async def _start_crawl(self, socket, name, seeds):
         ''' Handle the start crawl command. '''
-        logger.info('name={} seeds={}'.format(name, seeds))
-
         if name.strip() == '':
             url = urlparse(seeds[0])
             name = url.hostname
             if len(seeds) > 1:
                 name += '& {} more'.format(len(seeds) - 1)
 
-        crawl_job = CrawlJob(
-            name,
-            self._db_pool,
-            self._downloader,
-            self._rate_limiter,
-            seeds
-        )
+        job_id = await self._crawl_manager.start_job(name, seeds)
+        return {'job_id': job_id}
 
-        await crawl_job.save_job()
-        crawl_task = crawl_job.start()
-        self._crawl_jobs.add(crawl_job)
-        self._crawl_started.publish(crawl_job)
-        return {'crawl_id': crawl_job.id}
-
-    def _subscribe_crawl_sync(self, socket, crawl_id, sync_token=None):
+    def _subscribe_crawl_sync(self, socket, job_id, sync_token=None):
         ''' Handle the subscribe crawl items command. '''
         subscription = CrawlSyncSubscription(
-            self._tracker, self._db_pool, socket, crawl_id, sync_token
+            self._tracker, self._db_pool, socket, job_id, sync_token
         )
         coro = asyncio.ensure_future(subscription.run())
         self._subscriptions[socket][subscription.id] = coro

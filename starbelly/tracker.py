@@ -76,8 +76,13 @@ class Tracker:
             feed = await change_query.run(conn)
             while await feed.fetch_next():
                 change = await feed.next()
-                # TODO handle deletions: ['new_val'] will be None
                 job = change['new_val']
+                if job is None:
+                    # TODO handle deletions: ['new_val'] will be None
+                    # Need to notify client of job deletion and remove from
+                    # tracker
+                    continue
+
                 job_id = job.pop('id')
                 self.job_status_changed.publish(job_id, job)
 

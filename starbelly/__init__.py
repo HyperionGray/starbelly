@@ -1,6 +1,9 @@
 import asyncio
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def get_path(relative_path=None):
     """ Return an absolute path to a project relative path. """

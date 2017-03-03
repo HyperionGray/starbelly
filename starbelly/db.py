@@ -52,10 +52,8 @@ class AsyncRethinkPool:
 
         try:
             conn = self._queue.get_nowait()
-            logger.debug('Acquired RethinkDB connection from pool.')
         except asyncio.QueueEmpty:
             conn = await self._db_connect()
-            logger.debug('Opened new RethinkDB connection.')
 
         return conn
 
@@ -86,10 +84,8 @@ class AsyncRethinkPool:
 
         try:
             self._queue.put_nowait(conn)
-            logger.debug('Released RethinkDB connection back to pool.')
         except asyncio.QueueFull:
             await conn.close()
-            logger.debug('Closed RethinkDB connection.')
 
 
 class _AsyncRethinkContextManager:

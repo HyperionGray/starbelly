@@ -14,9 +14,9 @@ from watchdog.observers import Observer
 from . import get_path
 from .db import AsyncRethinkPool
 from .config import get_config
-from .crawl import CrawlJob
+from .crawl import CrawlManager
 from .downloader import Downloader
-from .rate_limiter import DomainRateLimiter
+from .rate_limiter import RateLimiter
 from .server import Server
 from .tracker import Tracker
 
@@ -101,7 +101,6 @@ def get_args():
 
     arg_parser.add_argument(
         '--log-level',
-        # dest='log_level',
         default='info',
         metavar='LEVEL',
         choices=['debug', 'info', 'warning', 'error', 'critical'],
@@ -151,23 +150,25 @@ def start_loop(config, args, logger):
     db_pool = AsyncRethinkPool(db_factory(config['database']))
     tracker = Tracker(db_pool)
     downloader = Downloader()
-    rate_limiter = DomainRateLimiter()
-    server = Server(args.ip, args.port, downloader, rate_limiter, db_pool, tracker)
+    rate_limiter = RateLimiter(downloader)
+    crawl_manager = CrawlManager(db_pool, rate_limiter)
+    server = Server(args.ip, args.port, db_pool, crawl_manager, tracker)
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(server.start())
+    rate_limiter.start()
+    tracker.start()
 
     try:
         try:
-            tracker.start()
             loop.run_forever()
         except KeyboardInterrupt:
             logger.info('Caught SIGINT: trying graceful shutdown.')
-            # Shut down different components in a specific order, e.g. the
-            # download needs to finish before the rate limiter is stopped, etc.
+            # Shut down different components in a specific order, e.g. crawls
+            # need to finish downloading before the downloader stops.
             loop.run_until_complete(server.stop())
-            loop.run_until_complete(CrawlJob.pause_all_jobs())
             loop.run_until_complete(rate_limiter.stop())
+            loop.run_until_complete(crawl_manager.pause_all_jobs())
             loop.run_until_complete(tracker.stop())
             loop.run_until_complete(db_pool.close())
     except KeyboardInterrupt:

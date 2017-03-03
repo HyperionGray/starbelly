@@ -1,139 +1,157 @@
 import asyncio
-from bisect import bisect
-from collections import defaultdict
+from collections import deque, namedtuple
+import hashlib
+from heapq import heappop, heappush
 import logging
 from time import time
+import urllib.parse
+
+from . import raise_future_exception
+
 
 logger = logging.getLogger(__name__)
+Expiry = namedtuple('TokenExpiry', ['time', 'token'])
 
 
-class DomainRateLimiter:
+class RateLimiter:
     '''
-    A class that is responsible for tracking rate limits for each domain.
+    This class is responsible for enforcing rate limits.
 
-    The rate limiter handles 3 scenarios.
+    The rate limiter acts as a bottleneck between the multiple crawl frontiers
+    and the downloader, enforcing the configured rate limits.
 
-    1. A task needs a domain and a domain is ready: that domain is returned
-       immediately from an internal list of ready domains.
-    2. A task needs a domain but the domain isn't ready: the task waits for a
-       rate limit to expire. Tasks are served in the same order that they are
-       called.
-    3. A rate limit expires but no task is waiting for it: the domain is added
-       an internal list of ready domains which is later used to serve scenario
-       #1.
+    A queue is maintained for each domain that has pending requests to it. When
+    a rate limit expires for a given domain, the next URL in the corresponding
+    domain queue is sent to the downloader. (If the domain queue is empty, the
+    queue is deleted.) The rate limiter has a fixed capacity; when the number
+    of URLs buffered in the rate limiter exceeds this capacity, subsequent calls
+    to ``add()`` will block until some capacity is available; these calls will
+    be served in the order they are made.
+
+    In order to provide some flexibility, rate limits are not strictly tied
+    to individual domains. Each URL is mapped to a "rate limit token". URLs
+    with the same token will be placed into the same queue. This system will
+    allow a flexible rate limiting policies in the future, such as applying a
+    single rate limit to a set of domains.
     '''
 
-    def __init__(self, default_interval=0.1):
+    def __init__(self, downloader, capacity=1e4, default_limit=1):
         ''' Constructor. '''
-        self._default_interval = default_interval
-        self._intervals = dict()
-        self._ready_domains = list()
-        self._sleepers = set()
-        self._seen_domains = set()
-        self._waiters = list()
+        self._default_limit = default_limit
+        self._downloader = downloader
+        self._expires = list()
+        self._queues = dict()
+        self._rate_limits = dict()
+        self._semaphore = asyncio.Semaphore(capacity)
+        self._task = None
+        self._token_added = asyncio.Event()
 
-    async def select_domain(self, choices):
+    async def push(self, crawl_item):
         '''
-        From a list ``choices`` of domains return the first domain that is
-        allowed by the rate limit.
+        Schedule a crawl item for downloading.
+
+        Suspends if the rate limiter is already filled to capacity.
         '''
+        await self._semaphore.acquire()
+        token = self._get_token_for_url(crawl_item.url)
+        if token not in self._queues:
+            self._queues[token] = deque()
+            heappush(self._expires, (Expiry(time(), token)))
+            self._token_added.set()
+        self._queues[token].append(crawl_item)
 
-        # If there any domains we haven't seen before, add those to the ready
-        # list.
-        for choice in choices:
-            if not choice in self._seen_domains:
-                self._seen_domains.add(choice)
-                self._ready_domains.append(choice)
+    def remove_limit(self, domain):
+        ''' Remove a rate limit. '''
+        token = self._get_token_for_domain(domain)
+        del self._rate_limits[token]
 
-        # Check if any domains are on the ready list.
-        if len(self._ready_domains) > 0:
-            # If any domains are ready, return the first match immediately.
-            for index, domain in enumerate(self._ready_domains):
-                if domain in choices:
-                    domain = self._ready_domains.pop(index)
-                    logger.debug('Domain {} is ready.'.format(domain))
-                    return domain
+    def set_limit(self, domain, interval):
+        ''' Set a rate limit. '''
+        token = self._get_token_for_domain(domain)
+        self._rate_limits[token] = interval
 
-        # If we get here, then none of the choices is ready, so wait for one
-        # to become ready.
-        msg = 'No domain in choices={} is ready. Waiting for rate limit expiry.'
-        logger.debug(msg.format(choices))
-        waiter = DomainRateLimitFuture(choices)
-        self._waiters.append(waiter)
-        return await waiter
+    def start(self):
+        ''' Start the rate limiter task. '''
+        logger.info('Rate limiter is starting...')
+        self._task = asyncio.ensure_future(self._run())
+        raise_future_exception(self._task)
 
-    def set_domain_limit(self, domain, interval):
-        ''' Set the rate limit for a given domain. '''
-        msg = 'Setting rate limit for {} to {}.'
-        logger.debug(msg.format(domain, interval))
-        self._intervals[domain] = interval
+    async def stop(self):
+        ''' Stop the rate limiter task. '''
+        self._task.cancel()
+        await asyncio.gather(self._task, return_exceptions=True)
+        logger.info('Rate limiter has stopped.')
 
-    def stop(self):
+    async def _get_next_expiry(self):
         '''
-        Cancel all tasks created by this instance.
+        Pop an expiry off the heap.
 
-        Returns a future that completes when all tasks have finished.
+        If no tokens on heap, suspend until a token is available.
         '''
+        # Peek at the next expiration.
+        if len(self._expires) == 0:
+            await self._token_added.wait()
+            self._token_added.clear()
 
-        logger.info('Rate limiter is stopping.')
+        now = time()
+        expires = self._expires[0].time
 
-        for sleeper in self._sleepers:
-            sleeper.cancel()
+        # If the next expiry is in the future, then wait for expiration but
+        # interrupt if a new token is added to the heap.
+        if expires > now:
+            try:
+                await asyncio.wait_for(
+                    self._token_added.wait(),
+                    timeout=expires - now
+                )
+                self._token_added.clear()
+            except asyncio.TimeoutError:
+                pass
 
-        tasks = asyncio.gather(*self._sleepers, return_exceptions=True)
-        return tasks
+        expiry = heappop(self._expires)
 
-    def touch_domain(self, domain):
+        return expiry
+
+    def _get_token_for_domain(self, domain):
+        ''' Get a token for a domain. '''
+        hash_ = hashlib.blake2b(domain.encode('ascii'), digest_size=16)
+        token = hash_.digest()
+        return token
+
+    def _get_token_for_url(self, url):
+        ''' Return the token for the domain in ``url``. '''
+        parsed = urllib.parse.urlparse(url)
+        token = self._get_token_for_domain(parsed.hostname)
+        return token
+
+    async def _run(self):
         '''
-        Mark a domain has having been accessed.
+        Schedule items for download.
 
-        After accessing, the domain will go back into the ready list after its
-        rate limit expires.
-        '''
-
-        def rate_limit_expired(_):
-            ''' This nested function is called when a rate limit expires. '''
-            found_waiter = False
-            self._sleepers.remove(sleeper)
-
-            # Check if any task is waiting for this domain.
-            for index, waiter in enumerate(self._waiters):
-                if waiter.is_waiting_for(domain):
-                    self._waiters.pop(index)
-                    if not waiter.cancelled():
-                        msg = 'Rate limit expired for {} and sent to waiter.'
-                        logger.debug(msg.format(domain))
-                        found_waiter = True
-                        waiter.set_result(domain)
-
-            # If nobody is waiting, add this domain to the ready list.
-            if not found_waiter:
-                msg = 'Rate limit expired for {} and added to ready list.'
-                logger.debug(msg.format(domain))
-                self._ready_domains.append(domain)
-
-        # Create a task that will sleep until the rate limit expires; when it
-        # wakes up, it will mark the domain as being ready.
-        rate_limit = self._intervals.get(domain, self._default_interval)
-        sleeper = asyncio.ensure_future(asyncio.sleep(rate_limit))
-        sleeper.add_done_callback(rate_limit_expired)
-        self._sleepers.add(sleeper)
-
-
-class DomainRateLimitFuture(asyncio.Future):
-    ''' A subclass of ``Future`` that holds a list of domains. '''
-
-    def __init__(self, domains):
-        '''
-        Constructor.
-
-        The future fires when of the ``domains`` is ready, i.e. its rate limit
-        has expired.
+        Maintains the invariant that for every token in the heap, there is a
+        corresponding queue.
         '''
 
-        super().__init__()
-        self._rate_limit_domains = domains
+        logger.info('Rate limiter is running.')
 
-    def is_waiting_for(self, domain):
-        ''' Return true if this waiter is waiting for ``domain``. '''
-        return domain in self._rate_limit_domains
+        while True:
+            # Get the next token and then get the next item for that token.
+            expiry = await self._get_next_expiry()
+            token = expiry.token
+            queue = self._queues[token]
+
+            if len(queue) == 0:
+                # If nothing left in this queue, delete it and get another token
+                # instead.
+                del self._queues[token]
+                continue
+
+            crawl_item = queue.popleft()
+            logger.debug('Popped %s', crawl_item.url)
+            await self._downloader.push(crawl_item)
+            self._semaphore.release()
+
+            # Schedule next expiration.
+            limit = self._rate_limits.get(token, self._default_limit)
+            expires = time() + limit
+            heappush(self._expires, (Expiry(expires, token)))

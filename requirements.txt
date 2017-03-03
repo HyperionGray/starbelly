@@ -2,7 +2,10 @@ aiodns
 aiohttp
 async_timeout
 chardet
+lxml
 python-dateutil
+python-mimeparse
 rethinkdb
 watchdog
 websockets
+w3lib
