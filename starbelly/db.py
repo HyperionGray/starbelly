@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+import rethinkdb as r
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +41,10 @@ class AsyncRethinkPool:
         a connection is released and there are already ``max_idle`` connections
         open, then the released connection will be closed.
         '''
+        self._closed = False
         self._db_connect = db_connect
         self._queue = asyncio.Queue(maxsize=max_idle)
+        self._sequence = 0
 
     async def acquire(self):
         '''
@@ -50,10 +54,25 @@ class AsyncRethinkPool:
         with the ``release(...)`` method.
         '''
 
+        if self._closed:
+            raise Exception('DB pool is closed!')
+
         try:
             conn = self._queue.get_nowait()
+            while not conn.is_open():
+                # Connections in the pool may timeout, so look for one that is
+                # still connected.
+                conn = self._queue.get_nowait()
         except asyncio.QueueEmpty:
-            conn = await self._db_connect()
+            try:
+                conn = await self._db_connect()
+            except r.ReqlDriverError as rde:
+                # Rethink wraps up CancelledError in ReqlDriverError, but
+                # cancelling is okay, so we unwrap and re-raise it.
+                if isinstance(rde.__context__, asyncio.CancelledError):
+                    raise rde.__context__ from None
+                else:
+                    raise
 
         return conn
 
@@ -71,7 +90,10 @@ class AsyncRethinkPool:
             conns.append(self._queue.get_nowait())
 
         for conn in conns:
-            await conn.close()
+            if conn.is_open():
+                await conn.close()
+
+        self._closed = True
         logger.info('All database connections have been closed.')
 
     async def release(self, conn):

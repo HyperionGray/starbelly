@@ -6,7 +6,7 @@ import logging
 from time import time
 import urllib.parse
 
-from . import raise_future_exception
+from . import cancel_futures, raise_future_exception
 
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,11 @@ class RateLimiter:
         self._default_limit = default_limit
         self._downloader = downloader
         self._expires = list()
+        self._expiry_added = asyncio.Event()
         self._queues = dict()
         self._rate_limits = dict()
         self._semaphore = asyncio.Semaphore(capacity)
         self._task = None
-        self._token_added = asyncio.Event()
 
     async def push(self, crawl_item):
         '''
@@ -56,14 +56,40 @@ class RateLimiter:
         token = self._get_token_for_url(crawl_item.url)
         if token not in self._queues:
             self._queues[token] = deque()
-            heappush(self._expires, (Expiry(time(), token)))
-            self._token_added.set()
+            self._add_expiry(Expiry(time(), token))
         self._queues[token].append(crawl_item)
 
     def remove_limit(self, domain):
         ''' Remove a rate limit. '''
         token = self._get_token_for_domain(domain)
         del self._rate_limits[token]
+
+    async def remove_job(self, job_id, finish_downloads=True):
+        '''
+        Remove all pending items for the given job.
+
+        If ``finish_downloads`` is ``True``, this will wait until the downloader
+        finishes any downloads it has started for this job. Otherwise, download
+        tasks are canceled, too.
+        '''
+
+        # Copy all existing queues to new queues but drop items matching the
+        # given job_id. This is faster than modifying queues in-place.
+        new_queues = dict()
+
+        for token, old_deque in self._queues.items():
+            new_deque = deque()
+
+            for item in old_deque:
+                if item.job_id != job_id:
+                    new_deque.append(item)
+
+            new_queues[token] = new_deque
+
+        self._queues = new_queues
+
+        # Ask the download to remove this job.
+        await self._downloader.remove_job(job_id, finish_downloads)
 
     def set_limit(self, domain, interval):
         ''' Set a rate limit. '''
@@ -72,15 +98,19 @@ class RateLimiter:
 
     def start(self):
         ''' Start the rate limiter task. '''
-        logger.info('Rate limiter is starting...')
         self._task = asyncio.ensure_future(self._run())
         raise_future_exception(self._task)
 
     async def stop(self):
         ''' Stop the rate limiter task. '''
-        self._task.cancel()
-        await asyncio.gather(self._task, return_exceptions=True)
-        logger.info('Rate limiter has stopped.')
+        if self._task is not None:
+            await cancel_futures(self._task)
+        self._task = None
+
+    def _add_expiry(self, expiry):
+        ''' Add the specified expiry to the heap. '''
+        heappush(self._expires, expiry)
+        self._expiry_added.set()
 
     async def _get_next_expiry(self):
         '''
@@ -88,28 +118,33 @@ class RateLimiter:
 
         If no tokens on heap, suspend until a token is available.
         '''
+
         # Peek at the next expiration.
         if len(self._expires) == 0:
-            await self._token_added.wait()
-            self._token_added.clear()
+            await self._expiry_added.wait()
+            self._expiry_added.clear()
 
-        now = time()
-        expires = self._expires[0].time
+        while True:
+            now = time()
+            expires = self._expires[0].time
 
-        # If the next expiry is in the future, then wait for expiration but
-        # interrupt if a new token is added to the heap.
-        if expires > now:
-            try:
-                await asyncio.wait_for(
-                    self._token_added.wait(),
-                    timeout=expires - now
-                )
-                self._token_added.clear()
-            except asyncio.TimeoutError:
-                pass
+            if expires <= now:
+                # The next expiry is in the past, so we can pop it right now.
+                break
+            else:
+                # The next expiry is in the future, so wait for it but also can
+                # be interrupted if somebody adds a new expiry to the heap.
+                try:
+                    await asyncio.wait_for(
+                        self._expiry_added.wait(),
+                        timeout=expires - now
+                    )
+                    self._expiry_added.clear()
+                except asyncio.TimeoutError:
+                    # The next item on the heap is ready to pop.
+                    break
 
         expiry = heappop(self._expires)
-
         return expiry
 
     def _get_token_for_domain(self, domain):
@@ -124,34 +159,43 @@ class RateLimiter:
         token = self._get_token_for_domain(parsed.hostname)
         return token
 
+    def _reschedule(self, crawl_item_future):
+        ''' When an item finishes, re-schedule its token. '''
+        crawl_item = crawl_item_future.result()
+        token = self._get_token_for_url(crawl_item.url)
+        limit = self._rate_limits.get(token, self._default_limit)
+        self._add_expiry(Expiry(time() + limit, token))
+
     async def _run(self):
         '''
         Schedule items for download.
 
-        Maintains the invariant that for every token in the heap, there is a
-        corresponding queue.
+        Maintains the invariant that if a token exists in the ``_expires`` heap,
+        then a queue exists for that token.
         '''
 
         logger.info('Rate limiter is running.')
 
-        while True:
-            # Get the next token and then get the next item for that token.
-            expiry = await self._get_next_expiry()
-            token = expiry.token
-            queue = self._queues[token]
+        try:
+            while True:
+                # Get the next token and then get the next item for that token.
+                expiry = await self._get_next_expiry()
+                token = expiry.token
+                queue = self._queues[token]
 
-            if len(queue) == 0:
-                # If nothing left in this queue, delete it and get another token
-                # instead.
-                del self._queues[token]
-                continue
+                if len(queue) == 0:
+                    # If nothing left in this queue, delete it and get another
+                    # token instead.
+                    del self._queues[token]
+                    continue
 
-            crawl_item = queue.popleft()
-            logger.debug('Popped %s', crawl_item.url)
-            await self._downloader.push(crawl_item)
-            self._semaphore.release()
-
-            # Schedule next expiration.
-            limit = self._rate_limits.get(token, self._default_limit)
-            expires = time() + limit
-            heappush(self._expires, (Expiry(expires, token)))
+                crawl_item = queue.popleft()
+                logger.debug('Popped %s', crawl_item.url)
+                await self._downloader.push(crawl_item)
+                self._semaphore.release()
+                crawl_item.completed.add_done_callback(self._reschedule)
+        except asyncio.CancelledError:
+            # Cancellation is okay.
+            raise
+        finally:
+            logger.info('Rate limiter has stopped.')

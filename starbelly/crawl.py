@@ -1,7 +1,8 @@
 import asyncio
 import base64
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from datetime import datetime
+import functools
 import logging
 
 from dateutil.tz import tzlocal
@@ -9,12 +10,13 @@ import hashlib
 import rethinkdb as r
 import w3lib.url
 
-from . import raise_future_exception
+from . import cancel_futures, raise_future_exception
 from .pubsub import PubSub
 from .url_extractor import extract_urls
 
 
 logger = logging.getLogger(__name__)
+FrontierItem = namedtuple('FrontierItem', ['url', 'cost'])
 
 
 class CrawlManager:
@@ -26,10 +28,19 @@ class CrawlManager:
         self._rate_limiter = rate_limiter
         self._running_jobs = dict()
 
-    async def load_job(id_):
-        ''' Load a crawl job from the database. '''
-
-        #TODO
+    async def cancel_job(self, job_id):
+        ''' Cancel a paused or running job. '''
+        try:
+            await self._running_jobs[job_id].cancel()
+        except KeyError:
+            # This job is already paused.
+            cancel_query = (
+                r.table('crawl_job')
+                 .get(job_id)
+                 .update({'status':'cancelled'})
+            )
+            async with self._db_pool.connection() as conn:
+                await cancel_query.run(conn)
 
     async def pause_all_jobs(self):
         ''' Pause all currently running jobs. '''
@@ -40,7 +51,24 @@ class CrawlManager:
         for job in running_jobs:
             tasks.append(asyncio.ensure_future(job.pause()))
 
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks)
+
+    async def pause_job(self, job_id):
+        ''' Pause a single job. '''
+        await self._running_jobs[job_id].pause()
+
+    async def resume_job(self, job_id):
+        ''' Resume a single job. '''
+        job_query = r.table('crawl_job').get(job_id).pluck('name')
+        async with self._db_pool.connection() as conn:
+            job_data = await job_query.run(conn)
+            name = job_data['name']
+            seeds = []
+        job = _CrawlJob(self._db_pool, self._rate_limiter, name, seeds)
+        job.id = job_id
+        self._running_jobs[job.id] = job
+        job_task = asyncio.ensure_future(job.run())
+        job_task.add_done_callback(functools.partial(self._cleanup_job, job))
 
     async def start_job(self, name, seeds):
         '''
@@ -49,21 +77,60 @@ class CrawlManager:
         Returns a job ID.
         '''
 
-        def cleanup_job(future):
-            ''' Remove a job from _running_jobs when it completes. '''
-            del self._running_jobs[future.result()]
-
         job = _CrawlJob(self._db_pool, self._rate_limiter, name, seeds)
         await job.save()
-        job.run().add_done_callback(cleanup_job)
         self._running_jobs[job.id] = job
+        job_task = asyncio.ensure_future(job.run())
+        job_task.add_done_callback(functools.partial(self._cleanup_job, job))
         return job.id
+
+    async def startup_check(self):
+        ''' Do some sanity checks at startup. '''
+
+        logger.info('Doing startup check...')
+
+        # If the server was previously killed, then some jobs may still be in
+        # the 'running' state even though they clearly aren't running. We mark
+        # those jobs as 'cancelled' since killing the jobs may have left them in
+        # an inconsistent state that can't be repaired.
+        count = 0
+        startup_query = r.table('crawl_job').get_all('running', index='status')
+        async with self._db_pool.connection() as conn:
+            cursor = await startup_query.run(conn)
+            while await cursor.fetch_next():
+                job = await cursor.next()
+                # Cancel the job.
+                await (
+                    r.table('crawl_job')
+                     .get(job['id'])
+                     .update({'status':'cancelled'})
+                     .run(conn)
+                )
+                # And clear its frontier. (this is pretty hacky)
+                dummy_job = _CrawlJob(self._db_pool, self._rate_limiter, '', [])
+                dummy_job.id = job['id']
+                await dummy_job.clear_frontier()
+                count += 1
+
+        if count > 0:
+            logger.warning(
+                '%d jobs have been cancelled by the startup check.', count
+            )
+
+    def _cleanup_job(self, job, future):
+        ''' Remove a job from _running_jobs when it completes. '''
+        try:
+            # Trigger any exception.
+            future.result()
+        except asyncio.CancelledError:
+            pass
+        del self._running_jobs[job.id]
 
 
 class _CrawlJob:
     ''' Manages job state and crawl frontier. '''
 
-    def __init__(self, db_pool, rate_limiter, name, seeds, max_cost=1):
+    def __init__(self, db_pool, rate_limiter, name, seeds, max_cost=2):
         ''' Constructor. '''
         self.id = None
         self.name = name
@@ -76,9 +143,7 @@ class _CrawlJob:
         self._insert_item_lock = asyncio.Lock()
         self._insert_item_sequence = 1
         self._max_cost = max_cost
-        self._pending_downloads = dict()
         self._rate_limiter = rate_limiter
-        self._short_id = None # First 4 octets of id, for readability.
         self._status = 'pending'
         self._stopped = asyncio.Future()
         self._task = None
@@ -87,13 +152,30 @@ class _CrawlJob:
         '''
         Cancel this job.
 
-        A canceled job is similar to a paused job but cannot be resumed.
+        A cancelled job is similar to a paused job but cannot be resumed.
         '''
 
-        logger.info('Crawl id={} is canceling...'.format(self._short_id))
-        await self._stop()
-        await self._set_status('canceled')
-        logger.info('Crawl id={} is canceled.'.format(self._short_id))
+        logger.info('Canceling crawl id={}…'.format(self.id[:8]))
+        await self._set_status('cancelled')
+        await self._stop(finish_downloads=False)
+        await self.clear_frontier()
+        logger.info('Crawl id={} has been cancelled.'.format(self.id[:8]))
+
+    async def clear_frontier(self):
+        ''' Clear `crawl_frontier` table for a specified job ID. '''
+        # We actually run two queries in order to efficiently use the index.
+        def get_query(queued_flag):
+            return (
+                r.table('crawl_frontier')
+                 .between((queued_flag, self.id, r.minval),
+                          (queued_flag, self.id, r.maxval),
+                          index='cost_index')
+                 .delete()
+            )
+
+        async with self._db_pool.connection() as conn:
+            for query in (get_query(True), get_query(False)):
+                await query.run(conn)
 
     async def pause(self):
         '''
@@ -102,19 +184,65 @@ class _CrawlJob:
         A paused job may be resumed later.
         '''
 
-        logger.info('Crawl id={} is pausing...'.format(self._short_id))
-        await self._stop()
+        logger.info('Pausing crawl id={}…'.format(self.id[:8]))
         await self._set_status('paused')
-        logger.info('Crawl id={} is paused.'.format(self._short_id))
+        await self._stop(finish_downloads=True)
 
-    def run(self):
-        ''' Main loop for job. '''
-        self._task = asyncio.ensure_future(self._run())
-        raise_future_exception(self._task)
-        return self._stopped
+        # Set the queued flag on frontier items to False.
+        frontier_query = (
+            r.table('crawl_frontier')
+            .between((True, self.id, r.minval),
+                     (True, self.id, r.maxval),
+                     index='cost_index')
+            .update({'queued': False})
+        )
+
+        async with self._db_pool.connection() as conn:
+            await frontier_query.run(conn)
+
+        logger.info('Crawl id={} has been paused.'.format(self.id[:8]))
+
+    async def run(self):
+        ''' The main loop for a job. '''
+        self._task = asyncio.Task.current_task()
+
+        try:
+            new_data = {}
+
+            if self._status == 'pending':
+                seeds = [FrontierItem(url=seed, cost=0) for seed in self.seeds]
+                await self._add_frontier_items(seeds)
+                self._status = 'running'
+                new_data['started_at'] = datetime.now(tzlocal())
+            elif self._status == 'paused':
+                logger.error('RELOAD FRONTIER')
+                await self._reload_frontier()
+                self._status = 'running'
+            else:
+                raise Exception('Cannot start or resume a job with status={}'
+                    .format(self._status))
+
+            new_data['status'] = self._status
+
+            async with self._db_pool.connection() as conn:
+                query = r.table('crawl_job').get(self.id).update(new_data)
+                await query.run(conn)
+
+            logger.info('Job id={} is running...'.format(self.id[:8]))
+
+            while True:
+                frontier_item = await self._next_frontier_item()
+                crawl_item = _CrawlItem(self.id, self._handle_download,
+                    frontier_item)
+                await self._rate_limiter.push(crawl_item)
+        except asyncio.CancelledError:
+            # We expect to be cancelled when this job stops running
+            raise
+        finally:
+            self._task = None
 
     async def save(self):
-        ''' Insert or update job metadata in database. '''
+        ''' Insert job metadata in database. '''
 
         job_data = {
             'name': self.name,
@@ -135,37 +263,43 @@ class _CrawlJob:
             if self.id is None:
                 result = await r.table('crawl_job').insert(job_data).run(conn)
                 self.id = result['generated_keys'][0]
-                self._short_id = self.id[:8]
             else:
                 data['id'] = self.id
                 r.table('crawl_job').update(data).run(conn)
 
-    async def _add_frontier_url(self, url, cost):
+    async def _add_frontier_items(self, frontier_items):
         '''
-        Add a URL to the frontier with the specified cost.
+        Add a list of extracted URLs to the frontier with the specified cost.
 
         If the URL has been seen before, it is silently ignored.
         '''
-        url_can = w3lib.url.canonicalize_url(url)
-        hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
-        url_hash = hash_.digest()
+        insert_items = list()
 
-        if url_hash not in self._frontier_seen:
-            logger.debug('Adding URL %s (cost=%0.2f)', url, cost)
+        for frontier_item in frontier_items:
+            if frontier_item.cost > self._max_cost:
+                continue
+
+            url_can = w3lib.url.canonicalize_url(frontier_item.url)
+            hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
+            url_hash = hash_.digest()
+
+            if url_hash not in self._frontier_seen:
+                logger.debug('Adding URL %s (cost=%0.2f)',
+                    frontier_item.url, frontier_item.cost)
+                insert_items.append({
+                    'cost': frontier_item.cost,
+                    'job_id': self.id,
+                    'queued': False,
+                    'url': frontier_item.url,
+                    'url_can': url_can,
+                    'url_hash': url_hash,
+                })
             self._frontier_seen.add(url_hash)
 
-            frontier_item = {
-                'cost': cost,
-                'job_id': self.id,
-                'queued': False,
-                'url': url,
-                'url_can': url_can,
-                'url_hash': url_hash,
-            }
-
+        if len(insert_items) > 0:
             async with self._db_pool.connection() as conn:
-                self._frontier_size += 1
-                await r.table('crawl_frontier').insert(frontier_item).run(conn)
+                self._frontier_size += len(insert_items)
+                await r.table('crawl_frontier').insert(insert_items).run(conn)
 
     async def _complete(self):
         ''' Update status to indicate this job is complete. '''
@@ -184,22 +318,27 @@ class _CrawlJob:
             query = r.table('crawl_job').get(self.id).update(new_data)
             await query.run(conn)
 
-        logger.info('Crawl id={} is complete.'.format(self._short_id))
+        logger.info('Crawl id={} is complete.'.format(self.id[:8]))
 
-    async def _download_completed(self, crawl_item_completed_future):
+    async def _handle_download(self, crawl_item):
         ''' A coroutine that processes a downloaded item. '''
-
-        crawl_item = await crawl_item_completed_future
 
         # Note that all item writes for a single job are serialized so that we
         # can insert an incrementing sequence number.
         async with self._insert_item_lock:
             async with self._db_pool.connection() as conn:
+                if crawl_item.exception is None:
+                    duration = crawl_item.duration.total_seconds()
+                    is_success = crawl_item.status_code // 100 == 2
+                else:
+                    duration = None
+                    is_success = False
+
                 item_data = {
                     'body': crawl_item.body,
                     'completed_at': crawl_item.completed_at,
                     'cost': crawl_item.cost,
-                    'duration': crawl_item.duration.total_seconds(),
+                    'duration': duration,
                     'exception': crawl_item.exception,
                     'headers': crawl_item.headers,
                     'insert_sequence': self._insert_item_sequence,
@@ -216,32 +355,23 @@ class _CrawlJob:
 
         await self._update_job_stats(crawl_item)
 
-        # If successful, extract URLs.
-        if crawl_item.exception is None and self._status == 'running':
-            for new_url in extract_urls(crawl_item):
-                new_item_cost = crawl_item.cost + 1
-                if new_item_cost <= self._max_cost:
-                    await self._add_frontier_url(new_url, new_item_cost)
-
-        # Cleanup download task.
-        del self._pending_downloads[crawl_item]
+        # Remove item from frontier.
         async with self._db_pool.connection() as conn:
             await r.table('crawl_frontier').get(crawl_item.frontier_id) \
                    .delete().run(conn)
             self._frontier_size -= 1
 
-        # If this is the last item in this crawl, then the crawl is complete.
-        if self._frontier_size == 0:
-            await self._complete()
+        # Extract links.
+        if crawl_item.exception is None:
+            extracted = extract_urls(crawl_item)
+            new_cost = crawl_item.cost + 1
+            frontier_items = [FrontierItem(url, new_cost) for url in extracted]
+            await self._add_frontier_items(frontier_items)
 
-    def _download_started(self, crawl_item_started_future):
-        ''' Called when a download starts. '''
-        crawl_item = crawl_item_started_future.result()
-        dl_task = asyncio.ensure_future(
-            self._download_completed(crawl_item.completed)
-        )
-        raise_future_exception(dl_task)
-        self._pending_downloads[crawl_item] = dl_task
+        if self._status == 'running' and self._frontier_size == 0:
+            # If this is the last item in this crawl, then the crawl is
+            # complete.
+            await self._complete()
 
     async def _next_frontier_item(self):
         '''
@@ -288,39 +418,41 @@ class _CrawlJob:
         logger.debug('Popped %s', result['url'])
         return result
 
-    async def _run(self):
-        ''' The main loop for a job. '''
+    async def _reload_frontier(self):
+        '''
+        When un-pausing a crawl, we need to reload the `_frontier_seen` set and
+        reload the frontier
+        '''
 
-        try:
-            new_data = {}
+        logger.info('Reloading frontier for crawl=%s (this may take a few '
+                    'seconds)', self.id[:8])
 
-            if self._status == 'pending':
-                for seed in self.seeds:
-                    await self._add_frontier_url(seed, cost=0)
-                self._status = 'running'
-                new_data['started_at'] = datetime.now(tzlocal())
-            elif self._status == 'paused':
-                self._status = 'running'
-            else:
-                raise Exception('Cannot start or resume a crawl: status={}'
-                    .format(self._status))
+        item_query = (
+            r.table('crawl_item')
+            .between((self.id, r.minval),
+                     (self.id, r.maxval),
+                     index='sync_index')
+            .order_by(index='sync_index')
+            .pluck('url_hash')
+        )
 
-            new_data['status'] = self._status
+        frontier_query = (
+            r.table('crawl_frontier')
+            .between((False, self.id, r.minval),
+                     (False, self.id, r.maxval),
+                     index='cost_index')
+            .order_by(index='cost_index')
+            .pluck('url_hash')
+        )
 
-            async with self._db_pool.connection() as conn:
-                query = r.table('crawl_job').get(self.id).update(new_data)
-                await query.run(conn)
+        with self._db_pool.connection() as conn:
+            for query in (item_query, frontier_query):
+                cursor = await query.run(conn)
+                while await cursor.fetch_next():
+                    item = await cursor.next()
+                    self._frontier_seen.add(item['url_hash'])
 
-            logger.info('Crawl id={} is running...'.format(self._short_id))
-
-            while True:
-                frontier_item = await self._next_frontier_item()
-                crawl_item = _CrawlItem(frontier_item)
-                crawl_item.started.add_done_callback(self._download_started)
-                await self._rate_limiter.push(crawl_item)
-        except asyncio.CancelledError:
-            # We expect to be canceled when this job stops running
-            pass
+        logger.info('Reloading frontier for crawl=%s is complete.', self.id[:8])
 
     async def _set_status(self, status):
         ''' Set job status. '''
@@ -332,27 +464,16 @@ class _CrawlJob:
             query = table.get(self.id).update({'status': status})
             await query.run(conn)
 
-    async def _stop(self):
-        ''' Stop the job. '''
+    async def _stop(self, finish_downloads=True):
+        '''
+        Stop the job.
 
-        self._task.cancel()
-        await asyncio.gather(self._task, return_exceptions=True)
-        pending_count = len(self._pending_downloads)
+        If ``finish_downloads`` is ``True``, then this will wait for the
+        job's open downloads to finish before returning.
+        '''
 
-        if pending_count > 0:
-            logger.info(
-                'Crawl id={} is waiting for {} downloads to finish...'
-                .format(self._short_id, len(pending_count))
-            )
-            download_tasks = self._pending_downloads.values()
-            await asyncio.gather(*download_tasks)
-            logger.info(
-                'Crawl id={} downloads have finished.'
-                .format(self._short_id)
-            )
-
-        logger.info('Crawl id={} has stopped running.'.format(self._short_id))
-        self._stopped.set_result(self.id)
+        await cancel_futures(self._task)
+        await self._rate_limiter.remove_job(self.id, finish_downloads)
 
     async def _update_job_stats(self, crawl_item):
         '''
@@ -395,20 +516,22 @@ class _CrawlJob:
 class _CrawlItem:
     ''' Represents a resource to be crawled and the result of crawling it. '''
 
-    def __init__(self, frontier_item):
+    def __init__(self, job_id, download_callback, frontier_item):
         '''
         Constructor.
 
         A ``frontier_item`` is a document from the crawl_frontier table.
         '''
-        # These members are used for coordination with the job.
-        self.started = asyncio.Future()
+
+        self.job_id = job_id
+        self.download_callback = download_callback
         self.completed = asyncio.Future()
 
         # These members are persistent.
         self.body = None
         self.completed_at = None
         self.cost = frontier_item['cost']
+        self.duration = None
         self.exception = None
         self.frontier_id = frontier_item['id']
         self.headers = None
@@ -426,7 +549,6 @@ class _CrawlItem:
         self.headers = headers
         self.status = 'complete'
         self.status_code = status_code
-        self.completed.set_result(self)
 
     def set_start(self):
         '''
@@ -434,4 +556,3 @@ class _CrawlItem:
         is sent.
         '''
         self.started_at = datetime.now(tzlocal())
-        self.started.set_result(self)

@@ -54,7 +54,7 @@ class CrawlSyncSubscription:
     async def run(self):
         ''' Run the subscription. '''
 
-        backoff = 1 # Exponential backoff, e.g. 1, 2, 4, 8, ..., 32
+        backoff = 1 # Exponential backoff, e.g. 1, 2, 4, 8, 16, 32
         out_of_order_count = 0
         await self._set_initial_job_status()
         self._tracker.job_status_changed.listen(self._handle_job_status)

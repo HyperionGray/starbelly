@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 import websockets
 
-from . import raise_future_exception
+from . import cancel_futures, raise_future_exception
 from .pubsub import PubSub
 from .subscription import CrawlSyncSubscription, JobStatusSubscription
 
@@ -39,12 +39,16 @@ class Server:
         self._port = port
         self._subscriptions = defaultdict(dict)
         self._tracker = tracker
+        self._websocket_server = None
 
         self._handlers = {
             'ping': self._ping,
-            'start_crawl': self._start_crawl,
-            'subscribe_crawl_sync': self._subscribe_crawl_sync,
-            'subscribe_job_status': self._subscribe_job_status,
+            'job.cancel': self._cancel_job,
+            'job.pause': self._pause_job,
+            'job.resume': self._resume_job,
+            'job.start': self._start_job,
+            'job.subscribe.status': self._subscribe_job_status,
+            'job.subscribe.sync': self._subscribe_crawl_sync,
             'unsubscribe': self._unsubscribe,
         }
 
@@ -91,9 +95,7 @@ class Server:
                 await websocket.send(json.dumps(response, default=custom_json))
             except websockets.exceptions.ConnectionClosed:
                 subscriptions = self._subscriptions[websocket].values()
-                for subscription in subscriptions:
-                    subscription.cancel()
-                await asyncio.gather(*subscriptions, return_exceptions=True)
+                await cancel_futures(*subscriptions)
                 del self._subscriptions[websocket]
                 self._clients.remove(websocket)
                 logger.info('Connection closed: {}:{}'.format(
@@ -102,40 +104,36 @@ class Server:
                 ))
                 break
             except asyncio.CancelledError:
-                msg = 'Connection handler canceled; closing socket {}:{}.'
-                logger.info(msg.format(
-                    websocket.remote_address[0],
-                    websocket.remote_address[1],
-                ))
                 try:
                     await websocket.close()
-                except websockets.exceptions.InvalidState:
+                except websocket.exceptions.InvalidState:
                     pass
 
-    def start(self):
-        ''' Start the websocket server. Returns a coroutine. '''
+    async def start(self):
+        ''' Start the websocket server. '''
         logger.info('Starting server on {}:{}'.format(self._host, self._port))
-        return websockets.serve(self.handle_connection, self._host, self._port)
+        self._websocket_server = await websockets.serve(self.handle_connection,
+            self._host, self._port)
 
     async def stop(self):
         ''' Gracefully stop the websocket server. '''
 
         logger.info('Ending subscriptions...')
-        to_gather = list()
+        sub_tasks = list()
         for socket, socket_subs in self._subscriptions.items():
             for subscription_id, subscription in socket_subs.items():
-                subscription.cancel()
-                to_gather.append(subscription)
-        await asyncio.gather(*to_gather, return_exceptions=True)
-        self._subscriptions.clear()
+                sub_tasks.append(subscription)
+        await cancel_futures(*sub_tasks)
         logger.info('All subscriptions ended.')
 
-        # Work on a copy of self._clients, because disconnects will modify the
-        # set while we are iterating.
         logger.info('Closing websockets...')
-        for client in list(self._clients):
-            await client.close()
+        self._websocket_server.close()
+        await self._websocket_server.wait_closed()
         logger.info('All websockets closed.')
+
+    async def _cancel_job(self, socket, job_id):
+        ''' Cancel a running or paused job. '''
+        await self._crawl_manager.cancel_job(job_id)
 
     async def _dispatch_command(self, handler, args):
         ''' Dispatch a command received from a client. '''
@@ -145,6 +143,10 @@ class Server:
             response = handler(**args)
         return response
 
+    async def _pause_job(self, socket, job_id):
+        ''' Pause a job. '''
+        await self._crawl_manager.pause_job(job_id)
+
     def _ping(self, socket):
         '''
         A client may ping the server to prevent connection timeout.
@@ -153,7 +155,11 @@ class Server:
         '''
         pass
 
-    async def _start_crawl(self, socket, name, seeds):
+    async def _resume_job(self, socket, job_id):
+        ''' Resume a paused job. '''
+        await self._crawl_manager.resume_job(job_id)
+
+    async def _start_job(self, socket, name, seeds):
         ''' Handle the start crawl command. '''
         if name.strip() == '':
             url = urlparse(seeds[0])
@@ -187,7 +193,6 @@ class Server:
     async def _unsubscribe(self, socket, subscription_id):
         ''' Handle an unsubscribe command. '''
         task = self._subscriptions[socket][subscription_id]
-        task.cancel()
-        await asyncio.gather(task, return_exceptions=True)
+        await cancel_futures(task)
         del self._subscriptions[socket][subscription_id]
         return {'subscription_id': subscription_id}
