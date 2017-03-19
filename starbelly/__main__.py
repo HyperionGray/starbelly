@@ -11,7 +11,7 @@ import rethinkdb as r
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from . import cancel_futures, get_path, raise_future_exception
+from . import cancel_futures, daemon_task, get_path
 from .db import AsyncRethinkPool
 from .config import get_config
 from .crawl import CrawlManager
@@ -110,64 +110,42 @@ class Starbelly:
     def __init__(self, config, args, logger):
         ''' Constructor. '''
         self._args = args
-        self._crawl_manager = None
         self._config = config
-        self._db_pool = None
-        self._downloader = None
-        self._idle_task = None
         self._logger = logger
+        self._main_task = None
         self._quit_count = 0
-        self._rate_limiter = None
-        self._server = None
-        self._tracker = None
 
-    def run(self):
-        ''' Run the event loop. '''
-
-        self._logger.info('Starbelly is starting...')
-        r.set_loop_type('asyncio')
-        self._db_pool = AsyncRethinkPool(self._db_factory())
-        self._tracker = Tracker(self._db_pool)
-        self._downloader = Downloader()
-        self._rate_limiter = RateLimiter(self._downloader)
-        self._crawl_manager = CrawlManager(self._db_pool, self._rate_limiter)
-
-        self._server = Server(
+    async def run(self):
+        ''' The main task. '''
+        db_pool = AsyncRethinkPool(self._db_factory())
+        tracker = Tracker(db_pool)
+        downloader = Downloader()
+        rate_limiter = RateLimiter(downloader)
+        crawl_manager = CrawlManager(db_pool, rate_limiter)
+        server = Server(
             self._args.ip,
             self._args.port,
-            self._db_pool,
-            self._crawl_manager,
-            self._tracker
+            db_pool,
+            crawl_manager,
+            tracker
         )
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._crawl_manager.startup_check())
-        self._rate_limiter.start()
-        self._tracker.start()
-        loop.run_until_complete(self._server.start())
-        self._idle_task = asyncio.ensure_future(self._idle())
-
         try:
-            loop.run_until_complete(self._idle_task)
+            await crawl_manager.startup_check()
+            rate_limiter_task = daemon_task(rate_limiter.run())
+            tracker_task = daemon_task(tracker.run())
+            server_task = daemon_task(server.run())
+
+            # This main task idles after startup: it only supervises other
+            # tasks.
+            while True:
+                await asyncio.sleep(1)
         except asyncio.CancelledError:
             # Components must be shut down in the proper order.
-            loop.run_until_complete(self._server.stop())
-            loop.run_until_complete(self._rate_limiter.stop())
-            loop.run_until_complete(self._crawl_manager.pause_all_jobs())
-            loop.run_until_complete(self._tracker.stop())
-            loop.run_until_complete(self._db_pool.close())
-
-            tasks = [t for t in asyncio.Task.all_tasks() if not t.done()]
-            if len(tasks) > 0:
-                self._logger.error('There are %d unfinished tasks: %r',
-                    len(tasks), tasks)
-            for t in tasks:
-                if hasattr(t, '_meh'):
-                    import traceback
-                    traceback.print_tb(t._meh)
-
-        loop.close()
-        self._logger.info('Starbelly has stopped.')
+            await cancel_futures(server_task)
+            await crawl_manager.pause_all_jobs()
+            await cancel_futures(rate_limiter_task, tracker_task)
+            await db_pool.close()
 
     def shutdown(self, signum, frame):
         ''' Kill the main task. '''
@@ -180,11 +158,28 @@ class Starbelly:
             if self._quit_count == 1:
                 self._logger.warning(
                     'Caught %s: trying graceful shutdown.', signame)
-                self._idle_task.cancel()
+                self._main_task.cancel()
             elif self._quit_count == 2:
                 self._logger.warning(
                     'Caught 2nd %s: shutting down immediately.', signame)
                 sys.exit(1)
+
+    def start(self):
+        ''' Start the event loop. '''
+        self._logger.info('Starbelly is starting...')
+        r.set_loop_type('asyncio')
+        loop = asyncio.get_event_loop()
+        self._main_task = asyncio.ensure_future(self.run())
+        loop.run_until_complete(self._main_task)
+
+        # Check if any tasks weren't properly cleaned up.
+        tasks = [t for t in asyncio.Task.all_tasks() if not t.done()]
+        if len(tasks) > 0:
+            self._logger.error('There are %d unfinished tasks: %r',
+                len(tasks), tasks)
+
+        loop.close()
+        self._logger.info('Starbelly has stopped.')
 
     def _db_factory(self):
         ''' Returns a function that connects to the database. '''
@@ -201,16 +196,6 @@ class Starbelly:
             )
 
         return db_connect
-
-    async def _idle(self):
-        '''
-        A dummy coroutine.
-
-        To exit the event loop, it is faster to cancel a process in that loop
-        than it is to call loop.stop(). So we use this dummy coroutine to stop
-        the entire loop.
-        '''
-        await asyncio.Event().wait()
 
 
 def configure_logging(log_level):
@@ -279,7 +264,7 @@ def main():
         starbelly = Starbelly(config, args, logger)
         signal.signal(signal.SIGINT, starbelly.shutdown)
         signal.signal(signal.SIGTERM, starbelly.shutdown)
-        starbelly.run()
+        starbelly.start()
 
 
 if __name__ == '__main__':

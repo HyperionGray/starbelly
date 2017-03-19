@@ -21,6 +21,18 @@ async def cancel_futures(*futures):
         pass
 
 
+def daemon_task(coro):
+    '''
+    Create a "daemon" task from a coroutine.
+
+    This is a coroutine that never returns, so the task must never be awaited,
+    but we still want to know about exceptions raised by the task.
+    '''
+    task = asyncio.ensure_future(coro)
+    raise_future_exception(task)
+    return task
+
+
 def get_path(relative_path=None):
     """ Return an absolute path to a project relative path. """
 

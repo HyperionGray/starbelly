@@ -24,9 +24,7 @@ def extract_urls(crawl_item):
         doc = lxml.html.document_fromstring(crawl_item.body)
         doc.make_links_absolute(base_url, resolve_base_href=True)
         for el, attr, url, pos in doc.iterlinks():
-            #TODO
-            if el.tag == 'a' and url.startswith('http') and 'markhaa.se' in url and url.endswith('.html'):
-            # if el.tag == 'a' and url.startswith('http'):
+            if el.tag == 'a' and url.startswith('http'):
                 extracted.append(url)
 
     return extracted

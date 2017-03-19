@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict, namedtuple
 import logging
+import traceback
 
 import aiohttp
 import async_timeout
@@ -103,8 +104,9 @@ class Downloader:
             await self._download_item(crawl_item)
             crawl_item.completed.set_result(crawl_item)
             await crawl_item.download_callback(crawl_item)
-            logger.info('%d %s (cost=%0.2f)', crawl_item.status_code,
-                crawl_item.url, crawl_item.cost)
+            if crawl_item.exception is None:
+                logger.info('%d %s (cost=%0.2f)', crawl_item.status_code,
+                    crawl_item.url, crawl_item.cost)
         except asyncio.CancelledError:
             # Cancelling the download is okay.
             raise
@@ -128,5 +130,5 @@ class Downloader:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            logger.error('Failed downloading %s (exc=%s)', crawl_item.url, exc)
-            crawl_item.exception = exc
+            logger.error('Failed downloading %s (exc=%r)', crawl_item.url, exc)
+            crawl_item.exception = traceback.format_exc()

@@ -1,7 +1,5 @@
 import asyncio
 
-from . import raise_future_exception
-
 
 class PubSub:
     ''' A really simple, in-memory publish-subscribe system. '''

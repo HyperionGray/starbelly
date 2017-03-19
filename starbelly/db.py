@@ -2,9 +2,45 @@ import asyncio
 import logging
 
 import rethinkdb as r
+from rethinkdb.errors import ReqlCursorEmpty
 
 
 logger = logging.getLogger(__name__)
+
+
+class AsyncCursorIterator:
+    '''
+    An async iterator for a RethinkDB cursor.
+
+    This will eventually be part of RethinkDB API (see
+    https://github.com/rethinkdb/rethinkdb/pull/6291) but for now I have rolled
+    my own.
+    '''
+
+    def __init__(self, cursor):
+        ''' Constructor. '''
+        self._cursor = cursor
+
+    def __aiter__(self):
+        ''' Return self, an async iterator. '''
+        return self
+
+    async def __anext__(self):
+        ''' Get next item from cursor. '''
+        try:
+            while True:
+                return await asyncio.shield(self._cursor.next())
+        except ReqlCursorEmpty:
+            raise StopAsyncIteration
+        except asyncio.CancelledError:
+            # Cancellation is okay.
+            raise
+        finally:
+            pass
+            #TODO close() isn't a coroutine in this version of the driver. In
+            # the future, it should be possible to do this:
+            # await self._cursor.close()
+            # But for now, calling this synchronously leads to an error.
 
 
 class AsyncRethinkPool:
@@ -77,7 +113,7 @@ class AsyncRethinkPool:
         return conn
 
     def connection(self):
-        ''' Return a context manager that yields a connection. '''
+        ''' Return a context manager that manages a connection. '''
         return _AsyncRethinkContextManager(self)
 
     async def close(self):

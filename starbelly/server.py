@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 import websockets
 
-from . import cancel_futures, raise_future_exception
+from . import cancel_futures, daemon_task
 from .pubsub import PubSub
 from .subscription import CrawlSyncSubscription, JobStatusSubscription
 
@@ -109,27 +109,28 @@ class Server:
                 except websocket.exceptions.InvalidState:
                     pass
 
-    async def start(self):
-        ''' Start the websocket server. '''
-        logger.info('Starting server on {}:{}'.format(self._host, self._port))
-        self._websocket_server = await websockets.serve(self.handle_connection,
-            self._host, self._port)
+    async def run(self):
+        ''' Run the websocket server. '''
+        try:
+            logger.info('Starting server on {}:{}'.format(self._host, self._port))
+            self._websocket_server = await websockets.serve(self.handle_connection,
+                self._host, self._port)
 
-    async def stop(self):
-        ''' Gracefully stop the websocket server. '''
+            # This task idles: it's only purpose is to supervise child tasks.
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            logger.info('Ending subscriptions...')
+            sub_tasks = list()
+            for socket, socket_subs in self._subscriptions.items():
+                for subscription_id, subscription in socket_subs.items():
+                    sub_tasks.append(subscription)
+            await cancel_futures(*sub_tasks)
+            logger.info('All subscriptions ended.')
 
-        logger.info('Ending subscriptions...')
-        sub_tasks = list()
-        for socket, socket_subs in self._subscriptions.items():
-            for subscription_id, subscription in socket_subs.items():
-                sub_tasks.append(subscription)
-        await cancel_futures(*sub_tasks)
-        logger.info('All subscriptions ended.')
-
-        logger.info('Closing websockets...')
-        self._websocket_server.close()
-        await self._websocket_server.wait_closed()
-        logger.info('All websockets closed.')
+            logger.info('Closing websockets...')
+            self._websocket_server.close()
+            await self._websocket_server.wait_closed()
+            logger.info('All websockets closed.')
 
     async def _cancel_job(self, socket, job_id):
         ''' Cancel a running or paused job. '''
@@ -175,9 +176,8 @@ class Server:
         subscription = CrawlSyncSubscription(
             self._tracker, self._db_pool, socket, job_id, sync_token
         )
-        coro = asyncio.ensure_future(subscription.run())
+        coro = daemon_task(subscription.run())
         self._subscriptions[socket][subscription.id] = coro
-        raise_future_exception(coro)
         return {'subscription_id': subscription.id}
 
     def _subscribe_job_status(self, socket, min_interval=1):
@@ -185,9 +185,8 @@ class Server:
         subscription = JobStatusSubscription(
             self._tracker, socket, min_interval
         )
-        coro = asyncio.ensure_future(subscription.run())
+        coro = daemon_task(subscription.run())
         self._subscriptions[socket][subscription.id] = coro
-        raise_future_exception(coro)
         return {'subscription_id': subscription.id}
 
     async def _unsubscribe(self, socket, subscription_id):

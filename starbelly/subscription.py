@@ -10,6 +10,8 @@ from uuid import UUID, uuid1
 
 import rethinkdb as r
 
+from .db import AsyncCursorIterator
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +65,7 @@ class CrawlSyncSubscription:
         while True:
             async with self._db_pool.connection() as conn:
                 cursor = await self._get_query().run(conn)
-                while await cursor.fetch_next():
-                    item = await cursor.next()
-
+                async for item in AsyncCursorIterator(cursor):
                     # Make sure this item matches the expected sequence number.
                     if item['insert_sequence'] != self._sequence:
                         out_of_order_count += 1

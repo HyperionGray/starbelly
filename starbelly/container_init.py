@@ -183,6 +183,12 @@ def init_db(db_config):
 
     logger.info('Connecting to RethinkDB: {}'.format(db_config['host']))
     conn = connect_db(db_config)
+
+    try:
+        r.db_drop('test').run(conn)
+    except r.ReqlRuntimeError:
+        pass # Already deleted
+
     db_name = db_config['db']
     ensure_db(conn, db_name)
     ensure_db_user(conn, db_name, db_config['user'], db_config['password'])
@@ -193,7 +199,7 @@ def init_db(db_config):
     ensure_db_index(conn, 'crawl_job', 'status')
     ensure_db_table(conn, 'crawl_frontier')
     ensure_db_index(conn, 'crawl_frontier', 'cost_index',
-        [r.row['queued'], r.row['job_id'], r.row['cost']])
+        [r.row['job_id'], r.row['cost']])
     conn.close()
 
 
