@@ -3,6 +3,7 @@ aiohttp
 async_timeout
 chardet
 lxml
+protobuf
 python-dateutil
 python-mimeparse
 rethinkdb

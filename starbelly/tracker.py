@@ -20,7 +20,7 @@ class Tracker:
     '''
 
     JOB_STATUS_FIELDS = [
-        'id', 'name', 'status', 'item_count',
+        'id', 'name', 'run_state', 'item_count',
         'http_success_count', 'http_error_count',
         'exception_count', 'http_status_counts',
     ]
@@ -51,14 +51,13 @@ class Tracker:
                 # Get current status for all running jobs.
                 initial_query = (
                     r.table('crawl_job')
-                     .get_all('paused', 'running', index='status')
+                     .get_all('paused', 'running', index='run_state')
                      .pluck(*self.JOB_STATUS_FIELDS)
                 )
                 cursor = await initial_query.run(conn)
                 async for job in AsyncCursorIterator(cursor):
                     job_id = job.pop('id')
                     self._job_statuses[job_id] = job
-                cursor.close()
 
                 # Now track updates to job status. (There's a race between initial
                 # state and first update, but that shouldn't be a big problem in
@@ -81,7 +80,7 @@ class Tracker:
                     job_id = job.pop('id')
                     self.job_status_changed.publish(job_id, job)
 
-                    if job['status'] in ('pending', 'running'):
+                    if job['run_state'] in ('pending', 'running'):
                         self._job_statuses[job_id] = job
                     else:
                         self._job_statuses.pop(job_id, None)

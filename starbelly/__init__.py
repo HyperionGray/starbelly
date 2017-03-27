@@ -12,6 +12,9 @@ async def cancel_futures(*futures):
     This handles cancellation for Task vs Future correctly and does not raise
     CancelledError to its caller.
     '''
+    if len(futures) == 0:
+        return
+
     gather = asyncio.gather(*futures)
     gather.cancel()
 
