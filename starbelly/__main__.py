@@ -18,6 +18,7 @@ from .crawl import CrawlManager
 from .downloader import Downloader
 from .rate_limiter import RateLimiter
 from .server import Server
+from .subscription import SubscriptionManager
 from .tracker import Tracker
 
 
@@ -122,11 +123,13 @@ class Starbelly:
         downloader = Downloader()
         rate_limiter = RateLimiter(downloader)
         crawl_manager = CrawlManager(db_pool, rate_limiter)
+        subscription_manager = SubscriptionManager(db_pool)
         server = Server(
             self._args.ip,
             self._args.port,
             db_pool,
             crawl_manager,
+            subscription_manager,
             tracker
         )
 
@@ -142,6 +145,7 @@ class Starbelly:
                 await asyncio.sleep(1)
         except asyncio.CancelledError:
             # Components must be shut down in the proper order.
+            await subscription_manager.close_all()
             await cancel_futures(server_task)
             await crawl_manager.pause_all_jobs()
             await cancel_futures(rate_limiter_task, tracker_task)

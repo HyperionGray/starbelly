@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/client.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/client.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xff\x02\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12&\n\x04ping\x18\x02 \x01(\x0b\x32\x16.starbelly.RequestPingH\x00\x12=\n\x11set_job_run_state\x18\x03 \x01(\x0b\x32 .starbelly.RequestSetJobRunStateH\x00\x12/\n\tstart_job\x18\x04 \x01(\x0b\x32\x1a.starbelly.RequestStartJobH\x00\x12\x45\n\x15subscribe_jobs_status\x18\x05 \x01(\x0b\x32$.starbelly.RequestSubscribeJobStatusH\x00\x12@\n\x12subscribe_job_sync\x18\x06 \x01(\x0b\x32\".starbelly.RequestSubscribeJobSyncH\x00\x12\x34\n\x0bunsubscribe\x18\x07 \x01(\x0b\x32\x1d.starbelly.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"\x1b\n\x0bRequestPing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"R\n\x15RequestSetJobRunState\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12)\n\trun_state\x18\x02 \x02(\x0e\x32\x16.starbelly.JobRunState\".\n\x0fRequestStartJob\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05seeds\x18\x02 \x03(\t\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"=\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05')
+  serialized_pb=_b('\n\x15protobuf/client.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xff\x02\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12&\n\x04ping\x18\x02 \x01(\x0b\x32\x16.starbelly.RequestPingH\x00\x12=\n\x11set_job_run_state\x18\x03 \x01(\x0b\x32 .starbelly.RequestSetJobRunStateH\x00\x12/\n\tstart_job\x18\x04 \x01(\x0b\x32\x1a.starbelly.RequestStartJobH\x00\x12\x45\n\x15subscribe_jobs_status\x18\x05 \x01(\x0b\x32$.starbelly.RequestSubscribeJobStatusH\x00\x12@\n\x12subscribe_job_sync\x18\x06 \x01(\x0b\x32\".starbelly.RequestSubscribeJobSyncH\x00\x12\x34\n\x0bunsubscribe\x18\x07 \x01(\x0b\x32\x1d.starbelly.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"\x1b\n\x0bRequestPing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"R\n\x15RequestSetJobRunState\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12)\n\trun_state\x18\x02 \x02(\x0e\x32\x16.starbelly.JobRunState\".\n\x0fRequestStartJob\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05seeds\x18\x02 \x03(\t\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"[\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\x12\x1c\n\x0e\x63ompression_ok\x18\x03 \x01(\x08:\x04true\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05')
   ,
   dependencies=[protobuf_dot_shared__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -263,6 +263,13 @@ _REQUESTSUBSCRIBEJOBSYNC = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='compression_ok', full_name='starbelly.RequestSubscribeJobSync.compression_ok', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=True, default_value=True,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -276,7 +283,7 @@ _REQUESTSUBSCRIBEJOBSYNC = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=660,
-  serialized_end=721,
+  serialized_end=751,
 )
 
 
@@ -306,8 +313,8 @@ _REQUESTUNSUBSCRIBE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=723,
-  serialized_end=768,
+  serialized_start=753,
+  serialized_end=798,
 )
 
 _REQUEST.fields_by_name['ping'].message_type = _REQUESTPING

@@ -11,7 +11,7 @@ import protobuf.shared_pb2
 import websockets
 import websockets.exceptions
 
-from . import cancel_futures, daemon_task, raise_future_exception
+from . import cancel_futures, raise_future_exception
 from .pubsub import PubSub
 from .subscription import CrawlSyncSubscription, JobStatusSubscription
 
@@ -26,14 +26,15 @@ class InvalidRequestException(Exception):
 class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
-    def __init__(self, host, port, db_pool, crawl_manager, tracker):
+    def __init__(self, host, port, db_pool, crawl_manager, subscription_manager,
+                 tracker):
         ''' Constructor. '''
         self._clients = set()
         self._crawl_manager = crawl_manager
         self._db_pool = db_pool
         self._host = host
         self._port = port
-        self._subscriptions = defaultdict(dict)
+        self._subscription_manager = subscription_manager
         self._tracker = tracker
         self._websocket_server = None
 
@@ -64,10 +65,8 @@ class Server:
                 pending_requests.add(request_task)
                 raise_future_exception(request_task)
             except websockets.exceptions.ConnectionClosed:
-                subscriptions = self._subscriptions[websocket].values()
+                await self._subscription_manager.close_for_socket(websocket)
                 await cancel_futures(*pending_requests)
-                await cancel_futures(*subscriptions)
-                del self._subscriptions[websocket]
                 self._clients.remove(websocket)
                 logger.info('Connection closed: %s:%s',
                     websocket.remote_address[0],
@@ -134,14 +133,6 @@ class Server:
             # This task idles: it's only purpose is to supervise child tasks.
             await asyncio.Event().wait()
         except asyncio.CancelledError:
-            logger.info('Ending subscriptions...')
-            sub_tasks = list()
-            for socket, socket_subs in self._subscriptions.items():
-                for subscription_id, subscription in socket_subs.items():
-                    sub_tasks.append(subscription)
-            await cancel_futures(*sub_tasks)
-            logger.info('All subscriptions ended.')
-
             logger.info('Closing websockets...')
             self._websocket_server.close()
             await self._websocket_server.wait_closed()
@@ -194,6 +185,7 @@ class Server:
     async def _subscribe_crawl_sync(self, command, socket):
         ''' Handle the subscribe crawl items command. '''
         job_id = str(UUID(bytes=command.job_id))
+        compression_ok = command.compression_ok
 
         if command.HasField('sync_token'):
             sync_token = command.sync_token
@@ -201,11 +193,11 @@ class Server:
             sync_token = None
 
         subscription = CrawlSyncSubscription(
-            self._tracker, self._db_pool, socket, job_id, sync_token
+            self._tracker, self._db_pool, socket, job_id, compression_ok,
+            sync_token
         )
 
-        coro = daemon_task(subscription.run())
-        self._subscriptions[socket][subscription.id] = coro
+        self._subscription_manager.add(subscription)
         response = Response()
         response.new_subscription.subscription_id = subscription.id
         return response
@@ -217,8 +209,7 @@ class Server:
             socket,
             command.min_interval
         )
-        coro = daemon_task(subscription.run())
-        self._subscriptions[socket][subscription.id] = coro
+        self._subscription_manager.add(subscription)
         response = Response()
         response.new_subscription.subscription_id = subscription.id
         return response
@@ -226,7 +217,5 @@ class Server:
     async def _unsubscribe(self, command, socket):
         ''' Handle an unsubscribe command. '''
         subscription_id = command.subscription_id
-        task = self._subscriptions[socket][subscription_id]
-        await cancel_futures(task)
-        del self._subscriptions[socket][subscription_id]
+        await self._subscription_manager.unsubscribe(socket, subscription_id)
         return Response()

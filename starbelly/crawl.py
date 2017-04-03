@@ -3,6 +3,8 @@ import base64
 from collections import defaultdict, namedtuple
 from datetime import datetime
 import functools
+import gzip
+import hashlib
 import logging
 
 from dateutil.tz import tzlocal
@@ -135,7 +137,7 @@ class CrawlManager:
 class _CrawlJob:
     ''' Manages job state and crawl frontier. '''
 
-    def __init__(self, db_pool, rate_limiter, name, seeds, max_cost=2):
+    def __init__(self, db_pool, rate_limiter, name, seeds, max_cost=10):
         ''' Constructor. '''
         self.id = None
         self.name = name
@@ -316,34 +318,7 @@ class _CrawlJob:
 
         # Note that all item writes for a single job are serialized so that we
         # can insert an incrementing sequence number.
-        async with self._insert_item_lock:
-            async with self._db_pool.connection() as conn:
-                if crawl_item.exception is None:
-                    duration = crawl_item.duration.total_seconds()
-                    is_success = crawl_item.status_code // 100 == 2
-                else:
-                    duration = None
-                    is_success = False
-
-                item_data = {
-                    'body': crawl_item.body,
-                    'completed_at': crawl_item.completed_at,
-                    'cost': crawl_item.cost,
-                    'duration': duration,
-                    'exception': crawl_item.exception,
-                    'headers': crawl_item.headers,
-                    'insert_sequence': self._insert_item_sequence,
-                    'is_success': is_success,
-                    'job_id': self.id,
-                    'started_at': crawl_item.started_at,
-                    'status_code': crawl_item.status_code,
-                    'url': crawl_item.url,
-                    'url_can': crawl_item.url_can,
-                    'url_hash': crawl_item.url_hash,
-                }
-                await r.table('crawl_item').insert(item_data).run(conn)
-                self._insert_item_sequence += 1
-
+        await self._save_item(crawl_item)
         await self._update_job_stats(crawl_item)
 
         # Remove item from frontier.
@@ -429,6 +404,58 @@ class _CrawlJob:
 
         logger.info('Reloading frontier for crawl=%s is complete.', self.id[:8])
 
+    async def _save_item(self, crawl_item):
+        ''' Save a crawl item to the database. '''
+        async with self._insert_item_lock:
+            async with self._db_pool.connection() as conn:
+                if crawl_item.exception is None:
+                    duration = crawl_item.duration.total_seconds()
+                    is_success = crawl_item.status_code // 100 == 2
+                else:
+                    duration = None
+                    is_success = False
+
+                compress_body = self._should_compress_body(crawl_item)
+
+                if compress_body:
+                    body = gzip.compress(crawl_item.body)
+                else:
+                    body = crawl_item.body
+
+                body_hash = hashlib.blake2b(body, digest_size=32) \
+                                   .digest()
+
+                item_data = {
+                    'body_id': body_hash,
+                    'completed_at': crawl_item.completed_at,
+                    'cost': crawl_item.cost,
+                    'duration': duration,
+                    'exception': crawl_item.exception,
+                    'headers': crawl_item.headers,
+                    'insert_sequence': self._insert_item_sequence,
+                    'is_success': is_success,
+                    'job_id': self.id,
+                    'started_at': crawl_item.started_at,
+                    'status_code': crawl_item.status_code,
+                    'url': crawl_item.url,
+                    'url_can': crawl_item.url_can,
+                    'url_hash': crawl_item.url_hash,
+                }
+
+                body_data = {
+                    'id': body_hash,
+                    'body': body,
+                    'is_compressed': compress_body,
+                }
+
+                body = await r.table('crawl_item_body').get(body_hash).run(conn)
+
+                if body is None:
+                    await r.table('crawl_item_body').insert(body_data).run(conn)
+
+                await r.table('crawl_item').insert(item_data).run(conn)
+                self._insert_item_sequence += 1
+
     async def _set_run_state(self, run_state):
         ''' Set the job's run state. '''
 
@@ -438,6 +465,21 @@ class _CrawlJob:
             table = r.table('crawl_job')
             query = table.get(self.id).update({'run_state': run_state})
             await query.run(conn)
+
+    def _should_compress_body(self, crawl_item):
+        '''
+        Returns true if the crawl item body should be compressed.
+
+        This is pretty naive right now (only compress text/* responses), but we
+        can make it smarter in the future.
+        '''
+        should_compress = False
+
+        if crawl_item.headers is not None \
+            and 'text/' in crawl_item.headers.get('Content-Type', ''):
+            should_compress = True
+
+        return should_compress
 
     async def _stop(self, finish_downloads=True):
         '''

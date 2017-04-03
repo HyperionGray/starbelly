@@ -3,15 +3,18 @@ import base64
 from binascii import hexlify, unhexlify
 from collections import defaultdict
 import enum
+import functools
+import gzip
 import json
 import logging
 import struct
 from uuid import UUID
 
 from protobuf.shared_pb2 import JobRunState
-from protobuf.server_pb2 import ServerMessage
+from protobuf.server_pb2 import ServerMessage, SubscriptionClosed
 import rethinkdb as r
 
+from . import cancel_futures, daemon_task
 from .db import AsyncCursorIterator
 
 
@@ -31,11 +34,88 @@ class Sequence:
         return self._sequence
 
 
+_subscription_id_sequence = Sequence()
+
+
 class InvalidSyncToken(Exception):
     '''
     A sync token is syntactically invalid or was used with an incompatible
     stream type.
     '''
+
+
+class SubscriptionManager():
+    ''' Manages all open subscriptions. '''
+
+    def __init__(self, db_pool):
+        ''' Constructor. '''
+        self._closed = False
+        self._closing = set()
+        self._db_pool = db_pool
+        self._subscriptions = defaultdict(dict)
+
+    def add(self, subscription):
+        '''
+        Add a subscription and run it.
+        '''
+        socket = subscription.get_socket()
+
+        if self._closed:
+            raise Exception('The subscription manager is closed.')
+        elif socket in self._closing:
+            raise Exception(
+                'Cannot add subscription: the socket is being closed.')
+
+        def task_ended(f):
+            daemon_task(self.unsubscribe(socket, subscription.id))
+
+        task = daemon_task(subscription.run())
+        task.add_done_callback(task_ended)
+        self._subscriptions[socket][subscription.id] = task
+
+    async def close_all(self):
+        '''
+        Close all subscriptions.
+
+        No new subcriptions may be added after this manager is closed.
+        '''
+
+        logger.info('Closing subscription manager...')
+        self._closed = True
+        sub_tasks = list()
+        for socket, socket_subs in self._subscriptions.items():
+            for subscription_id, subscription in socket_subs.items():
+                sub_tasks.append(subscription)
+        await cancel_futures(*sub_tasks)
+        logger.info('Subscription manager is closed.')
+
+    async def close_for_socket(self, socket):
+        ''' Close all subscriptions opened by the specified socket. '''
+        logger.info('Closing subscriptions: %s:%s',
+            socket.remote_address[0],
+            socket.remote_address[1],
+        )
+
+        subscriptions = self._subscriptions.get(socket, list()).values()
+
+        if len(subscriptions) > 0:
+            self._closing.add(socket)
+            await cancel_futures(*subscriptions)
+            del self._subscriptions[socket]
+            self._closing.remove(socket)
+
+    async def unsubscribe(self, socket, subscription_id):
+        ''' Close a subscription. '''
+        try:
+            task = self._subscriptions[socket][subscription_id]
+            await cancel_futures(task)
+            del self._subscriptions[socket][subscription_id]
+        except KeyError:
+            logger.error('Invalid subscription id=%d on socket %s:%s',
+                subscription_id,
+                socket.remote_address[0],
+                socket.remote_address[1],
+            )
 
 
 class CrawlSyncSubscription:
@@ -49,13 +129,14 @@ class CrawlSyncSubscription:
     or restarting the sync from the beginning.
     '''
 
-    _id_sequence = Sequence()
     TOKEN_HEADER = 'BBB'
     TOKEN_BODY = '!L'
 
-    def __init__(self, tracker, db_pool, socket, job_id, sync_token=None):
+    def __init__(self, tracker, db_pool, socket, job_id, compression_ok,
+                 sync_token=None):
         ''' Constructor. '''
-        self.id = self._id_sequence.next()
+        self.id = _subscription_id_sequence.next()
+        self._compression_ok = compression_ok
         self._db_pool = db_pool
         self._socket = socket
         self._job_id = job_id
@@ -69,6 +150,10 @@ class CrawlSyncSubscription:
         else:
             self._sequence = self._decode_sync_token(sync_token)
 
+    def get_socket(self):
+        ''' Return the associated socket. '''
+        return self._socket
+
     async def run(self):
         ''' Run the subscription. '''
 
@@ -76,7 +161,7 @@ class CrawlSyncSubscription:
         out_of_order_count = 0
         await self._set_initial_job_status()
         self._tracker.job_status_changed.listen(self._handle_job_status)
-        logger.info('sync started')
+        logger.info('Syncing items from job_id=%s', self._job_id[:8])
 
         while True:
             async with self._db_pool.connection() as conn:
@@ -106,7 +191,9 @@ class CrawlSyncSubscription:
                 out_of_order_count = 0
 
             if self._sync_is_complete():
-                #TODO need a way to communicate end of subscription to client
+                logger.info('Item sync complete for job_id=%s',
+                    self._job_id[:8])
+                await self._send_complete()
                 break
 
             # Wait for more results to come in.
@@ -116,8 +203,7 @@ class CrawlSyncSubscription:
                 backoff *= 2
 
         self._tracker.job_status_changed.cancel(self._handle_job_status)
-        logger.info('sync finished')
-
+        logger.info('Stop syncing items from job_id=%s', self._job_id[:8])
 
     def _decode_sync_token(self, token):
         ''' Unpack a token and return a sequence number. '''
@@ -132,14 +218,30 @@ class CrawlSyncSubscription:
         return sequence
 
     def _get_query(self):
-        ''' Return the query used for getting items to sync. '''
+        '''
+        Return the query used for getting items to sync.
+
+        This query is a little funky. I want to join `crawl_item` and
+        `crawl_item_body` while preserving the `insert_sequence` order, but
+        RethinkDB's `eq_join()` method doesn't preserve order (see GitHub issue:
+        https://github.com/rethinkdb/rethinkdb/issues/6319). Somebody on
+        RethinkDB Slack showed me that you can use merge and subquery to
+        simulate a left outer join that preserves order and in a quick test on
+        200k documents, it works well and runs fast.
+        '''
+
+        def get_body(item):
+            return {'join': r.table('crawl_item_body').get(item['body_id'])}
+
         query = (
             r.table('crawl_item')
              .between((self._job_id, self._sequence),
                       (self._job_id, r.maxval),
                       index='sync_index')
              .order_by(index='sync_index')
+             .merge(get_body)
         )
+
         return query
 
     def _get_sync_token(self):
@@ -167,12 +269,28 @@ class CrawlSyncSubscription:
             self._crawl_run_state = job['run_state']
             self._crawl_item_count = job['item_count']
 
+    async def _send_complete(self):
+        ''' Send a subscription end event. '''
+        message = ServerMessage()
+        message.event.subscription_id = self.id
+        message.event.subscription_closed.reason = SubscriptionClosed.END
+        await self._socket.send(message.SerializeToString())
+
     async def _send_item(self, item):
         ''' Send a crawl item to the client. '''
         message = ServerMessage()
         message.event.subscription_id = self.id
+
+        if item['join']['is_compressed'] and not self._compression_ok:
+            body = gzip.decompress(item['join']['body'])
+            is_body_compressed = False
+        else:
+            body = item['join']['body']
+            is_body_compressed = item['join']['is_compressed']
+
         crawl_item = message.event.crawl_item
-        crawl_item.body = item['body']
+        crawl_item.body = body
+        crawl_item.is_body_compressed = is_body_compressed
         crawl_item.completed_at = item['completed_at'].isoformat()
         crawl_item.cost = item['cost']
         crawl_item.duration = item['duration']
@@ -205,8 +323,8 @@ class CrawlSyncSubscription:
 
     def _sync_is_complete(self):
         ''' Return true if the sync is finished. '''
-        return self._crawl_run_state == 'completed' and \
-               self._sequence > self._crawl_item_count
+        return self._sequence > self._crawl_item_count and \
+               self._crawl_run_state in ('completed', 'cancelled')
 
 
 class JobStatusSubscription:
@@ -219,16 +337,18 @@ class JobStatusSubscription:
     the previous event.
     '''
 
-    _id_sequence = Sequence()
-
     def __init__(self, tracker, socket, min_interval):
         ''' Constructor. '''
-        self.id = self._id_sequence.next()
+        self.id = _subscription_id_sequence.next()
         self._socket = socket
         self._min_interval = min_interval
         self._status_changed = asyncio.Event()
         self._updates = tracker.get_all_job_status()
         tracker.job_status_changed.listen(self._handle_status_changed)
+
+    def get_socket(self):
+        ''' Return the associated socket. '''
+        return self._socket
 
     async def run(self):
         ''' Start the subscription stream. '''
