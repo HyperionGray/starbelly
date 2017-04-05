@@ -278,6 +278,7 @@ class CrawlSyncSubscription:
         crawl_item.body = body
         crawl_item.is_body_compressed = is_body_compressed
         crawl_item.completed_at = item['completed_at'].isoformat()
+        crawl_item.content_type = item['content_type']
         crawl_item.cost = item['cost']
         crawl_item.duration = item['duration']
         for key, value in item['headers'].items():

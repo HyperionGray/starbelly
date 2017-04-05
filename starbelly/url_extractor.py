@@ -16,9 +16,8 @@ def extract_urls(crawl_item):
     extracted = list()
 
     base_url = crawl_item.url
-    content_type = crawl_item.headers.get('content-type',
-        'application/octet-stream')
-    type_, subtype, parameters = mimeparse.parse_mime_type(content_type)
+    type_, subtype, parameters = mimeparse.parse_mime_type(
+        crawl_item.content_type)
 
     if type_ == 'text' and subtype == 'html':
         doc = lxml.html.document_fromstring(crawl_item.body)

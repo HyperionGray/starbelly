@@ -9,6 +9,7 @@ import logging
 
 from dateutil.tz import tzlocal
 import hashlib
+import mimeparse
 import rethinkdb as r
 from rethinkdb.errors import ReqlNonExistenceError
 import w3lib.url
@@ -471,6 +472,7 @@ class _CrawlJob:
                 item_data = {
                     'body_id': body_hash,
                     'completed_at': crawl_item.completed_at,
+                    'content_type': crawl_item.content_type,
                     'cost': crawl_item.cost,
                     'duration': duration,
                     'exception': crawl_item.exception,
@@ -516,13 +518,9 @@ class _CrawlJob:
         This is pretty naive right now (only compress text/* responses), but we
         can make it smarter in the future.
         '''
-        should_compress = False
-
-        if crawl_item.headers is not None \
-            and 'text/' in crawl_item.headers.get('Content-Type', ''):
-            should_compress = True
-
-        return should_compress
+        type_, subtype, parameters = mimeparse.parse_mime_type(
+            crawl_item.content_type)
+        return type_ == 'text'
 
     async def _stop(self, graceful=True):
         '''
@@ -611,6 +609,7 @@ class _CrawlItem:
         # These members are persistent.
         self.body = None
         self.completed_at = None
+        self.content_type = None
         self.cost = frontier_item['cost']
         self.duration = None
         self.exception = None
@@ -629,6 +628,17 @@ class _CrawlItem:
         self.duration = self.completed_at - self.started_at
         self.headers = headers
         self.status_code = status_code
+
+        # Try to figure out the content-type.
+        #TODO We should fall back to content sniffing.
+        default_type = 'application/octet-stream'
+
+        if self.headers is not None:
+            content_type = self.headers.get('Content-Type', default_type)
+        else:
+            content_type = default_type
+
+        self.content_type = content_type
 
     def set_start(self):
         '''
