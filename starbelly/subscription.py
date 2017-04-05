@@ -91,14 +91,13 @@ class SubscriptionManager():
 
     async def close_for_socket(self, socket):
         ''' Close all subscriptions opened by the specified socket. '''
-        logger.info('Closing subscriptions: %s:%s',
-            socket.remote_address[0],
-            socket.remote_address[1],
-        )
-
-        subscriptions = self._subscriptions.get(socket, list()).values()
+        subscriptions = self._subscriptions.get(socket, {}).values()
 
         if len(subscriptions) > 0:
+            logger.info('Closing subscriptions for: %s:%s',
+                socket.remote_address[0],
+                socket.remote_address[1],
+            )
             self._closing.add(socket)
             await cancel_futures(*subscriptions)
             del self._subscriptions[socket]
@@ -146,7 +145,7 @@ class CrawlSyncSubscription:
 
         # Decode sync token if present.
         if sync_token is None:
-            self._sequence = 1
+            self._sequence = 0
         else:
             self._sequence = self._decode_sync_token(sync_token)
 
@@ -157,8 +156,6 @@ class CrawlSyncSubscription:
     async def run(self):
         ''' Run the subscription. '''
 
-        backoff = 1 # Exponential backoff, e.g. 1, 2, 4, 8, 16, 32
-        out_of_order_count = 0
         await self._set_initial_job_status()
         self._tracker.job_status_changed.listen(self._handle_job_status)
         logger.info('Syncing items from job_id=%s', self._job_id[:8])
@@ -166,29 +163,20 @@ class CrawlSyncSubscription:
         while True:
             async with self._db_pool.connection() as conn:
                 cursor = await self._get_query().run(conn)
+
                 async for item in AsyncCursorIterator(cursor):
                     # Make sure this item matches the expected sequence number.
                     if item['insert_sequence'] != self._sequence:
-                        out_of_order_count += 1
-                        break
-                    else:
-                        self._sequence += 1
-                        out_of_order_count = 0
-                        if backoff > 1:
-                            backoff /= 2
-                        if item['is_success']:
-                            await self._send_item(item)
+                        logger.error(
+                            'Crawl sync item is out-of-order: job=%s expected '
+                            '%d but found %d.', self._job_id[:8],
+                            self._sequence, item['insert_sequence']
+                        )
+                        self._sequence = item['insert_sequence']
 
-            # If we get too many out-of-order results, it indicates something is
-            # wrong with our crawl data. Log an error and move onto the next
-            # item.
-            if out_of_order_count >= 5:
-                msg = 'Crawl sync received too many out-of-order results!' \
-                      ' (job={} waiting for sequence={})' \
-                      .format(self._job_id, self._sequence)
-                logger.error(msg)
-                self._sequence += 1
-                out_of_order_count = 0
+                    self._sequence += 1
+                    if item['is_success']:
+                        await self._send_item(item)
 
             if self._sync_is_complete():
                 logger.info('Item sync complete for job_id=%s',
@@ -197,10 +185,7 @@ class CrawlSyncSubscription:
                 break
 
             # Wait for more results to come in.
-            await asyncio.sleep(backoff)
-
-            if backoff < 32:
-                backoff *= 2
+            await asyncio.sleep(1)
 
         self._tracker.job_status_changed.cancel(self._handle_job_status)
         logger.info('Stop syncing items from job_id=%s', self._job_id[:8])
@@ -208,11 +193,11 @@ class CrawlSyncSubscription:
     def _decode_sync_token(self, token):
         ''' Unpack a token and return a sequence number. '''
 
-        type_, version, length = struct.unpack(self.TOKEN_HEADER, token[:3])
+        version, type_, length = struct.unpack(self.TOKEN_HEADER, token[:3])
 
-        if type_ != 1 or version != 1 or length != 4:
-            raise InvalidSyncToken('Invalid token: type={} version={} length={}'
-                .format(type_, version, length))
+        if version != 1 or type_ != 1 or length != 4:
+            raise InvalidSyncToken('Invalid token: version={} type={} length={}'
+                .format(version, type_, length))
 
         sequence = struct.unpack(self.TOKEN_BODY, token[-length:])[0]
         return sequence
@@ -251,9 +236,10 @@ class CrawlSyncSubscription:
         client may present the stored sync token and continue where it
         previously left off.
 
-        A sync token has a header containing 3 bytes: subscription type number
-        (1 for CrawlItemSubscription -- others may be added in the future),
-        version number (the current version is 1), and payload length in bytes.
+        A sync token has a header containing 3 bytes: version number (the
+        current version is 1), subscription type number (1 for
+        CrawlItemSubscription -- others may be added in the future), and payload
+        length in bytes.
 
         The body comes after the header and is a sequence of raw bytes. For this
         subscription, the body is a 32-bit unsigned integer sequence number.
@@ -323,7 +309,7 @@ class CrawlSyncSubscription:
 
     def _sync_is_complete(self):
         ''' Return true if the sync is finished. '''
-        return self._sequence > self._crawl_item_count and \
+        return self._sequence >= self._crawl_item_count - 1 and \
                self._crawl_run_state in ('completed', 'cancelled')
 
 

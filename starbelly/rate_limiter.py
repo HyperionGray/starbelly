@@ -53,6 +53,7 @@ class RateLimiter:
         '''
         await self._semaphore.acquire()
         token = self._get_token_for_url(crawl_item.url)
+        # logger.error('PUSHED token=%s url=%s', token, crawl_item.url)
         if token not in self._queues:
             self._queues[token] = deque()
             self._add_expiry(Expiry(time(), token))

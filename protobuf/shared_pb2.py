@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/shared.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/shared.proto\x12\tstarbelly\"\xcc\x02\n\tCrawlItem\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ompleted_at\x18\x02 \x01(\t\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x10\n\x08\x64uration\x18\x04 \x01(\x01\x12\x32\n\x07headers\x18\x05 \x03(\x0b\x32!.starbelly.CrawlItem.HeadersEntry\x12\x0e\n\x06job_id\x18\x06 \x01(\x0c\x12\x1a\n\x12is_body_compressed\x18\x07 \x01(\x08\x12\x12\n\nstarted_at\x18\x08 \x01(\t\x12\x13\n\x0bstatus_code\x18\t \x01(\x05\x12\x0b\n\x03url\x18\n \x01(\t\x12\x0f\n\x07url_can\x18\x0b \x01(\t\x12\x10\n\x08url_hash\x18\x0c \x01(\x0c\x12\x12\n\nsync_token\x18\r \x01(\x0c\x1a.\n\x0cHeadersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xb8\x02\n\tJobStatus\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12)\n\trun_state\x18\x03 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x12\n\nitem_count\x18\x04 \x01(\x05\x12\x1a\n\x12http_success_count\x18\x05 \x01(\x05\x12\x18\n\x10http_error_count\x18\x06 \x01(\x05\x12\x17\n\x0f\x65xception_count\x18\x07 \x01(\x05\x12\x46\n\x12http_status_counts\x18\x08 \x03(\x0b\x32*.starbelly.JobStatus.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"5\n\x0bJobStatuses\x12&\n\x08statuses\x18\x01 \x03(\x0b\x32\x14.starbelly.JobStatus*^\n\x0bJobRunState\x12\x0b\n\x07UNKNOWN\x10\x01\x12\r\n\tCANCELLED\x10\x02\x12\r\n\tCOMPLETED\x10\x03\x12\n\n\x06PAUSED\x10\x04\x12\x0b\n\x07PENDING\x10\x05\x12\x0b\n\x07RUNNING\x10\x06')
+  serialized_pb=_b('\n\x15protobuf/shared.proto\x12\tstarbelly\"\xcc\x02\n\tCrawlItem\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ompleted_at\x18\x02 \x01(\t\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x10\n\x08\x64uration\x18\x04 \x01(\x01\x12\x32\n\x07headers\x18\x05 \x03(\x0b\x32!.starbelly.CrawlItem.HeadersEntry\x12\x0e\n\x06job_id\x18\x06 \x01(\x0c\x12\x1a\n\x12is_body_compressed\x18\x07 \x01(\x08\x12\x12\n\nstarted_at\x18\x08 \x01(\t\x12\x13\n\x0bstatus_code\x18\t \x01(\x05\x12\x0b\n\x03url\x18\n \x01(\t\x12\x0f\n\x07url_can\x18\x0b \x01(\t\x12\x10\n\x08url_hash\x18\x0c \x01(\x0c\x12\x12\n\nsync_token\x18\r \x01(\x0c\x1a.\n\x0cHeadersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xe2\x02\n\tJobStatus\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12)\n\trun_state\x18\x03 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x12\n\nstarted_at\x18\x04 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x05 \x01(\t\x12\x12\n\nitem_count\x18\x06 \x01(\x05\x12\x1a\n\x12http_success_count\x18\x07 \x01(\x05\x12\x18\n\x10http_error_count\x18\x08 \x01(\x05\x12\x17\n\x0f\x65xception_count\x18\t \x01(\x05\x12\x46\n\x12http_status_counts\x18\n \x03(\x0b\x32*.starbelly.JobStatus.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"5\n\x0bJobStatuses\x12&\n\x08statuses\x18\x01 \x03(\x0b\x32\x14.starbelly.JobStatus\")\n\x04Page\x12\x11\n\x05limit\x18\x01 \x01(\x05:\x02\x31\x30\x12\x0e\n\x06offset\x18\x02 \x01(\x05*^\n\x0bJobRunState\x12\x0b\n\x07UNKNOWN\x10\x01\x12\r\n\tCANCELLED\x10\x02\x12\r\n\tCOMPLETED\x10\x03\x12\n\n\x06PAUSED\x10\x04\x12\x0b\n\x07PENDING\x10\x05\x12\x0b\n\x07RUNNING\x10\x06')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -57,8 +57,8 @@ _JOBRUNSTATE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=741,
-  serialized_end=835,
+  serialized_start=826,
+  serialized_end=920,
 )
 _sym_db.RegisterEnumDescriptor(_JOBRUNSTATE)
 
@@ -257,8 +257,8 @@ _JOBSTATUS_HTTPSTATUSCOUNTSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=629,
-  serialized_end=684,
+  serialized_start=671,
+  serialized_end=726,
 )
 
 _JOBSTATUS = _descriptor.Descriptor(
@@ -290,36 +290,50 @@ _JOBSTATUS = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='item_count', full_name='starbelly.JobStatus.item_count', index=3,
-      number=4, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
+      name='started_at', full_name='starbelly.JobStatus.started_at', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='http_success_count', full_name='starbelly.JobStatus.http_success_count', index=4,
-      number=5, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
+      name='completed_at', full_name='starbelly.JobStatus.completed_at', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='http_error_count', full_name='starbelly.JobStatus.http_error_count', index=5,
+      name='item_count', full_name='starbelly.JobStatus.item_count', index=5,
       number=6, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='exception_count', full_name='starbelly.JobStatus.exception_count', index=6,
+      name='http_success_count', full_name='starbelly.JobStatus.http_success_count', index=6,
       number=7, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='http_status_counts', full_name='starbelly.JobStatus.http_status_counts', index=7,
-      number=8, type=11, cpp_type=10, label=3,
+      name='http_error_count', full_name='starbelly.JobStatus.http_error_count', index=7,
+      number=8, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='exception_count', full_name='starbelly.JobStatus.exception_count', index=8,
+      number=9, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='http_status_counts', full_name='starbelly.JobStatus.http_status_counts', index=9,
+      number=10, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -337,7 +351,7 @@ _JOBSTATUS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=372,
-  serialized_end=684,
+  serialized_end=726,
 )
 
 
@@ -367,8 +381,46 @@ _JOBSTATUSES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=686,
-  serialized_end=739,
+  serialized_start=728,
+  serialized_end=781,
+)
+
+
+_PAGE = _descriptor.Descriptor(
+  name='Page',
+  full_name='starbelly.Page',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='limit', full_name='starbelly.Page.limit', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=True, default_value=10,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='offset', full_name='starbelly.Page.offset', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=783,
+  serialized_end=824,
 )
 
 _CRAWLITEM_HEADERSENTRY.containing_type = _CRAWLITEM
@@ -380,6 +432,7 @@ _JOBSTATUSES.fields_by_name['statuses'].message_type = _JOBSTATUS
 DESCRIPTOR.message_types_by_name['CrawlItem'] = _CRAWLITEM
 DESCRIPTOR.message_types_by_name['JobStatus'] = _JOBSTATUS
 DESCRIPTOR.message_types_by_name['JobStatuses'] = _JOBSTATUSES
+DESCRIPTOR.message_types_by_name['Page'] = _PAGE
 DESCRIPTOR.enum_types_by_name['JobRunState'] = _JOBRUNSTATE
 
 CrawlItem = _reflection.GeneratedProtocolMessageType('CrawlItem', (_message.Message,), dict(
@@ -418,6 +471,13 @@ JobStatuses = _reflection.GeneratedProtocolMessageType('JobStatuses', (_message.
   # @@protoc_insertion_point(class_scope:starbelly.JobStatuses)
   ))
 _sym_db.RegisterMessage(JobStatuses)
+
+Page = _reflection.GeneratedProtocolMessageType('Page', (_message.Message,), dict(
+  DESCRIPTOR = _PAGE,
+  __module__ = 'protobuf.shared_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.Page)
+  ))
+_sym_db.RegisterMessage(Page)
 
 
 _CRAWLITEM_HEADERSENTRY.has_options = True

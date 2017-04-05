@@ -39,6 +39,7 @@ class Server:
         self._websocket_server = None
 
         self._request_handlers = {
+            'list_jobs': self._list_jobs,
             'ping': self._ping,
             'set_job_run_state': self._set_job_run_state,
             'start_job': self._start_job,
@@ -80,6 +81,21 @@ class Server:
                 except websocket.exceptions.InvalidState:
                     pass
                 break
+
+    async def run(self):
+        ''' Run the websocket server. '''
+        try:
+            logger.info('Starting server on {}:{}'.format(self._host, self._port))
+            self._websocket_server = await websockets.serve(self.handle_connection,
+                self._host, self._port)
+
+            # This task idles: it's only purpose is to supervise child tasks.
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            logger.info('Closing websockets...')
+            self._websocket_server.close()
+            await self._websocket_server.wait_closed()
+            logger.info('All websockets closed.')
 
     async def _handle_request(self, websocket, request_data):
         ''' Handle a single request/response pair. '''
@@ -123,20 +139,38 @@ class Server:
             # This could happen, e.g. if the request_id is not set.
             logger.error('Cannot send uninitialized response: %r', response)
 
-    async def run(self):
-        ''' Run the websocket server. '''
-        try:
-            logger.info('Starting server on {}:{}'.format(self._host, self._port))
-            self._websocket_server = await websockets.serve(self.handle_connection,
-                self._host, self._port)
+    async def _list_jobs(self, command, socket):
+        ''' Return a list of jobs. '''
 
-            # This task idles: it's only purpose is to supervise child tasks.
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            logger.info('Closing websockets...')
-            self._websocket_server.close()
-            await self._websocket_server.wait_closed()
-            logger.info('All websockets closed.')
+        logger.error('COMMAND=%r',command)
+        limit = command.page.limit
+        offset = command.page.offset
+        jobs = await self._crawl_manager.list_jobs(limit, offset)
+        count = await self._crawl_manager.count_jobs()
+
+        response = Response()
+        response.list_jobs.total = count
+
+        for job in jobs:
+            logger.error('job=%r', job)
+            job_status = response.list_jobs.jobs.add()
+            job_status.job_id = UUID(job['id']).bytes
+            job_status.name = job['name']
+            job_status.item_count = job['item_count']
+            job_status.http_success_count = job['http_success_count']
+            job_status.http_error_count = job['http_error_count']
+            job_status.exception_count = job['exception_count']
+            job_status.started_at = job['started_at'].isoformat()
+            if job['completed_at'] is not None:
+                job_status.completed_at = job['completed_at'].isoformat()
+            run_state = job['run_state'].upper()
+            job_status.run_state = protobuf.shared_pb2.JobRunState \
+                .Value(run_state)
+            http_status_counts = job['http_status_counts']
+            for status_code, count in http_status_counts.items():
+                job_status.http_status_counts[int(status_code)] = count
+
+        return response
 
     async def _ping(self, command, socket):
         '''

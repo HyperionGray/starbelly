@@ -13,7 +13,7 @@ import rethinkdb as r
 from rethinkdb.errors import ReqlNonExistenceError
 import w3lib.url
 
-from . import cancel_futures
+from . import cancel_futures, daemon_task
 from .db import AsyncCursorIterator
 from .pubsub import PubSub
 from .url_extractor import extract_urls
@@ -45,6 +45,34 @@ class CrawlManager:
             )
             async with self._db_pool.connection() as conn:
                 await cancel_query.run(conn)
+
+    async def count_jobs(self):
+        ''' Return the number of jobs that exist. '''
+        async with self._db_pool.connection() as conn:
+            count = await r.table('crawl_job').count().run(conn)
+        return count
+
+    async def list_jobs(self, limit=10, offset=0):
+        '''
+        List up to `limit` jobs, starting at row number `offset`, ordered by
+        start date.
+        '''
+
+        query = (
+            r.table('crawl_job')
+             .order_by(index=r.desc('started_at'))
+             .skip(offset)
+             .limit(limit)
+        )
+
+        jobs = list()
+
+        async with self._db_pool.connection() as conn:
+            cursor = await query.run(conn)
+            async for job in AsyncCursorIterator(cursor):
+                jobs.append(job)
+
+        return jobs
 
     async def pause_all_jobs(self):
         ''' Pause all currently running jobs. '''
@@ -148,8 +176,9 @@ class _CrawlJob:
         self._frontier_seen = set()
         self._frontier_size = 0
         self._insert_item_lock = asyncio.Lock()
-        self._insert_item_sequence = 1
+        self._insert_item_sequence = 0
         self._max_cost = max_cost
+        self._pending_count = 0
         self._rate_limiter = rate_limiter
         self._run_state = 'pending'
         self._stopped = asyncio.Future()
@@ -164,7 +193,7 @@ class _CrawlJob:
 
         logger.info('Canceling crawl id={}…'.format(self.id[:8]))
         await self._set_run_state('cancelled')
-        await self._stop(finish_downloads=False)
+        await self._stop(graceful=False)
         await self.clear_frontier()
         logger.info('Crawl id={} has been cancelled.'.format(self.id[:8]))
 
@@ -189,7 +218,7 @@ class _CrawlJob:
 
         logger.info('Pausing crawl id={}…'.format(self.id[:8]))
         await self._set_run_state('paused')
-        await self._stop(finish_downloads=True)
+        await self._stop(graceful=True)
         logger.info('Crawl id={} has been paused.'.format(self.id[:8]))
 
     async def run(self):
@@ -226,6 +255,7 @@ class _CrawlJob:
                     frontier_item)
                 await self._rate_limiter.push(crawl_item)
                 frontier_item = None
+                self._pending_count += 1
         except asyncio.CancelledError:
             # Put the frontier item back on the frontier
             if frontier_item is not None:
@@ -263,9 +293,9 @@ class _CrawlJob:
 
     async def _add_frontier_items(self, frontier_items):
         '''
-        Add a list of extracted URLs to the frontier with the specified cost.
+        Add a list of `FrontierItem`s to the frontier.
 
-        If the URL has been seen before, it is silently ignored.
+        If a URL has been seen before, then that item is silently ignored.
         '''
         insert_items = list()
 
@@ -287,7 +317,7 @@ class _CrawlJob:
                     'url_can': url_can,
                     'url_hash': url_hash,
                 })
-            self._frontier_seen.add(url_hash)
+                self._frontier_seen.add(url_hash)
 
         if len(insert_items) > 0:
             async with self._db_pool.connection() as conn:
@@ -318,26 +348,31 @@ class _CrawlJob:
 
         # Note that all item writes for a single job are serialized so that we
         # can insert an incrementing sequence number.
-        await self._save_item(crawl_item)
-        await self._update_job_stats(crawl_item)
+        try:
+            await self._save_item(crawl_item)
+            await self._update_job_stats(crawl_item)
 
-        # Remove item from frontier.
-        async with self._db_pool.connection() as conn:
-            await r.table('crawl_frontier').get(crawl_item.frontier_id) \
-                   .delete().run(conn)
-            self._frontier_size -= 1
+            # Remove item from frontier.
+            async with self._db_pool.connection() as conn:
+                await r.table('crawl_frontier').get(crawl_item.frontier_id) \
+                       .delete().run(conn)
+                self._frontier_size -= 1
 
-        # Extract links.
-        if crawl_item.exception is None:
-            extracted = extract_urls(crawl_item)
-            new_cost = crawl_item.cost + 1
-            frontier_items = [FrontierItem(url, new_cost) for url in extracted]
-            await self._add_frontier_items(frontier_items)
+            # Extract links.
+            if crawl_item.exception is None:
+                extracted = extract_urls(crawl_item)
+                new_cost = crawl_item.cost + 1
+                frontier_items = [FrontierItem(url, new_cost) for url in extracted]
+                await self._add_frontier_items(frontier_items)
+        finally:
+            self._pending_count -= 1
 
-        if self._run_state == 'running' and self._frontier_size == 0:
+        if self._pending_count == 0 and self._frontier_size == 0:
             # If this is the last item in this crawl, then the crawl is
-            # complete.
-            await self._complete()
+            # complete. The crawl won't exit until all _handle_download()
+            # coroutines finish, so we run this as a separate task.
+            logger.info('Job %s has no more items pending.', self.id[:8])
+            daemon_task(self._complete())
 
     async def _next_frontier_item(self):
         '''
@@ -372,7 +407,7 @@ class _CrawlJob:
     async def _reload_frontier(self):
         '''
         When un-pausing a crawl, we need to reload the `_frontier_seen` set and
-        reload the frontier
+        count how many items are in it.
         '''
 
         logger.info('Reloading frontier for crawl=%s (this may take a few '
@@ -389,18 +424,26 @@ class _CrawlJob:
 
         frontier_query = (
             r.table('crawl_frontier')
-            .between((False, self.id, r.minval),
-                     (False, self.id, r.maxval),
+            .between((self.id, r.minval),
+                     (self.id, r.maxval),
                      index='cost_index')
             .order_by(index='cost_index')
             .pluck('url_hash')
         )
 
+        sequence_query = (
+            r.table('crawl_job')
+             .get(self.id)
+             .get_field('item_count')
+        )
+
         async with self._db_pool.connection() as conn:
+            self._frontier_size = await frontier_query.count().run(conn)
+            self._insert_item_sequence = await sequence_query.run(conn)
             for query in (item_query, frontier_query):
                 cursor = await query.run(conn)
                 async for item in AsyncCursorIterator(cursor):
-                    self._frontier_seen.add(item['url_hash'])
+                    self._frontier_seen.add(bytes(item['url_hash']))
 
         logger.info('Reloading frontier for crawl=%s is complete.', self.id[:8])
 
@@ -481,21 +524,23 @@ class _CrawlJob:
 
         return should_compress
 
-    async def _stop(self, finish_downloads=True):
+    async def _stop(self, graceful=True):
         '''
         Stop the job.
 
-        If ``finish_downloads`` is ``True``, then this will wait for the
-        job's open downloads to finish before returning. Items removed from
-        the rate limiter will be placed back into the crawl frontier.
+        If ``graceful`` is ``True``, then this will wait for the job's open
+        downloads to finish before returning, and items removed from the rate
+        limiter will be placed back into the crawl frontier.
         '''
         if self._task is not None:
             await cancel_futures(self._task)
-        removed_items = await self._rate_limiter.remove_job(
-            self.id, finish_downloads)
 
-        #TODO Finish_downloads is a bad name, it really means "pause" vs "cancel"
-        if finish_downloads:
+        removed_items = await self._rate_limiter.remove_job(self.id, graceful)
+        self._pending_count = 0
+        self._frontier_size = 0
+        self._frontier_seen.clear()
+
+        if graceful and len(removed_items) > 0:
             insert_items = list()
 
             for removed_item in removed_items:
