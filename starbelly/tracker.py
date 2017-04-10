@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timedelta
 import logging
 
 import rethinkdb as r
@@ -20,9 +21,9 @@ class Tracker:
     '''
 
     JOB_STATUS_FIELDS = [
-        'id', 'name', 'run_state', 'item_count',
-        'http_success_count', 'http_error_count',
-        'exception_count', 'http_status_counts',
+        'id', 'name', 'run_state', 'started_at', 'completed_at', 'item_count',
+        'http_success_count', 'http_error_count', 'exception_count',
+        'http_status_counts',
     ]
 
     def __init__(self, db_pool):
@@ -48,10 +49,13 @@ class Tracker:
 
         try:
             async with self._db_pool.connection() as conn:
-                # Get current status for all running jobs.
+                # Get status for incomplete and recently completed jobs. This
+                # query can't use an index because RethinkDB doesn't allow nulls
+                # in secondary indexes.
                 initial_query = (
                     r.table('crawl_job')
-                     .get_all('paused', 'running', index='run_state')
+                     .filter((r.row['completed_at'].eq(None)) |
+                             (r.row['completed_at'] > r.now() - 3600))
                      .pluck(*self.JOB_STATUS_FIELDS)
                 )
                 cursor = await initial_query.run(conn)
@@ -59,9 +63,9 @@ class Tracker:
                     job_id = job.pop('id')
                     self._job_statuses[job_id] = job
 
-                # Now track updates to job status. (There's a race between initial
-                # state and first update, but that shouldn't be a big problem in
-                # practice.)
+                # Now track updates to job status. (There's a race between
+                # initial state and first update, but that shouldn't be a big
+                # problem in practice.)
                 change_query = (
                     r.table('crawl_job')
                      .pluck(*self.JOB_STATUS_FIELDS)

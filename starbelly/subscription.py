@@ -292,6 +292,7 @@ class CrawlSyncSubscription:
         crawl_item.url = item['url']
         crawl_item.url_can = item['url_can']
         crawl_item.url_hash = item['url_hash']
+        crawl_item.is_success = item['is_success']
         await self._socket.send(message.SerializeToString())
 
     async def _set_initial_job_status(self):
@@ -324,13 +325,18 @@ class JobStatusSubscription:
     the previous event.
     '''
 
+    KEYS = ('name', 'run_state', 'started_at', 'completed_at', 'item_count',
+        'http_success_count', 'http_error_count', 'exception_count')
+
     def __init__(self, tracker, socket, min_interval):
         ''' Constructor. '''
         self.id = _subscription_id_sequence.next()
-        self._socket = socket
+        self._jobs = tracker.get_all_job_status()
+        self._last_status = {}
         self._min_interval = min_interval
+        self._socket = socket
+        self._status = dict(self._jobs)
         self._status_changed = asyncio.Event()
-        self._updates = tracker.get_all_job_status()
         tracker.job_status_changed.listen(self._handle_status_changed)
 
     def get_socket(self):
@@ -341,7 +347,7 @@ class JobStatusSubscription:
         ''' Start the subscription stream. '''
 
         # If we have initial job statuses, go ahead and send them.
-        if len(self._updates) > 0:
+        if len(self._status) > 0:
             await self._send_event()
 
         while True:
@@ -356,29 +362,39 @@ class JobStatusSubscription:
         message = ServerMessage()
         message.event.subscription_id = self.id
 
-        def cond_set(src, tgt, attr):
-            if attr in src:
-                setattr(tgt, attr, src[attr])
+        def merge(old, new, pb_job, attr):
+            ''' A helper that doesn't set fields which haven't changed. '''
+            if old.get(attr) != new.get(attr):
+                setattr(pb_job, attr, new[attr])
 
-        for job_id, job_data in self._updates.items():
-            job_status = message.event.job_statuses.statuses.add()
-            job_status.job_id = UUID(job_id).bytes
-            cond_set(job_data, job_status, 'name')
-            cond_set(job_data, job_status, 'item_count')
-            cond_set(job_data, job_status, 'http_success_count')
-            cond_set(job_data, job_status, 'http_error_count')
-            cond_set(job_data, job_status, 'exception_count')
-            if 'run_state' in job_data:
-                run_state = job_data['run_state'].upper()
-                job_status.run_state = JobRunState.Value(run_state)
-            http_status_counts = job_data.get('http_status_counts', {})
-            for status_code, count in http_status_counts.items():
-                job_status.http_status_counts[int(status_code)] = count
-        self._updates = {}
+        for job_id, new in self._status.items():
+            old = self._last_status.get(job_id, dict())
+            pb_job = message.event.job_list.jobs.add()
+            pb_job.job_id = UUID(job_id).bytes
+            merge(old, new, pb_job, 'name')
+            merge(old, new, pb_job, 'item_count')
+            merge(old, new, pb_job, 'item_count')
+            merge(old, new, pb_job, 'http_success_count')
+            merge(old, new, pb_job, 'http_error_count')
+            merge(old, new, pb_job, 'exception_count')
+            if old.get('started_at') != new.get('started_at'):
+                pb_job.started_at = new['started_at'].isoformat()
+            if old.get('completed_at') != new.get('completed_at'):
+                pb_job.completed_at = new['completed_at'].isoformat()
+            if old.get('run_state') != new.get('run_state'):
+                run_state = new['run_state'].upper()
+                pb_job.run_state = JobRunState.Value(run_state)
+            old_status = old.get('http_status_counts', dict())
+            for status_code, new_count in new['http_status_counts'].items():
+                if old_status.get(status_code) != new_count:
+                    pb_job.http_status_counts[int(status_code)] = new_count
+
+        self._last_status = self._status
+        self._status = {}
         self._status_changed.clear()
         await self._socket.send(message.SerializeToString())
 
     def _handle_status_changed(self, job_id, job):
         ''' Handle an update from the job tracker. '''
-        self._updates[job_id] = job
+        self._status[job_id] = job
         self._status_changed.set()

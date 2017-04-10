@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/server.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xc2\x01\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12*\n\ncrawl_item\x18\x02 \x01(\x0b\x32\x14.starbelly.CrawlItemH\x00\x12.\n\x0cjob_statuses\x18\x03 \x01(\x0b\x32\x16.starbelly.JobStatusesH\x00\x12<\n\x13subscription_closed\x18\x04 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x42\x06\n\x04\x42ody\"\x9a\x02\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12\x30\n\tlist_jobs\x18\x05 \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12,\n\x07new_job\x18\x06 \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12>\n\x10new_subscription\x18\x07 \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\'\n\x04ping\x18\x08 \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"E\n\x10ResponseListJobs\x12\"\n\x04jobs\x18\x01 \x03(\x0b\x32\x14.starbelly.JobStatus\x12\r\n\x05total\x18\x02 \x01(\x05\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"\x86\x01\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\")\n\x06Reason\x12\x0b\n\x07UNKNOWN\x10\x01\x12\x07\n\x03\x45ND\x10\x02\x12\t\n\x05\x45RROR\x10\x03')
+  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xba\x01\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12*\n\ncrawl_item\x18\x02 \x01(\x0b\x32\x14.starbelly.CrawlItemH\x00\x12&\n\x08job_list\x18\x04 \x01(\x0b\x32\x12.starbelly.JobListH\x00\x12<\n\x13subscription_closed\x18\x05 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x42\x06\n\x04\x42ody\"\xed\x02\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12\x1d\n\x03job\x18\x05 \x01(\x0b\x32\x0e.starbelly.JobH\x00\x12\x32\n\nlist_items\x18\x06 \x01(\x0b\x32\x1c.starbelly.ResponseListItemsH\x00\x12\x30\n\tlist_jobs\x18\x07 \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12,\n\x07new_job\x18\x08 \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12>\n\x10new_subscription\x18\t \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\'\n\x04ping\x18\n \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"G\n\x11ResponseListItems\x12#\n\x05items\x18\x01 \x03(\x0b\x32\x14.starbelly.CrawlItem\x12\r\n\x05total\x18\x02 \x01(\x05\"?\n\x10ResponseListJobs\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\x12\r\n\x05total\x18\x02 \x01(\x05\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"\x86\x01\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\")\n\x06Reason\x12\x0b\n\x07UNKNOWN\x10\x01\x12\x07\n\x03\x45ND\x10\x02\x12\t\n\x05\x45RROR\x10\x03')
   ,
   dependencies=[protobuf_dot_shared__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -48,8 +48,8 @@ _SUBSCRIPTIONCLOSED_REASON = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=930,
-  serialized_end=971,
+  serialized_start=1072,
+  serialized_end=1113,
 )
 _sym_db.RegisterEnumDescriptor(_SUBSCRIPTIONCLOSED_REASON)
 
@@ -76,15 +76,15 @@ _EVENT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='job_statuses', full_name='starbelly.Event.job_statuses', index=2,
-      number=3, type=11, cpp_type=10, label=1,
+      name='job_list', full_name='starbelly.Event.job_list', index=2,
+      number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
       name='subscription_closed', full_name='starbelly.Event.subscription_closed', index=3,
-      number=4, type=11, cpp_type=10, label=1,
+      number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -105,7 +105,7 @@ _EVENT = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=60,
-  serialized_end=254,
+  serialized_end=246,
 )
 
 
@@ -138,29 +138,43 @@ _RESPONSE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_jobs', full_name='starbelly.Response.list_jobs', index=3,
+      name='job', full_name='starbelly.Response.job', index=3,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='new_job', full_name='starbelly.Response.new_job', index=4,
+      name='list_items', full_name='starbelly.Response.list_items', index=4,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='new_subscription', full_name='starbelly.Response.new_subscription', index=5,
+      name='list_jobs', full_name='starbelly.Response.list_jobs', index=5,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='ping', full_name='starbelly.Response.ping', index=6,
+      name='new_job', full_name='starbelly.Response.new_job', index=6,
       number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='new_subscription', full_name='starbelly.Response.new_subscription', index=7,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ping', full_name='starbelly.Response.ping', index=8,
+      number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -180,8 +194,46 @@ _RESPONSE = _descriptor.Descriptor(
       name='Body', full_name='starbelly.Response.Body',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=257,
-  serialized_end=539,
+  serialized_start=249,
+  serialized_end=614,
+)
+
+
+_RESPONSELISTITEMS = _descriptor.Descriptor(
+  name='ResponseListItems',
+  full_name='starbelly.ResponseListItems',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='items', full_name='starbelly.ResponseListItems.items', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='total', full_name='starbelly.ResponseListItems.total', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=616,
+  serialized_end=687,
 )
 
 
@@ -218,8 +270,8 @@ _RESPONSELISTJOBS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=541,
-  serialized_end=610,
+  serialized_start=689,
+  serialized_end=752,
 )
 
 
@@ -249,8 +301,8 @@ _RESPONSENEWJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=612,
-  serialized_end=644,
+  serialized_start=754,
+  serialized_end=786,
 )
 
 
@@ -280,8 +332,8 @@ _RESPONSENEWSUBSCRIPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=646,
-  serialized_end=696,
+  serialized_start=788,
+  serialized_end=838,
 )
 
 
@@ -311,8 +363,8 @@ _RESPONSEPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=698,
-  serialized_end=726,
+  serialized_start=840,
+  serialized_end=868,
 )
 
 
@@ -352,8 +404,8 @@ _SERVERMESSAGE = _descriptor.Descriptor(
       name='MessageType', full_name='starbelly.ServerMessage.MessageType',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=728,
-  serialized_end=834,
+  serialized_start=870,
+  serialized_end=976,
 )
 
 
@@ -391,26 +443,34 @@ _SUBSCRIPTIONCLOSED = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=837,
-  serialized_end=971,
+  serialized_start=979,
+  serialized_end=1113,
 )
 
 _EVENT.fields_by_name['crawl_item'].message_type = protobuf_dot_shared__pb2._CRAWLITEM
-_EVENT.fields_by_name['job_statuses'].message_type = protobuf_dot_shared__pb2._JOBSTATUSES
+_EVENT.fields_by_name['job_list'].message_type = protobuf_dot_shared__pb2._JOBLIST
 _EVENT.fields_by_name['subscription_closed'].message_type = _SUBSCRIPTIONCLOSED
 _EVENT.oneofs_by_name['Body'].fields.append(
   _EVENT.fields_by_name['crawl_item'])
 _EVENT.fields_by_name['crawl_item'].containing_oneof = _EVENT.oneofs_by_name['Body']
 _EVENT.oneofs_by_name['Body'].fields.append(
-  _EVENT.fields_by_name['job_statuses'])
-_EVENT.fields_by_name['job_statuses'].containing_oneof = _EVENT.oneofs_by_name['Body']
+  _EVENT.fields_by_name['job_list'])
+_EVENT.fields_by_name['job_list'].containing_oneof = _EVENT.oneofs_by_name['Body']
 _EVENT.oneofs_by_name['Body'].fields.append(
   _EVENT.fields_by_name['subscription_closed'])
 _EVENT.fields_by_name['subscription_closed'].containing_oneof = _EVENT.oneofs_by_name['Body']
+_RESPONSE.fields_by_name['job'].message_type = protobuf_dot_shared__pb2._JOB
+_RESPONSE.fields_by_name['list_items'].message_type = _RESPONSELISTITEMS
 _RESPONSE.fields_by_name['list_jobs'].message_type = _RESPONSELISTJOBS
 _RESPONSE.fields_by_name['new_job'].message_type = _RESPONSENEWJOB
 _RESPONSE.fields_by_name['new_subscription'].message_type = _RESPONSENEWSUBSCRIPTION
 _RESPONSE.fields_by_name['ping'].message_type = _RESPONSEPING
+_RESPONSE.oneofs_by_name['Body'].fields.append(
+  _RESPONSE.fields_by_name['job'])
+_RESPONSE.fields_by_name['job'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
+_RESPONSE.oneofs_by_name['Body'].fields.append(
+  _RESPONSE.fields_by_name['list_items'])
+_RESPONSE.fields_by_name['list_items'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['list_jobs'])
 _RESPONSE.fields_by_name['list_jobs'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
@@ -423,7 +483,8 @@ _RESPONSE.fields_by_name['new_subscription'].containing_oneof = _RESPONSE.oneofs
 _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['ping'])
 _RESPONSE.fields_by_name['ping'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
-_RESPONSELISTJOBS.fields_by_name['jobs'].message_type = protobuf_dot_shared__pb2._JOBSTATUS
+_RESPONSELISTITEMS.fields_by_name['items'].message_type = protobuf_dot_shared__pb2._CRAWLITEM
+_RESPONSELISTJOBS.fields_by_name['jobs'].message_type = protobuf_dot_shared__pb2._JOB
 _SERVERMESSAGE.fields_by_name['event'].message_type = _EVENT
 _SERVERMESSAGE.fields_by_name['response'].message_type = _RESPONSE
 _SERVERMESSAGE.oneofs_by_name['MessageType'].fields.append(
@@ -436,6 +497,7 @@ _SUBSCRIPTIONCLOSED.fields_by_name['reason'].enum_type = _SUBSCRIPTIONCLOSED_REA
 _SUBSCRIPTIONCLOSED_REASON.containing_type = _SUBSCRIPTIONCLOSED
 DESCRIPTOR.message_types_by_name['Event'] = _EVENT
 DESCRIPTOR.message_types_by_name['Response'] = _RESPONSE
+DESCRIPTOR.message_types_by_name['ResponseListItems'] = _RESPONSELISTITEMS
 DESCRIPTOR.message_types_by_name['ResponseListJobs'] = _RESPONSELISTJOBS
 DESCRIPTOR.message_types_by_name['ResponseNewJob'] = _RESPONSENEWJOB
 DESCRIPTOR.message_types_by_name['ResponseNewSubscription'] = _RESPONSENEWSUBSCRIPTION
@@ -456,6 +518,13 @@ Response = _reflection.GeneratedProtocolMessageType('Response', (_message.Messag
   # @@protoc_insertion_point(class_scope:starbelly.Response)
   ))
 _sym_db.RegisterMessage(Response)
+
+ResponseListItems = _reflection.GeneratedProtocolMessageType('ResponseListItems', (_message.Message,), dict(
+  DESCRIPTOR = _RESPONSELISTITEMS,
+  __module__ = 'protobuf.server_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.ResponseListItems)
+  ))
+_sym_db.RegisterMessage(ResponseListItems)
 
 ResponseListJobs = _reflection.GeneratedProtocolMessageType('ResponseListJobs', (_message.Message,), dict(
   DESCRIPTOR = _RESPONSELISTJOBS,

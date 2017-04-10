@@ -131,4 +131,4 @@ class Downloader:
             raise
         except Exception as exc:
             logger.error('Failed downloading %s (exc=%r)', crawl_item.url, exc)
-            crawl_item.exception = traceback.format_exc()
+            crawl_item.set_exception(traceback.format_exc())

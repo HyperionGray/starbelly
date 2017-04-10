@@ -42,7 +42,8 @@ class CrawlManager:
             cancel_query = (
                 r.table('crawl_job')
                  .get(job_id)
-                 .update({'run_state':'cancelled'})
+                 .update({'run_state':'cancelled',
+                          'completed_at': datetime.now(tzlocal())})
             )
             async with self._db_pool.connection() as conn:
                 await cancel_query.run(conn)
@@ -52,6 +53,66 @@ class CrawlManager:
         async with self._db_pool.connection() as conn:
             count = await r.table('crawl_job').count().run(conn)
         return count
+
+    async def get_job(self, job_id):
+        ''' Get data for the specified job. '''
+        async with self._db_pool.connection() as conn:
+            job = await r.table('crawl_job').get(job_id).run(conn)
+        return job
+
+    async def get_job_items(self, job_id, include_success, include_error,
+                            include_exception, limit, offset):
+        ''' Get items from a job. '''
+        items = list()
+        filters = []
+
+        if include_success:
+            filters.append(r.row['is_success'] == True)
+
+        if include_error:
+            filters.append((r.row['is_success'] == False) &
+                           (~r.row.has_fields('exception')))
+
+        if include_exception:
+            filters.append((r.row['is_success'] == False) &
+                           (r.row.has_fields('exception')))
+
+        if len(filters) == 0:
+            raise Exception('You must set at least one include_* flag to true.')
+
+        def get_body(item):
+            return {
+                'join': r.branch(
+                    item.has_fields('body_id'),
+                    r.table('crawl_item_body').get(item['body_id']),
+                    None
+                )
+            }
+
+        base_query = (
+            r.table('crawl_item')
+             .between((job_id, r.minval),
+                      (job_id, r.maxval),
+                      index='sync_index')
+             .filter(r.or_(*filters))
+        )
+
+        query = (
+             base_query
+             .skip(offset)
+             .limit(limit)
+             .merge(get_body)
+             .without('body_id')
+        )
+
+
+        async with self._db_pool.connection() as conn:
+            total_count = await base_query.count().run(conn)
+            cursor = await query.run(conn)
+            async for item in AsyncCursorIterator(cursor):
+                items.append(item)
+
+        return total_count, items
 
     async def list_jobs(self, limit=10, offset=0):
         '''
@@ -115,7 +176,7 @@ class CrawlManager:
         '''
 
         job = _CrawlJob(self._db_pool, self._rate_limiter, name, seeds)
-        await job.save()
+        await job.initialize()
         self._running_jobs[job.id] = job
         job_task = asyncio.ensure_future(job.run())
         job_task.add_done_callback(functools.partial(self._cleanup_job, job))
@@ -131,7 +192,7 @@ class CrawlManager:
         # those jobs as 'cancelled' since killing the jobs may have left them in
         # an inconsistent state that can't be repaired.
         count = 0
-        startup_query = r.table('crawl_job').get_all('running', index='run_state')
+        startup_query = r.table('crawl_job').filter({'run_state': 'running'})
         async with self._db_pool.connection() as conn:
             cursor = await startup_query.run(conn)
             async for job in AsyncCursorIterator(cursor):
@@ -139,14 +200,19 @@ class CrawlManager:
                 await (
                     r.table('crawl_job')
                      .get(job['id'])
-                     .update({'run_state':'cancelled'})
+                     .update({'run_state': 'cancelled',
+                              'completed_at': datetime.now(tzlocal())})
                      .run(conn)
                 )
-                # And clear its frontier. (this is pretty hacky)
-                dummy_job = _CrawlJob(self._db_pool, self._rate_limiter, '', [])
-                dummy_job.id = job['id']
-                await dummy_job.clear_frontier()
-                count += 1
+                # And clear its frontier.
+                await (
+                    r.table('crawl_frontier')
+                     .between((job['id'], r.minval),
+                              (job['id'], r.maxval),
+                              index='cost_index')
+                     .delete()
+                     .run(conn)
+                )
 
         if count > 0:
             logger.warning(
@@ -193,22 +259,51 @@ class _CrawlJob:
         '''
 
         logger.info('Canceling crawl id={}…'.format(self.id[:8]))
-        await self._set_run_state('cancelled')
+        self._run_state = 'cancelled'
         await self._stop(graceful=False)
-        await self.clear_frontier()
+
+        cancel_query = (
+            r.table('crawl_job')
+             .get(self.id)
+             .update({'run_state': 'cancelled',
+                      'completed_at': datetime.now(tzlocal())})
+        )
+
+        frontier_query = (
+            r.table('crawl_frontier')
+             .between((self.id, r.minval),
+                      (self.id, r.maxval),
+                      index='cost_index')
+             .delete()
+        )
+
+        async with self._db_pool.connection() as conn:
+            await cancel_query.run(conn)
+            await frontier_query.run(conn)
+
         logger.info('Crawl id={} has been cancelled.'.format(self.id[:8]))
 
-    async def clear_frontier(self):
-        ''' Clear `crawl_frontier` table for a specified job ID. '''
+    async def initialize(self):
+        ''' Create initial job metadata. '''
+
+        job_data = {
+            'name': self.name,
+            'seeds': self.seeds,
+            'policy': self.policy,
+            'run_state': self._run_state,
+            'started_at': None,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {}
+        }
+
         async with self._db_pool.connection() as conn:
-            await (
-                r.table('crawl_frontier')
-                 .between((self.id, r.minval),
-                          (self.id, r.maxval),
-                          index='cost_index')
-                 .delete()
-                 .run(conn)
-            )
+            result = await r.table('crawl_job').insert(job_data).run(conn)
+            self.id = result['generated_keys'][0]
 
     async def pause(self):
         '''
@@ -218,7 +313,17 @@ class _CrawlJob:
         '''
 
         logger.info('Pausing crawl id={}…'.format(self.id[:8]))
-        await self._set_run_state('paused')
+        self._run_state = 'paused'
+
+        query = (
+            r.table('crawl_job')
+             .get(self.id)
+             .update({'run_state': 'paused'})
+        )
+
+        async with self._db_pool.connection() as conn:
+            await query.run(conn)
+
         await self._stop(graceful=True)
         logger.info('Crawl id={} has been paused.'.format(self.id[:8]))
 
@@ -265,32 +370,6 @@ class _CrawlJob:
                            .run(conn)
         finally:
             self._task = None
-
-    async def save(self):
-        ''' Insert job metadata in database. '''
-
-        job_data = {
-            'name': self.name,
-            'seeds': self.seeds,
-            'policy': self.policy,
-            'run_state': self._run_state,
-            'started_at': None,
-            'completed_at': None,
-            'duration': None,
-            'item_count': 0,
-            'http_success_count': 0,
-            'http_error_count': 0,
-            'exception_count': 0,
-            'http_status_counts': {}
-        }
-
-        async with self._db_pool.connection() as conn:
-            if self.id is None:
-                result = await r.table('crawl_job').insert(job_data).run(conn)
-                self.id = result['generated_keys'][0]
-            else:
-                data['id'] = self.id
-                r.table('crawl_job').update(data).run(conn)
 
     async def _add_frontier_items(self, frontier_items):
         '''
@@ -452,64 +531,53 @@ class _CrawlJob:
         ''' Save a crawl item to the database. '''
         async with self._insert_item_lock:
             async with self._db_pool.connection() as conn:
-                if crawl_item.exception is None:
-                    duration = crawl_item.duration.total_seconds()
-                    is_success = crawl_item.status_code // 100 == 2
-                else:
-                    duration = None
-                    is_success = False
-
-                compress_body = self._should_compress_body(crawl_item)
-
-                if compress_body:
-                    body = gzip.compress(crawl_item.body)
-                else:
-                    body = crawl_item.body
-
-                body_hash = hashlib.blake2b(body, digest_size=32) \
-                                   .digest()
-
                 item_data = {
-                    'body_id': body_hash,
                     'completed_at': crawl_item.completed_at,
-                    'content_type': crawl_item.content_type,
                     'cost': crawl_item.cost,
-                    'duration': duration,
-                    'exception': crawl_item.exception,
-                    'headers': crawl_item.headers,
+                    'duration': crawl_item.duration.total_seconds(),
                     'insert_sequence': self._insert_item_sequence,
-                    'is_success': is_success,
                     'job_id': self.id,
                     'started_at': crawl_item.started_at,
-                    'status_code': crawl_item.status_code,
                     'url': crawl_item.url,
                     'url_can': crawl_item.url_can,
                     'url_hash': crawl_item.url_hash,
                 }
 
-                body_data = {
-                    'id': body_hash,
-                    'body': body,
-                    'is_compressed': compress_body,
-                }
+                if crawl_item.exception is None:
+                    item_data['completed_at'] = crawl_item.completed_at
+                    item_data['content_type'] = crawl_item.content_type
+                    item_data['headers'] = crawl_item.headers
+                    item_data['is_success'] = crawl_item.status_code // 100 == 2
+                    item_data['status_code'] = crawl_item.status_code
+                    compress_body = self._should_compress_body(crawl_item)
 
-                body = await r.table('crawl_item_body').get(body_hash).run(conn)
+                    if compress_body:
+                        body = gzip.compress(crawl_item.body)
+                    else:
+                        body = crawl_item.body
 
-                if body is None:
-                    await r.table('crawl_item_body').insert(body_data).run(conn)
+                    body_hash = hashlib.blake2b(body, digest_size=32) \
+                                       .digest()
+
+                    item_data['body_id'] = body_hash
+                    body_data = {
+                        'id': body_hash,
+                        'body': body,
+                        'is_compressed': compress_body,
+                    }
+
+                    body = await r.table('crawl_item_body').get(body_hash) \
+                        .run(conn)
+
+                    if body is None:
+                        await r.table('crawl_item_body').insert(body_data) \
+                            .run(conn)
+                else:
+                    item_data['exception'] = crawl_item.exception
+                    item_data['is_success'] = False
 
                 await r.table('crawl_item').insert(item_data).run(conn)
                 self._insert_item_sequence += 1
-
-    async def _set_run_state(self, run_state):
-        ''' Set the job's run state. '''
-
-        self._run_state = run_state
-
-        async with self._db_pool.connection() as conn:
-            table = r.table('crawl_job')
-            query = table.get(self.id).update({'run_state': run_state})
-            await query.run(conn)
 
     def _should_compress_body(self, crawl_item):
         '''
@@ -620,6 +688,12 @@ class _CrawlItem:
         self.url = frontier_item['url']
         self.url_can = frontier_item['url_can']
         self.url_hash = frontier_item['url_hash']
+
+    def set_exception(self, exception):
+        ''' Update state from HTTP response. '''
+        self.completed_at = datetime.now(tzlocal())
+        self.duration = self.completed_at - self.started_at
+        self.exception = exception
 
     def set_response(self, status_code, headers, body):
         ''' Update state from HTTP response. '''

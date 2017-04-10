@@ -197,7 +197,6 @@ def init_db(db_config):
         [r.row['job_id'], r.row['insert_sequence']])
     ensure_db_table(conn, 'crawl_item_body')
     ensure_db_table(conn, 'crawl_job')
-    ensure_db_index(conn, 'crawl_job', 'run_state')
     ensure_db_index(conn, 'crawl_job', 'started_at')
     ensure_db_table(conn, 'crawl_frontier')
     ensure_db_index(conn, 'crawl_frontier', 'cost_index',

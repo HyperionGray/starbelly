@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta
+import gzip
 import logging
 from urllib.parse import urlparse
 from uuid import UUID
@@ -39,12 +40,14 @@ class Server:
         self._websocket_server = None
 
         self._request_handlers = {
+            'get_job': self._get_job,
+            'get_job_items': self._get_job_items,
             'list_jobs': self._list_jobs,
             'ping': self._ping,
             'set_job_run_state': self._set_job_run_state,
             'start_job': self._start_job,
             'subscribe_job_sync': self._subscribe_crawl_sync,
-            'subscribe_jobs_status': self._subscribe_job_status,
+            'subscribe_job_status': self._subscribe_job_status,
             'unsubscribe': self._unsubscribe,
         }
 
@@ -139,36 +142,101 @@ class Server:
             # This could happen, e.g. if the request_id is not set.
             logger.error('Cannot send uninitialized response: %r', response)
 
+    async def _get_job(self, command, socket):
+        ''' Get status for a single job. '''
+        job_id = str(UUID(bytes=command.job_id))
+        job_doc = await self._crawl_manager.get_job(job_id)
+        response = Response()
+        job = response.job
+        job.job_id = UUID(job_doc['id']).bytes
+        job.name = job_doc['name']
+        for seed in job_doc['seeds']:
+            job.seeds.append(seed)
+        job.item_count = job_doc['item_count']
+        job.http_success_count = job_doc['http_success_count']
+        job.http_error_count = job_doc['http_error_count']
+        job.exception_count = job_doc['exception_count']
+        job.started_at = job_doc['started_at'].isoformat()
+        if job_doc['completed_at'] is not None:
+            job.completed_at = job_doc['completed_at'].isoformat()
+        run_state = job_doc['run_state'].upper()
+        job.run_state = protobuf.shared_pb2.JobRunState.Value(run_state)
+        http_status_counts = job_doc['http_status_counts']
+        for status_code, count in http_status_counts.items():
+            job.http_status_counts[int(status_code)] = count
+        return response
+
+    async def _get_job_items(self, command, socket):
+        ''' Get a page of items from a job. '''
+        job_id = str(UUID(bytes=command.job_id))
+        limit = command.page.limit
+        offset = command.page.offset
+        total_items, item_docs = await self._crawl_manager.get_job_items(
+            job_id, command.include_success, command.include_error,
+            command.include_exception, limit, offset)
+        response = Response()
+        response.list_items.total = total_items
+        compression_ok = command.compression_ok
+        for item_doc in item_docs:
+            item = response.list_items.items.add()
+
+            if item_doc['join'] is None:
+                item.is_body_compressed = False
+            elif item_doc['join']['is_compressed'] and not compression_ok:
+                item.body = gzip.decompress(item_doc['join']['body'])
+                item.is_body_compressed = False
+            else:
+                item.body = item_doc['join']['body']
+                item.is_body_compressed = item_doc['join']['is_compressed']
+            if 'content_type' in item_doc:
+                item.content_type = item_doc['content_type']
+            if 'exception' in item_doc:
+                item.exception = item_doc['exception']
+            if 'status_code' in item_doc:
+                item.status_code = item_doc['status_code']
+            for key, value in item_doc.get('headers', {}).items():
+                if value is None:
+                    value = ''
+                item.headers[key] = value
+            item.cost = item_doc['cost']
+            item.job_id = UUID(item_doc['job_id']).bytes
+            item.completed_at = item_doc['completed_at'].isoformat()
+            item.started_at = item_doc['started_at'].isoformat()
+            item.duration = item_doc['duration']
+            item.url = item_doc['url']
+            item.url_can = item_doc['url_can']
+            item.url_hash = item_doc['url_hash']
+            item.is_success = item_doc['is_success']
+        return response
+
     async def _list_jobs(self, command, socket):
         ''' Return a list of jobs. '''
 
-        logger.error('COMMAND=%r',command)
         limit = command.page.limit
         offset = command.page.offset
-        jobs = await self._crawl_manager.list_jobs(limit, offset)
+        job_docs = await self._crawl_manager.list_jobs(limit, offset)
         count = await self._crawl_manager.count_jobs()
 
         response = Response()
         response.list_jobs.total = count
 
-        for job in jobs:
-            logger.error('job=%r', job)
-            job_status = response.list_jobs.jobs.add()
-            job_status.job_id = UUID(job['id']).bytes
-            job_status.name = job['name']
-            job_status.item_count = job['item_count']
-            job_status.http_success_count = job['http_success_count']
-            job_status.http_error_count = job['http_error_count']
-            job_status.exception_count = job['exception_count']
-            job_status.started_at = job['started_at'].isoformat()
-            if job['completed_at'] is not None:
-                job_status.completed_at = job['completed_at'].isoformat()
-            run_state = job['run_state'].upper()
-            job_status.run_state = protobuf.shared_pb2.JobRunState \
+        for job_doc in job_docs:
+            job = response.list_jobs.jobs.add()
+            job.job_id = UUID(job_doc['id']).bytes
+            job.name = job_doc['name']
+            job.item_count = job_doc['item_count']
+            job.http_success_count = job_doc['http_success_count']
+            job.http_error_count = job_doc['http_error_count']
+            job.exception_count = job_doc['exception_count']
+            job.started_at = job_doc['started_at'].isoformat()
+            if job_doc['completed_at'] is not None:
+                job.completed_at = job_doc['completed_at'].isoformat()
+            run_state = job_doc['run_state'].upper()
+            job.run_state = protobuf.shared_pb2.JobRunState \
                 .Value(run_state)
-            http_status_counts = job['http_status_counts']
+            http_status_counts = job_doc['http_status_counts']
             for status_code, count in http_status_counts.items():
-                job_status.http_status_counts[int(status_code)] = count
+                job.http_status_counts[int(status_code)] = count
 
         return response
 
