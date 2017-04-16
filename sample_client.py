@@ -34,6 +34,22 @@ logger = logging.getLogger('sample_client')
 DATE_FMT = '%Y-%m-%d %H:%I:%S'
 
 
+async def delete_job(args, socket):
+    ''' Delete a job. '''
+    request = protobuf.client_pb2.Request()
+    request.request_id = 1
+    request.delete_job.job_id = UUID(args.job_id).bytes
+    request_data = request.SerializeToString()
+    await socket.send(request_data)
+
+    message_data = await socket.recv()
+    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+    if message.response.is_success:
+        print('Job deleted.')
+    else:
+        print('Failed to delete job: {}'.format(message.response.error_message))
+
+
 def get_args():
     ''' Parse command line arguments. '''
     parser = argparse.ArgumentParser(description=__doc__)
@@ -54,19 +70,19 @@ def get_args():
     subparsers = parser.add_subparsers(help='Actions', dest='action')
     subparsers.required = True
     show_parser = subparsers.add_parser('show', help='Display a crawl job.')
-    show_parser.add_argument('job_id',
-        help='Job ID as hex string.')
+    show_parser.add_argument('job_id', help='Job ID as hex string.')
     show_parser.add_argument('--items', action='store_true',
         help='Show some of the job\'s items.')
     show_parser.add_argument('--errors', action='store_true',
         help='Show some of the job\'s HTTP errors.')
     show_parser.add_argument('--exceptions', action='store_true',
         help='Show some of the job\'s exceptions.')
+    delete_parser = subparsers.add_parser('delete', help='Delete a crawl job.')
+    delete_parser.add_argument('job_id', help='Job ID as hex string.')
     list_parser = subparsers.add_parser('list', help='List crawl jobs.')
     sync_parser = subparsers.add_parser('sync',
         help='Sync crawl items from a job.')
-    sync_parser.add_argument('job_id',
-        help='Job ID as hex string.')
+    sync_parser.add_argument('job_id', help='Job ID as hex string.')
     sync_parser.add_argument('-d', '--delay', type=float, default=0,
         help='Delay between printing items (default 0).')
     sync_parser.add_argument('-t', '--token',
@@ -142,6 +158,7 @@ async def main():
     args = get_args()
 
     actions = {
+        'delete': delete_job,
         'list': list_jobs,
         'show': show_job,
         'sync': sync_job,

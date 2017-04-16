@@ -54,6 +54,27 @@ class CrawlManager:
             count = await r.table('crawl_job').count().run(conn)
         return count
 
+    async def delete_job(self, job_id):
+        ''' Delete a job. '''
+        job_query = r.table('crawl_job').get(job_id).pluck('run_state')
+        delete_items_query = (
+            r.table('crawl_item')
+             .between((job_id, r.minval),
+                      (job_id, r.maxval),
+                      index='sync_index')
+             .delete()
+        )
+        delete_job_query = r.table('crawl_job').get(job_id).delete()
+
+        async with self._db_pool.connection() as conn:
+            job = await job_query.run(conn)
+
+            if job['run_state'] not in ('completed', 'cancelled'):
+                raise Exception('Can only delete cancelled/completed jobs.')
+
+            await delete_items_query.run(conn)
+            await delete_job_query.run(conn)
+
     async def get_job(self, job_id):
         ''' Get data for the specified job. '''
         async with self._db_pool.connection() as conn:
@@ -552,7 +573,7 @@ class _CrawlJob:
                     compress_body = self._should_compress_body(crawl_item)
 
                     if compress_body:
-                        body = gzip.compress(crawl_item.body)
+                        body = gzip.compress(crawl_item.body, compresslevel=6)
                     else:
                         body = crawl_item.body
 

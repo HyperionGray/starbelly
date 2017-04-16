@@ -40,6 +40,7 @@ class Server:
         self._websocket_server = None
 
         self._request_handlers = {
+            'delete_job': self._delete_job,
             'get_job': self._get_job,
             'get_job_items': self._get_job_items,
             'list_jobs': self._list_jobs,
@@ -100,10 +101,17 @@ class Server:
             await self._websocket_server.wait_closed()
             logger.info('All websockets closed.')
 
+    async def _delete_job(self, command, socket):
+        ''' Delete a job. '''
+        job_id = str(UUID(bytes=command.job_id))
+        await self._crawl_manager.delete_job(job_id)
+        return Response()
+
     async def _handle_request(self, websocket, request_data):
         ''' Handle a single request/response pair. '''
+        request = Request.FromString(request_data)
+
         try:
-            request = Request.FromString(request_data)
             command_name = request.WhichOneof('Command')
 
             if command_name is None:
