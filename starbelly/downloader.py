@@ -124,9 +124,8 @@ class Downloader:
                 crawl_item.set_start()
                 with async_timeout.timeout(10):
                     async with session.get(crawl_item.url) as response:
-                        status = response.status
                         body = await response.read()
-                        crawl_item.set_response(status, response.headers, body)
+                        crawl_item.set_response(response, body)
         except asyncio.CancelledError:
             raise
         except Exception as exc:

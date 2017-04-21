@@ -121,7 +121,7 @@ class Starbelly:
         db_pool = AsyncRethinkPool(self._db_factory())
         tracker = Tracker(db_pool)
         downloader = Downloader()
-        rate_limiter = RateLimiter(downloader)
+        rate_limiter = RateLimiter(db_pool, downloader)
         crawl_manager = CrawlManager(db_pool, rate_limiter)
         subscription_manager = SubscriptionManager(db_pool)
         server = Server(
@@ -130,7 +130,8 @@ class Starbelly:
             db_pool,
             crawl_manager,
             subscription_manager,
-            tracker
+            tracker,
+            rate_limiter
         )
 
         try:

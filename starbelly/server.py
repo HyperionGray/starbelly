@@ -28,13 +28,14 @@ class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
     def __init__(self, host, port, db_pool, crawl_manager, subscription_manager,
-                 tracker):
+                 tracker, rate_limiter):
         ''' Constructor. '''
         self._clients = set()
         self._crawl_manager = crawl_manager
         self._db_pool = db_pool
         self._host = host
         self._port = port
+        self._rate_limiter = rate_limiter
         self._subscription_manager = subscription_manager
         self._tracker = tracker
         self._websocket_server = None
@@ -43,9 +44,11 @@ class Server:
             'delete_job': self._delete_job,
             'get_job': self._get_job,
             'get_job_items': self._get_job_items,
+            'get_rate_limits': self._get_rate_limits,
             'list_jobs': self._list_jobs,
             'ping': self._ping,
             'set_job_run_state': self._set_job_run_state,
+            'set_rate_limit': self._set_rate_limit,
             'start_job': self._start_job,
             'subscribe_job_sync': self._subscribe_crawl_sync,
             'subscribe_job_status': self._subscribe_job_status,
@@ -130,7 +133,7 @@ class Server:
             response.request_id = request.request_id
             response.is_success = True
         except Exception as e:
-            logger.exception('Error while handling request: %r', request)
+            logger.exception('Error while handling request:\n%r', request)
             response = Response()
             response.is_success = False
             response.error_message = str(e)
@@ -148,7 +151,7 @@ class Server:
             await websocket.send(message_data)
         else:
             # This could happen, e.g. if the request_id is not set.
-            logger.error('Cannot send uninitialized response: %r', response)
+            logger.error('Cannot send uninitialized response:\n%r', response)
 
     async def _get_job(self, command, socket):
         ''' Get status for a single job. '''
@@ -196,6 +199,8 @@ class Server:
             else:
                 item.body = item_doc['join']['body']
                 item.is_body_compressed = item_doc['join']['is_compressed']
+            if 'charset' in item_doc:
+                item.charset = item_doc['charset']
             if 'content_type' in item_doc:
                 item.content_type = item_doc['content_type']
             if 'exception' in item_doc:
@@ -215,6 +220,24 @@ class Server:
             item.url_can = item_doc['url_can']
             item.url_hash = item_doc['url_hash']
             item.is_success = item_doc['is_success']
+        return response
+
+    async def _get_rate_limits(self, command, socket):
+        ''' Get a page of rate limits. '''
+        limit = command.page.limit
+        offset = command.page.offset
+        count, rate_limits = await self._rate_limiter.get_limits(limit, offset)
+
+        response = Response()
+        response.list_rate_limits.total = count
+
+        for rate_limit in rate_limits:
+            rl = response.list_rate_limits.rate_limits.add()
+            rl.name = rate_limit['name']
+            rl.delay = rate_limit['delay']
+            if rate_limit['type'] == 'domain':
+                rl.domain = rate_limit['domain']
+
         return response
 
     async def _list_jobs(self, command, socket):
@@ -273,6 +296,18 @@ class Server:
         else:
             raise Exception('Not allowed to set job run state: {}'
                 .format(run_state))
+
+        return Response()
+
+    async def _set_rate_limit(self, command, socket):
+        ''' Set a rate limit. '''
+        rate_limit = command.rate_limit
+        delay = rate_limit.delay if rate_limit.HasField('delay') else None
+
+        if rate_limit.HasField('domain'):
+            await self._rate_limiter.set_domain_limit(rate_limit.domain, delay)
+        else:
+            await self._rate_limiter.set_global_limit(delay)
 
         return Response()
 

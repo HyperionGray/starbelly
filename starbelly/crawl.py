@@ -7,6 +7,7 @@ import gzip
 import hashlib
 import logging
 
+import cchardet as chardet
 from dateutil.tz import tzlocal
 import hashlib
 import mimeparse
@@ -565,6 +566,7 @@ class _CrawlJob:
                 }
 
                 if crawl_item.exception is None:
+                    item_data['charset'] = crawl_item.charset
                     item_data['completed_at'] = crawl_item.completed_at
                     item_data['content_type'] = crawl_item.content_type
                     item_data['headers'] = crawl_item.headers
@@ -716,24 +718,19 @@ class _CrawlItem:
         self.duration = self.completed_at - self.started_at
         self.exception = exception
 
-    def set_response(self, status_code, headers, body):
+    def set_response(self, response, body):
         ''' Update state from HTTP response. '''
-        self.body = body
         self.completed_at = datetime.now(tzlocal())
         self.duration = self.completed_at - self.started_at
-        self.headers = headers
-        self.status_code = status_code
-
-        # Try to figure out the content-type.
-        #TODO We should fall back to content sniffing.
-        default_type = 'application/octet-stream'
-
-        if self.headers is not None:
-            content_type = self.headers.get('Content-Type', default_type)
+        self.status_code = response.status
+        self.headers = response.headers
+        #TODO try sniffing mime types if not declared?
+        self.content_type = response.content_type
+        if response.charset is not None:
+            self.charset = response.charset
         else:
-            content_type = default_type
-
-        self.content_type = content_type
+            self.charset = chardet.detect(body)['encoding']
+        self.body = body
 
     def set_start(self):
         '''

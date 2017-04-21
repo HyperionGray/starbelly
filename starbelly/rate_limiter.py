@@ -6,7 +6,10 @@ import logging
 from time import time
 import urllib.parse
 
+import rethinkdb as r
+
 from . import cancel_futures
+from .db import AsyncCursorIterator
 
 
 logger = logging.getLogger(__name__)
@@ -35,15 +38,36 @@ class RateLimiter:
     single rate limit to a set of domains.
     '''
 
-    def __init__(self, downloader, capacity=1e4, default_limit=1):
+    def __init__(self, db_pool, downloader, capacity=1e4):
         ''' Constructor. '''
-        self._default_limit = default_limit
+        self._db_pool = db_pool
         self._downloader = downloader
         self._expires = list()
         self._expiry_added = asyncio.Event()
+        self._global_limit = None
         self._queues = dict()
         self._rate_limits = dict()
         self._semaphore = asyncio.Semaphore(capacity)
+
+    async def get_limits(self, limit, skip):
+        ''' Return a list of rate limits ordered by name. '''
+        count_query = r.table('rate_limit').count()
+        item_query = (
+            r.table('rate_limit')
+             .order_by(index='name')
+             .skip(skip)
+             .limit(limit)
+        )
+
+        rate_limits = list()
+
+        async with self._db_pool.connection() as conn:
+            count = await count_query.run(conn)
+            cursor = await item_query.run(conn)
+            async for rate_limit in AsyncCursorIterator(cursor):
+                rate_limits.append(rate_limit)
+
+        return count, rate_limits
 
     async def push(self, crawl_item):
         '''
@@ -53,16 +77,10 @@ class RateLimiter:
         '''
         await self._semaphore.acquire()
         token = self._get_token_for_url(crawl_item.url)
-        # logger.error('PUSHED token=%s url=%s', token, crawl_item.url)
         if token not in self._queues:
             self._queues[token] = deque()
             self._add_expiry(Expiry(time(), token))
         self._queues[token].append(crawl_item)
-
-    def remove_limit(self, domain):
-        ''' Remove a rate limit. '''
-        token = self._get_token_for_domain(domain)
-        del self._rate_limits[token]
 
     async def remove_job(self, job_id, finish_downloads=True):
         '''
@@ -106,6 +124,20 @@ class RateLimiter:
         then a queue exists for that token.
         '''
 
+        logger.info('Loading rate limits from DB.')
+
+        async with self._db_pool.connection() as conn:
+            cursor = await r.table('rate_limit').run(conn)
+            async for rate_limit in AsyncCursorIterator(cursor):
+                if rate_limit['type'] == 'global':
+                    self._global_limit = rate_limit['delay']
+                elif rate_limit['type'] == 'domain':
+                    token = rate_limit['token']
+                    self._rate_limits[token] = rate_limit['delay']
+                else:
+                    raise Exception('Cannot load rate limit (unknown type): '
+                        .format(repr(rate_limit)))
+
         logger.info('Rate limiter is running.')
 
         try:
@@ -132,10 +164,50 @@ class RateLimiter:
         finally:
             logger.info('Rate limiter has stopped.')
 
-    def set_limit(self, domain, interval):
-        ''' Set a rate limit. '''
+    async def set_domain_limit(self, domain, delay):
+        '''
+        Set a rate limit.
+
+        If delay is None, then remove the rate limit for the specified domain,
+        i.e. use the global default for that domain. Set ``delay=0`` for no
+        delay.
+        '''
         token = self._get_token_for_domain(domain)
-        self._rate_limits[token] = interval
+        base_query = r.table('rate_limit').get_all(token, index='token')
+        if delay is None:
+            try:
+                del self._rate_limits[token]
+            except KeyError:
+                pass
+            async with self._db_pool.connection() as conn:
+                await base_query.delete().run(conn)
+        else:
+            self._rate_limits[token] = delay
+            async with self._db_pool.connection() as conn:
+                try:
+                    await base_query.nth(0).update({'delay': delay}).run(conn)
+                except r.ReqlNonExistenceError:
+                    await r.table('rate_limit').insert({
+                        'delay': delay,
+                        'domain': domain,
+                        'name': domain,
+                        'token': token,
+                        'type': 'domain',
+                    }).run(conn)
+
+    async def set_global_limit(self, delay):
+        token = b'\x00' * 16
+        if delay is None:
+            raise Exception('Cannot delete the global rate limit.')
+        self._global_limit = delay
+        query = (
+            r.table('rate_limit')
+             .get_all(token, index='token')
+             .nth(0)
+             .update({'delay': delay})
+        )
+        async with self._db_pool.connection() as conn:
+            await query.run(conn)
 
     def _add_expiry(self, expiry):
         ''' Add the specified expiry to the heap. '''
@@ -193,5 +265,5 @@ class RateLimiter:
         ''' When an item finishes, re-schedule its token. '''
         crawl_item = crawl_item_future.result()
         token = self._get_token_for_url(crawl_item.url)
-        limit = self._rate_limits.get(token, self._default_limit)
+        limit = self._rate_limits.get(token, self._global_limit)
         self._add_expiry(Expiry(time() + limit, token))

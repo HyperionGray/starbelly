@@ -99,6 +99,26 @@ def ensure_db(conn, name):
     conn.use(name)
 
 
+def ensure_db_fixtures(conn):
+    ''' Create all fixtures. '''
+    global_rate_limit_token = b'\x00' * 16
+
+    try:
+        global_rate_limit = (
+            r.table('rate_limit')
+             .get_all(global_rate_limit_token, index='token')
+             .nth(0)
+             .run(conn)
+        )
+    except r.ReqlNonExistenceError:
+        logger.info('Creating global rate limit fixture.')
+        r.table('rate_limit').insert({
+            'delay': 5.0,
+            'name': 'Global Limit',
+            'token': global_rate_limit_token,
+            'type': 'global',
+        }).run(conn)
+
 def ensure_db_index(conn, table_name, index_name, index_cols=None):
     ''' Create the named index, if it doesn't already exist. '''
     if not r.table(table_name).index_list().contains(index_name).run(conn):
@@ -201,6 +221,10 @@ def init_db(db_config):
     ensure_db_table(conn, 'crawl_frontier')
     ensure_db_index(conn, 'crawl_frontier', 'cost_index',
         [r.row['job_id'], r.row['cost']])
+    ensure_db_table(conn, 'rate_limit')
+    ensure_db_index(conn, 'rate_limit', 'name')
+    ensure_db_index(conn, 'rate_limit', 'token')
+    ensure_db_fixtures(conn)
     conn.close()
 
 

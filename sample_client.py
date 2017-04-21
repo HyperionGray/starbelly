@@ -69,6 +69,7 @@ def get_args():
 
     subparsers = parser.add_subparsers(help='Actions', dest='action')
     subparsers.required = True
+    list_parser = subparsers.add_parser('list', help='List crawl jobs.')
     show_parser = subparsers.add_parser('show', help='Display a crawl job.')
     show_parser.add_argument('job_id', help='Job ID as hex string.')
     show_parser.add_argument('--items', action='store_true',
@@ -79,7 +80,6 @@ def get_args():
         help='Show some of the job\'s exceptions.')
     delete_parser = subparsers.add_parser('delete', help='Delete a crawl job.')
     delete_parser.add_argument('job_id', help='Job ID as hex string.')
-    list_parser = subparsers.add_parser('list', help='List crawl jobs.')
     sync_parser = subparsers.add_parser('sync',
         help='Sync crawl items from a job.')
     sync_parser.add_argument('job_id', help='Job ID as hex string.')
@@ -87,6 +87,15 @@ def get_args():
         help='Delay between printing items (default 0).')
     sync_parser.add_argument('-t', '--token',
         help='To resume syncing, supply a sync token.')
+    rate_limit_parser = subparsers.add_parser('rates',
+        help='Show rate limits.')
+    rate_limit_parser = subparsers.add_parser('set_rate',
+        help='Set a rate limit.')
+    rate_limit_parser.add_argument('delay', type=float,
+        help='Delay in seconds. (-1 to clear)')
+    rate_limit_parser.add_argument('domain',
+        nargs='?',
+        help='Domain name to rate limit. (If omitted, modifies global limit.)')
 
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.verbosity.upper()))
@@ -160,6 +169,8 @@ async def main():
     actions = {
         'delete': delete_job,
         'list': list_jobs,
+        'rates': get_rates,
+        'set_rate': set_rate,
         'show': show_job,
         'sync': sync_job,
     }
@@ -175,6 +186,73 @@ async def main():
 
     if socket.open:
         await socket.close()
+
+
+async def get_rates(args, socket):
+    ''' Show rate limits. '''
+    current_page = 0
+    action = 'm'
+
+    print('| {:40s} | {:5} |'.format('Name', 'Delay'))
+    print('-' * 52)
+
+    while action == 'm':
+        current_page += 1
+        limit = 10
+        offset = (current_page - 1) * limit
+
+        request = protobuf.client_pb2.Request()
+        request.request_id = 1
+        request.get_rate_limits.page.limit = limit
+        request.get_rate_limits.page.offset = offset
+        request_data = request.SerializeToString()
+        await socket.send(request_data)
+
+        message_data = await socket.recv()
+        message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+        response = message.response
+        for rate_limit in response.list_rate_limits.rate_limits:
+            name = rate_limit.name
+            print('| {:40s} | {:5.3f} |'.format(
+                rate_limit.name[:40],
+                rate_limit.delay
+            ))
+        start = offset + 1
+        end = offset + len(response.list_rate_limits.rate_limits)
+        total = response.list_rate_limits.total
+        if end == total:
+            print('Showing {}-{} of {}.'.format(start, end, total))
+            action = 'q'
+        else:
+            print('Showing {}-{} of {}. [m]ore or [q]uit?'
+                .format(start, end, total))
+            action = await asyncio.get_event_loop().run_in_executor(None, getch)    #
+
+
+async def set_rate(args, socket):
+    ''' Set a rate limit. '''
+    request = protobuf.client_pb2.Request()
+    request.request_id = 1
+    rate_limit = request.set_rate_limit.rate_limit
+    if args.domain is not None:
+        rate_limit.domain = args.domain
+    if args.delay >= 0:
+        rate_limit.delay = args.delay
+    if not (rate_limit.HasField('domain') or rate_limit.HasField('delay')):
+        logger.error('Delay must be >= 0 if domain not specified.')
+        return
+    request_data = request.SerializeToString()
+    await socket.send(request_data)
+
+    message_data = await socket.recv()
+    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+    if message.response.is_success:
+        domain = '(global)' if args.domain is None else args.domain
+        delay = args.delay if args.delay >= 0 else '(deleted)'
+        print('Set rate limit: {}={}'.format(domain, delay))
+    else:
+        print('Failed to set rate limit: {}'
+            .format(message.response.error_message))
 
 
 async def show_job(args, socket):

@@ -1,7 +1,7 @@
 aiodns
 aiohttp
 async_timeout
-chardet
+cchardet
 lxml
 protobuf
 python-dateutil

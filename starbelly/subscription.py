@@ -277,6 +277,7 @@ class CrawlSyncSubscription:
         crawl_item = message.event.crawl_item
         crawl_item.body = body
         crawl_item.is_body_compressed = is_body_compressed
+        crawl_item.charset = item['charset']
         crawl_item.completed_at = item['completed_at'].isoformat()
         crawl_item.content_type = item['content_type']
         crawl_item.cost = item['cost']
