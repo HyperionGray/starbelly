@@ -12,6 +12,10 @@ from . import cancel_futures, raise_future_exception
 logger = logging.getLogger(__name__)
 
 
+class MimeNotAllowedError(Exception):
+    ''' Indicates that the MIME type of a response is not allowed by policy. '''
+
+
 class Downloader:
     '''
     This class is responsible for downloading crawl items.
@@ -104,7 +108,7 @@ class Downloader:
             await self._download_item(crawl_item)
             crawl_item.completed.set_result(crawl_item)
             await crawl_item.download_callback(crawl_item)
-            if crawl_item.exception is None:
+            if crawl_item.body is not None and crawl_item.exception is None:
                 logger.info('%d %s (cost=%0.2f)', crawl_item.status_code,
                     crawl_item.url, crawl_item.cost)
         except asyncio.CancelledError:
@@ -120,14 +124,25 @@ class Downloader:
         ''' A helper to ``_download()``. '''
         try:
             connector = aiohttp.TCPConnector(verify_ssl=False)
-            with aiohttp.ClientSession(connector=connector) as session:
+            user_agent = crawl_item.policy.user_agents.get_user_agent()
+            session = aiohttp.ClientSession(
+                connector=connector,
+                headers={'User-Agent': user_agent}
+            )
+            with session, async_timeout.timeout(10):
                 crawl_item.set_start()
-                with async_timeout.timeout(10):
-                    async with session.get(crawl_item.url) as response:
-                        body = await response.read()
-                        crawl_item.set_response(response, body)
+                async with session.get(crawl_item.url) as response:
+                    mime = response.headers.get('content-type',
+                        'application/octet-stream')
+                    if not crawl_item.policy.mime_type_rules.should_save(mime):
+                        raise MimeNotAllowedError()
+                    body = await response.read()
+                    crawl_item.set_response(response, body)
         except asyncio.CancelledError:
             raise
+        except MimeNotAllowedError:
+            logger.info('MIME %s disallowed by policy for URL %s', mime,
+                crawl_item.url)
         except Exception as exc:
             logger.error('Failed downloading %s (exc=%r)', crawl_item.url, exc)
             crawl_item.set_exception(traceback.format_exc())

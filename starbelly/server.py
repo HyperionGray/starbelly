@@ -28,12 +28,13 @@ class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
     def __init__(self, host, port, db_pool, crawl_manager, subscription_manager,
-                 tracker, rate_limiter):
+                 tracker, rate_limiter, policy_manager):
         ''' Constructor. '''
         self._clients = set()
         self._crawl_manager = crawl_manager
         self._db_pool = db_pool
         self._host = host
+        self._policy_manager = policy_manager
         self._port = port
         self._rate_limiter = rate_limiter
         self._subscription_manager = subscription_manager
@@ -42,12 +43,16 @@ class Server:
 
         self._request_handlers = {
             'delete_job': self._delete_job,
+            'delete_policy': self._delete_policy,
             'get_job': self._get_job,
             'get_job_items': self._get_job_items,
+            'get_policy': self._get_policy,
             'get_rate_limits': self._get_rate_limits,
             'list_jobs': self._list_jobs,
+            'list_policies': self._list_policies,
             'ping': self._ping,
             'set_job_run_state': self._set_job_run_state,
+            'set_policy': self._set_policy,
             'set_rate_limit': self._set_rate_limit,
             'start_job': self._start_job,
             'subscribe_job_sync': self._subscribe_crawl_sync,
@@ -110,6 +115,12 @@ class Server:
         await self._crawl_manager.delete_job(job_id)
         return Response()
 
+    async def _delete_policy(self, command, socket):
+        ''' Delete a policy. '''
+        policy_id = str(UUID(bytes=command.policy_id))
+        await self._policy_manager.delete_policy(policy_id)
+        return Response()
+
     async def _handle_request(self, websocket, request_data):
         ''' Handle a single request/response pair. '''
         request = Request.FromString(request_data)
@@ -160,9 +171,10 @@ class Server:
         response = Response()
         job = response.job
         job.job_id = UUID(job_doc['id']).bytes
-        job.name = job_doc['name']
         for seed in job_doc['seeds']:
             job.seeds.append(seed)
+        self._policy_manager.convert_doc_to_pb(job_doc['policy'], job.policy)
+        job.name = job_doc['name']
         job.item_count = job_doc['item_count']
         job.http_success_count = job_doc['http_success_count']
         job.http_error_count = job_doc['http_error_count']
@@ -199,7 +211,7 @@ class Server:
             else:
                 item.body = item_doc['join']['body']
                 item.is_body_compressed = item_doc['join']['is_compressed']
-            if 'charset' in item_doc:
+            if item_doc.get('charset') is not None:
                 item.charset = item_doc['charset']
             if 'content_type' in item_doc:
                 item.content_type = item_doc['content_type']
@@ -222,6 +234,14 @@ class Server:
             item.is_success = item_doc['is_success']
         return response
 
+    async def _get_policy(self, command, socket):
+        ''' Get a single policy. '''
+        policy_id = str(UUID(bytes=command.policy_id))
+        policy_doc = await self._policy_manager.get_policy(policy_id)
+        response = Response()
+        self._policy_manager.convert_doc_to_pb(policy_doc, response.policy)
+        return response
+
     async def _get_rate_limits(self, command, socket):
         ''' Get a page of rate limits. '''
         limit = command.page.limit
@@ -242,7 +262,6 @@ class Server:
 
     async def _list_jobs(self, command, socket):
         ''' Return a list of jobs. '''
-
         limit = command.page.limit
         offset = command.page.offset
         job_docs = await self._crawl_manager.list_jobs(limit, offset)
@@ -268,6 +287,25 @@ class Server:
             http_status_counts = job_doc['http_status_counts']
             for status_code, count in http_status_counts.items():
                 job.http_status_counts[int(status_code)] = count
+
+        return response
+
+    async def _list_policies(self, command, socket):
+        ''' Get a list of policies. '''
+        limit = command.page.limit
+        offset = command.page.offset
+        count, policies = await self._policy_manager.list_policies(
+            limit, offset)
+
+        response = Response()
+        response.list_policies.total = count
+
+        for policy_doc in policies:
+            policy = response.list_policies.policies.add()
+            policy.policy_id = UUID(policy_doc['id']).bytes
+            policy.name = policy_doc['name']
+            policy.created_at = policy_doc['created_at'].isoformat()
+            policy.updated_at = policy_doc['updated_at'].isoformat()
 
         return response
 
@@ -299,6 +337,20 @@ class Server:
 
         return Response()
 
+    async def _set_policy(self, command, socket):
+        '''
+        Create or update a single policy.
+
+        If the policy ID is set, then update the corresponding policy.
+        Otherwise, create a new policy.
+        '''
+        policy = self._policy_manager.convert_pb_to_doc(command.policy)
+        policy_id = await self._policy_manager.set_policy(policy)
+        response = Response()
+        if policy_id is not None:
+            response.new_policy.policy_id = UUID(policy_id).bytes
+        return response
+
     async def _set_rate_limit(self, command, socket):
         ''' Set a rate limit. '''
         rate_limit = command.rate_limit
@@ -314,6 +366,7 @@ class Server:
     async def _start_job(self, command, socket):
         ''' Handle the start crawl command. '''
         name = command.name
+        policy_id = str(UUID(bytes=command.policy_id))
         seeds = command.seeds
 
         if name.strip() == '':
@@ -322,7 +375,7 @@ class Server:
             if len(seeds) > 1:
                 name += '& {} more'.format(len(seeds) - 1)
 
-        job_id = await self._crawl_manager.start_job(name, seeds)
+        job_id = await self._crawl_manager.start_job(seeds, policy_id, name)
         response = Response()
         response.new_job.job_id = UUID(job_id).bytes
         return response

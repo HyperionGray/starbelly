@@ -16,7 +16,9 @@ from .db import AsyncRethinkPool
 from .config import get_config
 from .crawl import CrawlManager
 from .downloader import Downloader
+from .policy import PolicyManager
 from .rate_limiter import RateLimiter
+from .robots import RobotsTxtManager
 from .server import Server
 from .subscription import SubscriptionManager
 from .tracker import Tracker
@@ -35,9 +37,11 @@ class ProcessWatchdog(FileSystemEventHandler):
         ''' Restart the subprocess if a source/config file changed. '''
 
         path = event.src_path
+        file = os.path.basename(path)
         descr = '{} was {}'.format(event.src_path, event.event_type)
 
-        if path.endswith('.py') or path.endswith('.ini'):
+        if (file.endswith('.py') and not file.startswith('test_')) or \
+            file.endswith('.ini'):
             self._logger.info('%s (Reloading)', descr)
             self.terminate_process()
             self.start_process()
@@ -120,9 +124,11 @@ class Starbelly:
         ''' The main task. '''
         db_pool = AsyncRethinkPool(self._db_factory())
         tracker = Tracker(db_pool)
+        policy_manager = PolicyManager(db_pool)
         downloader = Downloader()
         rate_limiter = RateLimiter(db_pool, downloader)
-        crawl_manager = CrawlManager(db_pool, rate_limiter)
+        robots_txt_manager = RobotsTxtManager(db_pool)
+        crawl_manager = CrawlManager(db_pool, rate_limiter, robots_txt_manager)
         subscription_manager = SubscriptionManager(db_pool)
         server = Server(
             self._args.ip,
@@ -131,7 +137,8 @@ class Starbelly:
             crawl_manager,
             subscription_manager,
             tracker,
-            rate_limiter
+            rate_limiter,
+            policy_manager
         )
 
         try:

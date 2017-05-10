@@ -15,8 +15,9 @@ import rethinkdb as r
 from rethinkdb.errors import ReqlNonExistenceError
 import w3lib.url
 
-from . import cancel_futures, daemon_task
+from . import cancel_futures, daemon_task, VERSION
 from .db import AsyncCursorIterator
+from .policy import Policy
 from .pubsub import PubSub
 from .url_extractor import extract_urls
 
@@ -28,10 +29,11 @@ FrontierItem = namedtuple('FrontierItem', ['url', 'cost'])
 class CrawlManager:
     ''' Responsible for creating and managing crawl jobs. '''
 
-    def __init__(self, db_pool, rate_limiter):
+    def __init__(self, db_pool, rate_limiter, robots_txt_manager):
         ''' Constructor. '''
         self._db_pool = db_pool
         self._rate_limiter = rate_limiter
+        self._robots_txt_manager = robots_txt_manager
         self._running_jobs = dict()
 
     async def cancel_job(self, job_id):
@@ -175,30 +177,52 @@ class CrawlManager:
 
     async def resume_job(self, job_id):
         ''' Resume a single job. '''
-        job_query = r.table('crawl_job').get(job_id).pluck('name', 'run_state')
         async with self._db_pool.connection() as conn:
-            job_data = await job_query.run(conn)
-            name = job_data['name']
-            run_state = job_data['run_state']
-            seeds = []
+            job_data = await r.table('crawl_job').get(job_id).run(conn)
         # Create a new job object to hold a pre-existing crawl. This is a bit
         # hacky.
-        job = _CrawlJob(self._db_pool, self._rate_limiter, name, seeds)
+        policy = Policy(job_data['policy'], VERSION, job_data['seeds'],
+            self._robots_txt_manager)
+        job = _CrawlJob(self._db_pool, self._rate_limiter, job_data['id'],
+            job_data['seeds'], policy, job_data['name'])
         job.id = job_id
-        job._run_state = run_state
+        job.item_count = job_data['item_count']
+        job._run_state = job_data['run_state']
+        job._started_at = job_data['started_at']
         self._running_jobs[job.id] = job
         job_task = asyncio.ensure_future(job.run())
         job_task.add_done_callback(functools.partial(self._cleanup_job, job))
 
-    async def start_job(self, name, seeds):
+    async def start_job(self, seeds, policy_id, name):
         '''
-        Create a new job with a given name and seeds.
+        Create a new job with a given seeds, policy, and name.
 
         Returns a job ID.
         '''
 
-        job = _CrawlJob(self._db_pool, self._rate_limiter, name, seeds)
-        await job.initialize()
+        job_data = {
+            'name': name,
+            'seeds': seeds,
+            'run_state': 'pending',
+            'started_at': None,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {}
+        }
+
+        async with self._db_pool.connection() as conn:
+            policy = await r.table('crawl_policy').get(policy_id).run(conn)
+            job_data['policy'] = policy
+            result = await r.table('crawl_job').insert(job_data).run(conn)
+
+        policy = Policy(policy, VERSION, seeds, self._robots_txt_manager)
+        job_id = result['generated_keys'][0]
+        job = _CrawlJob(self._db_pool, self._rate_limiter, job_id, seeds,
+            policy, name)
         self._running_jobs[job.id] = job
         job_task = asyncio.ensure_future(job.run())
         job_task.add_done_callback(functools.partial(self._cleanup_job, job))
@@ -254,22 +278,23 @@ class CrawlManager:
 class _CrawlJob:
     ''' Manages job state and crawl frontier. '''
 
-    def __init__(self, db_pool, rate_limiter, name, seeds, max_cost=10):
+    def __init__(self, db_pool, rate_limiter, id_, seeds, policy, name):
         ''' Constructor. '''
-        self.id = None
+        self.id = id_
+        self.item_count = 0
         self.name = name
+        self.policy = policy
         self.seeds = seeds
-        self.policy = None
 
         self._db_pool = db_pool
         self._frontier_seen = set()
         self._frontier_size = 0
         self._insert_item_lock = asyncio.Lock()
         self._insert_item_sequence = 0
-        self._max_cost = max_cost
         self._pending_count = 0
         self._rate_limiter = rate_limiter
         self._run_state = 'pending'
+        self._started_at = datetime.now(tzlocal())
         self._stopped = asyncio.Future()
         self._task = None
 
@@ -305,28 +330,6 @@ class _CrawlJob:
 
         logger.info('Crawl id={} has been cancelled.'.format(self.id[:8]))
 
-    async def initialize(self):
-        ''' Create initial job metadata. '''
-
-        job_data = {
-            'name': self.name,
-            'seeds': self.seeds,
-            'policy': self.policy,
-            'run_state': self._run_state,
-            'started_at': None,
-            'completed_at': None,
-            'duration': None,
-            'item_count': 0,
-            'http_success_count': 0,
-            'http_error_count': 0,
-            'exception_count': 0,
-            'http_status_counts': {}
-        }
-
-        async with self._db_pool.connection() as conn:
-            result = await r.table('crawl_job').insert(job_data).run(conn)
-            self.id = result['generated_keys'][0]
-
     async def pause(self):
         '''
         Pause this job.
@@ -358,7 +361,7 @@ class _CrawlJob:
             frontier_item = None
 
             if self._run_state == 'pending':
-                seeds = [FrontierItem(url=seed, cost=0) for seed in self.seeds]
+                seeds = [FrontierItem(url=seed, cost=1) for seed in self.seeds]
                 await self._add_frontier_items(seeds)
                 self._run_state = 'running'
                 new_data['started_at'] = datetime.now(tzlocal())
@@ -379,8 +382,8 @@ class _CrawlJob:
 
             while True:
                 frontier_item = await self._next_frontier_item()
-                crawl_item = _CrawlItem(self.id, self._handle_download,
-                    frontier_item)
+                crawl_item = _CrawlItem(self.policy, self.id,
+                    self._handle_download, frontier_item)
                 await self._rate_limiter.push(crawl_item)
                 frontier_item = None
                 self._pending_count += 1
@@ -402,9 +405,6 @@ class _CrawlJob:
         insert_items = list()
 
         for frontier_item in frontier_items:
-            if frontier_item.cost > self._max_cost:
-                continue
-
             url_can = w3lib.url.canonicalize_url(frontier_item.url)
             hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
             url_hash = hash_.digest()
@@ -426,10 +426,10 @@ class _CrawlJob:
                 self._frontier_size += len(insert_items)
                 await r.table('crawl_frontier').insert(insert_items).run(conn)
 
-    async def _complete(self):
+    async def _complete(self, graceful=True):
         ''' Update state to indicate this job is complete. '''
 
-        await self._stop()
+        await self._stop(graceful)
         self._run_state = 'completed'
         completed_at = datetime.now(tzlocal())
 
@@ -451,8 +451,16 @@ class _CrawlJob:
         # Note that all item writes for a single job are serialized so that we
         # can insert an incrementing sequence number.
         try:
-            await self._save_item(crawl_item)
-            await self._update_job_stats(crawl_item)
+            if self._run_state != 'running':
+                # Don't finish processing items if the crawl stopped.
+                logger.info('Ignoring item because crawl is not running: %s',
+                    crawl_item.url)
+                return
+
+            if crawl_item.is_complete():
+                await self._save_item(crawl_item)
+                await self._update_job_stats(crawl_item)
+                self.item_count += 1
 
             # Remove item from frontier.
             async with self._db_pool.connection() as conn:
@@ -461,20 +469,39 @@ class _CrawlJob:
                 self._frontier_size -= 1
 
             # Extract links.
-            if crawl_item.exception is None:
-                extracted = extract_urls(crawl_item)
-                new_cost = crawl_item.cost + 1
-                frontier_items = [FrontierItem(url, new_cost) for url in extracted]
+            if crawl_item.body is not None:
+                extracted_urls = await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    extract_urls,
+                    crawl_item
+                )
+                frontier_items = list()
+                for url in extracted_urls:
+                    robots_ok = await self.policy.robots_txt.is_allowed(url)
+                    new_cost = self.policy.url_rules.get_cost(crawl_item.cost,
+                        url)
+                    cost_ok = new_cost > 0 and \
+                        not self.policy.limits.exceeds_max_cost(new_cost)
+                    if robots_ok and cost_ok:
+                        frontier_items.append(FrontierItem(url, new_cost))
                 await self._add_frontier_items(frontier_items)
         finally:
             self._pending_count -= 1
 
+        # Enforce policy limits. The crawl won't exit until all
+        # _handle_download() coroutines finish, so we have to complete the
+        # crawl in a separate task.
         if self._pending_count == 0 and self._frontier_size == 0:
-            # If this is the last item in this crawl, then the crawl is
-            # complete. The crawl won't exit until all _handle_download()
-            # coroutines finish, so we run this as a separate task.
             logger.info('Job %s has no more items pending.', self.id[:8])
-            daemon_task(self._complete())
+            daemon_task(self._complete(graceful=True))
+        elif self.policy.limits.exceeds_max_items(self.item_count):
+            logger.info('Job %s has exceed items limit.', self.id[:8])
+            daemon_task(self._complete(graceful=False))
+        elif self.policy.limits.exceeds_max_duration(
+            (datetime.now(tzlocal()) - self._started_at).seconds):
+            #TODO This is not the ideal place to process duration limit.
+            logger.info('Job %s has exceed duration limit.', self.id[:8])
+            daemon_task(self._complete(graceful=False))
 
     async def _next_frontier_item(self):
         '''
@@ -686,13 +713,14 @@ class _CrawlJob:
 class _CrawlItem:
     ''' Represents a resource to be crawled and the result of crawling it. '''
 
-    def __init__(self, job_id, download_callback, frontier_item):
+    def __init__(self, policy, job_id, download_callback, frontier_item):
         '''
         Constructor.
 
         A ``frontier_item`` is a document from the crawl_frontier table.
         '''
 
+        self.policy = policy
         self.job_id = job_id
         self.download_callback = download_callback
         self.completed = asyncio.Future()
@@ -711,6 +739,10 @@ class _CrawlItem:
         self.url = frontier_item['url']
         self.url_can = frontier_item['url_can']
         self.url_hash = frontier_item['url_hash']
+
+    def is_complete(self):
+        ''' Return True if this item was completed. '''
+        return self.completed_at is not None
 
     def set_exception(self, exception):
         ''' Update state from HTTP response. '''

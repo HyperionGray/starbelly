@@ -101,6 +101,58 @@ def ensure_db(conn, name):
 
 def ensure_db_fixtures(conn):
     ''' Create all fixtures. '''
+    # Crawl policy fixtures.
+    user_agent = 'Starbelly/{VERSION} ' \
+        '(+https://gitlab.com/hyperion-gray/starbelly)'
+
+    if r.table('crawl_policy').count().run(conn) == 0:
+        r.table('crawl_policy').insert({
+            'created_at': r.now(),
+            'updated_at': r.now(),
+            'name': 'Broad Crawl',
+            'limits': {
+              'max_items': 10000
+            },
+            'mime_type_rules': [
+              {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+              {'save': False}
+            ],
+            'robots_txt': {
+              'usage': 'OBEY'
+            },
+            'url_rules': [
+              {'action':'ADD', 'amount':1}
+            ],
+            'user_agents': [
+              {'name': user_agent}
+            ]
+        }).run(conn)
+
+        r.table('crawl_policy').insert({
+            'created_at': r.now(),
+            'updated_at': r.now(),
+            'name': 'Deep Crawl',
+            'limits': {
+              'max_cost': 10,
+            },
+            'mime_type_rules': [
+              {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+              {'save': False}
+            ],
+            'robots_txt': {
+              'usage': 'OBEY'
+            },
+            'url_rules': [
+              {'match': 'MATCHES', 'pattern':'^https?://({SEED_DOMAINS})/',
+               'action':'ADD', 'amount':1},
+              {'action':'MULTIPLY', 'amount':0}
+            ],
+            'user_agents': [
+              {'name': user_agent}
+            ]
+        }).run(conn)
+
+    # Global rate limit fixture.
     global_rate_limit_token = b'\x00' * 16
 
     try:
@@ -216,6 +268,8 @@ def init_db(db_config):
     ensure_db_index(conn, 'crawl_item', 'sync_index',
         [r.row['job_id'], r.row['insert_sequence']])
     ensure_db_table(conn, 'crawl_item_body')
+    ensure_db_table(conn, 'crawl_policy')
+    ensure_db_index(conn, 'crawl_policy', 'name')
     ensure_db_table(conn, 'crawl_job')
     ensure_db_index(conn, 'crawl_job', 'started_at')
     ensure_db_table(conn, 'crawl_frontier')
@@ -224,6 +278,8 @@ def init_db(db_config):
     ensure_db_table(conn, 'rate_limit')
     ensure_db_index(conn, 'rate_limit', 'name')
     ensure_db_index(conn, 'rate_limit', 'token')
+    ensure_db_table(conn, 'robots_txt')
+    ensure_db_index(conn, 'robots_txt', 'url')
     ensure_db_fixtures(conn)
     conn.close()
 

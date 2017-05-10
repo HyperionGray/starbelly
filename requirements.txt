@@ -3,10 +3,12 @@ aiohttp
 async_timeout
 cchardet
 lxml
+nose
 protobuf
 python-dateutil
 python-mimeparse
 rethinkdb
+robotexclusionrulesparser
 watchdog
 websockets
 w3lib
