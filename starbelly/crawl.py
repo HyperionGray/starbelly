@@ -43,7 +43,7 @@ class CrawlManager:
         except KeyError:
             # This job is already paused.
             cancel_query = (
-                r.table('crawl_job')
+                r.table('job')
                  .get(job_id)
                  .update({'run_state':'cancelled',
                           'completed_at': datetime.now(tzlocal())})
@@ -54,12 +54,12 @@ class CrawlManager:
     async def count_jobs(self):
         ''' Return the number of jobs that exist. '''
         async with self._db_pool.connection() as conn:
-            count = await r.table('crawl_job').count().run(conn)
+            count = await r.table('job').count().run(conn)
         return count
 
     async def delete_job(self, job_id):
         ''' Delete a job. '''
-        job_query = r.table('crawl_job').get(job_id).pluck('run_state')
+        job_query = r.table('job').get(job_id).pluck('run_state')
         delete_items_query = (
             r.table('crawl_item')
              .between((job_id, r.minval),
@@ -67,7 +67,7 @@ class CrawlManager:
                       index='sync_index')
              .delete()
         )
-        delete_job_query = r.table('crawl_job').get(job_id).delete()
+        delete_job_query = r.table('job').get(job_id).delete()
 
         async with self._db_pool.connection() as conn:
             job = await job_query.run(conn)
@@ -81,7 +81,7 @@ class CrawlManager:
     async def get_job(self, job_id):
         ''' Get data for the specified job. '''
         async with self._db_pool.connection() as conn:
-            job = await r.table('crawl_job').get(job_id).run(conn)
+            job = await r.table('job').get(job_id).run(conn)
         return job
 
     async def get_job_items(self, job_id, include_success, include_error,
@@ -145,7 +145,7 @@ class CrawlManager:
         '''
 
         query = (
-            r.table('crawl_job')
+            r.table('job')
              .order_by(index=r.desc('started_at'))
              .skip(offset)
              .limit(limit)
@@ -178,7 +178,7 @@ class CrawlManager:
     async def resume_job(self, job_id):
         ''' Resume a single job. '''
         async with self._db_pool.connection() as conn:
-            job_data = await r.table('crawl_job').get(job_id).run(conn)
+            job_data = await r.table('job').get(job_id).run(conn)
         # Create a new job object to hold a pre-existing crawl. This is a bit
         # hacky.
         policy = Policy(job_data['policy'], VERSION, job_data['seeds'],
@@ -215,9 +215,9 @@ class CrawlManager:
         }
 
         async with self._db_pool.connection() as conn:
-            policy = await r.table('crawl_policy').get(policy_id).run(conn)
+            policy = await r.table('policy').get(policy_id).run(conn)
             job_data['policy'] = policy
-            result = await r.table('crawl_job').insert(job_data).run(conn)
+            result = await r.table('job').insert(job_data).run(conn)
 
         policy = Policy(policy, VERSION, seeds, self._robots_txt_manager)
         job_id = result['generated_keys'][0]
@@ -238,13 +238,13 @@ class CrawlManager:
         # those jobs as 'cancelled' since killing the jobs may have left them in
         # an inconsistent state that can't be repaired.
         count = 0
-        startup_query = r.table('crawl_job').filter({'run_state': 'running'})
+        startup_query = r.table('job').filter({'run_state': 'running'})
         async with self._db_pool.connection() as conn:
             cursor = await startup_query.run(conn)
             async for job in AsyncCursorIterator(cursor):
                 # Cancel the job.
                 await (
-                    r.table('crawl_job')
+                    r.table('job')
                      .get(job['id'])
                      .update({'run_state': 'cancelled',
                               'completed_at': datetime.now(tzlocal())})
@@ -252,7 +252,7 @@ class CrawlManager:
                 )
                 # And clear its frontier.
                 await (
-                    r.table('crawl_frontier')
+                    r.table('frontier')
                      .between((job['id'], r.minval),
                               (job['id'], r.maxval),
                               index='cost_index')
@@ -310,14 +310,14 @@ class _CrawlJob:
         await self._stop(graceful=False)
 
         cancel_query = (
-            r.table('crawl_job')
+            r.table('job')
              .get(self.id)
              .update({'run_state': 'cancelled',
                       'completed_at': datetime.now(tzlocal())})
         )
 
         frontier_query = (
-            r.table('crawl_frontier')
+            r.table('frontier')
              .between((self.id, r.minval),
                       (self.id, r.maxval),
                       index='cost_index')
@@ -341,7 +341,7 @@ class _CrawlJob:
         self._run_state = 'paused'
 
         query = (
-            r.table('crawl_job')
+            r.table('job')
              .get(self.id)
              .update({'run_state': 'paused'})
         )
@@ -375,7 +375,7 @@ class _CrawlJob:
             new_data['run_state'] = self._run_state
 
             async with self._db_pool.connection() as conn:
-                query = r.table('crawl_job').get(self.id).update(new_data)
+                query = r.table('job').get(self.id).update(new_data)
                 await query.run(conn)
 
             logger.info('Job id={} is running...'.format(self.id[:8]))
@@ -391,8 +391,7 @@ class _CrawlJob:
             # Put the frontier item back on the frontier
             if frontier_item is not None:
                 async with self._db_pool.connection() as conn:
-                    await r.table('crawl_frontier').insert(frontier_item) \
-                           .run(conn)
+                    await r.table('frontier').insert(frontier_item).run(conn)
         finally:
             self._task = None
 
@@ -424,7 +423,7 @@ class _CrawlJob:
         if len(insert_items) > 0:
             async with self._db_pool.connection() as conn:
                 self._frontier_size += len(insert_items)
-                await r.table('crawl_frontier').insert(insert_items).run(conn)
+                await r.table('frontier').insert(insert_items).run(conn)
 
     async def _complete(self, graceful=True):
         ''' Update state to indicate this job is complete. '''
@@ -440,7 +439,7 @@ class _CrawlJob:
         }
 
         async with self._db_pool.connection() as conn:
-            query = r.table('crawl_job').get(self.id).update(new_data)
+            query = r.table('job').get(self.id).update(new_data)
             await query.run(conn)
 
         logger.info('Crawl id={} is complete.'.format(self.id[:8]))
@@ -464,7 +463,7 @@ class _CrawlJob:
 
             # Remove item from frontier.
             async with self._db_pool.connection() as conn:
-                await r.table('crawl_frontier').get(crawl_item.frontier_id) \
+                await r.table('frontier').get(crawl_item.frontier_id) \
                        .delete().run(conn)
                 self._frontier_size -= 1
 
@@ -511,7 +510,7 @@ class _CrawlJob:
         frontier.
         '''
         next_url_query = (
-            r.table('crawl_frontier')
+            r.table('frontier')
              .between((self.id, r.minval),
                      (self.id, r.maxval),
                      index='cost_index')
@@ -552,16 +551,16 @@ class _CrawlJob:
         )
 
         frontier_query = (
-            r.table('crawl_frontier')
-            .between((self.id, r.minval),
-                     (self.id, r.maxval),
-                     index='cost_index')
-            .order_by(index='cost_index')
-            .pluck('url_hash')
+            r.table('frontier')
+             .between((self.id, r.minval),
+                      (self.id, r.maxval),
+                      index='cost_index')
+             .order_by(index='cost_index')
+             .pluck('url_hash')
         )
 
         sequence_query = (
-            r.table('crawl_job')
+            r.table('job')
              .get(self.id)
              .get_field('item_count')
         )
@@ -670,7 +669,7 @@ class _CrawlJob:
 
             logger.info('Putting %d items back in frontier.', len(insert_items))
             async with self._db_pool.connection() as conn:
-                await r.table('crawl_frontier').insert(insert_items).run(conn)
+                await r.table('frontier').insert(insert_items).run(conn)
 
     async def _update_job_stats(self, crawl_item):
         '''
@@ -704,7 +703,7 @@ class _CrawlJob:
         else:
             new_data['exception_count'] = r.row['exception_count'] + 1
 
-        query = r.table('crawl_job').get(self.id).update(new_data)
+        query = r.table('job').get(self.id).update(new_data)
 
         async with self._db_pool.connection() as conn:
             await query.run(conn)
@@ -717,7 +716,7 @@ class _CrawlItem:
         '''
         Constructor.
 
-        A ``frontier_item`` is a document from the crawl_frontier table.
+        A ``frontier_item`` is a document from the ``frontier`` table.
         '''
 
         self.policy = policy

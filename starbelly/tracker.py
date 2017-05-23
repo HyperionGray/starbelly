@@ -53,7 +53,7 @@ class Tracker:
                 # query can't use an index because RethinkDB doesn't allow nulls
                 # in secondary indexes.
                 initial_query = (
-                    r.table('crawl_job')
+                    r.table('job')
                      .filter((r.row['completed_at'].eq(None)) |
                              (r.row['completed_at'] > r.now() - 3600))
                      .pluck(*self.JOB_STATUS_FIELDS)
@@ -67,7 +67,7 @@ class Tracker:
                 # initial state and first update, but that shouldn't be a big
                 # problem in practice.)
                 change_query = (
-                    r.table('crawl_job')
+                    r.table('job')
                      .pluck(*self.JOB_STATUS_FIELDS)
                      .changes(squash=True)
                      .pluck('new_val')

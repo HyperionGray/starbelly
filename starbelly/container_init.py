@@ -28,7 +28,6 @@ class ContainerInitException(Exception):
     ''' Indicates a failure to initalize the container. '''
 
 
-
 def connect_db(db_config):
     '''
     Connect to database as admin (a.k.a. super user).
@@ -87,7 +86,7 @@ def connect_db(db_config):
             'RethinkDB authentication failure: {}'.format(e)
         )
 
-    time.sleep(2) # Hack to allow shards to become ready.
+    time.sleep(5) # Hack to allow shards to become ready.
     logger.info('Connected to RethinkDB.')
 
     return conn
@@ -107,8 +106,8 @@ def ensure_db_fixtures(conn):
     user_agent = 'Starbelly/{VERSION} ' \
         '(+https://gitlab.com/hyperion-gray/starbelly)'
 
-    if r.table('crawl_policy').count().run(conn) == 0:
-        r.table('crawl_policy').insert({
+    if r.table('policy').count().run(conn) == 0:
+        r.table('policy').insert({
             'created_at': r.now(),
             'updated_at': r.now(),
             'name': 'Broad Crawl',
@@ -131,7 +130,7 @@ def ensure_db_fixtures(conn):
             ]
         }).run(conn)
 
-        r.table('crawl_policy').insert({
+        r.table('policy').insert({
             'created_at': r.now(),
             'updated_at': r.now(),
             'name': 'Deep Crawl',
@@ -272,12 +271,12 @@ def init_db(db_config):
     ensure_db_index(conn, 'crawl_item', 'sync_index',
         [r.row['job_id'], r.row['insert_sequence']])
     ensure_db_table(conn, 'crawl_item_body')
-    ensure_db_table(conn, 'crawl_policy')
-    ensure_db_index(conn, 'crawl_policy', 'name')
-    ensure_db_table(conn, 'crawl_job')
-    ensure_db_index(conn, 'crawl_job', 'started_at')
-    ensure_db_table(conn, 'crawl_frontier')
-    ensure_db_index(conn, 'crawl_frontier', 'cost_index',
+    ensure_db_table(conn, 'policy')
+    ensure_db_index(conn, 'policy', 'name')
+    ensure_db_table(conn, 'job')
+    ensure_db_index(conn, 'job', 'started_at')
+    ensure_db_table(conn, 'frontier')
+    ensure_db_index(conn, 'frontier', 'cost_index',
         [r.row['job_id'], r.row['cost']])
     ensure_db_table(conn, 'rate_limit')
     ensure_db_index(conn, 'rate_limit', 'name')

@@ -300,7 +300,7 @@ class CrawlSyncSubscription:
         ''' Query database for initial job status. '''
 
         query = (
-            r.table('crawl_job')
+            r.table('job')
              .get(self._job_id)
              .pluck('run_state', 'item_count')
         )

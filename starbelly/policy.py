@@ -147,26 +147,26 @@ class PolicyManager:
     async def delete_policy(self, policy_id):
         ''' Delete a policy. '''
         async with self._db_pool.connection() as conn:
-            await r.table('crawl_policy').get(policy_id).delete().run(conn)
+            await r.table('policy').get(policy_id).delete().run(conn)
 
     async def get_policy(self, policy_id):
         ''' Get policy details. '''
         async with self._db_pool.connection() as conn:
-            policy = await r.table('crawl_policy').get(policy_id).run(conn)
+            policy = await r.table('policy').get(policy_id).run(conn)
         return policy
 
     async def list_policies(self, limit, offset):
         ''' Return a list of policies. '''
         policies = list()
         query = (
-            r.table('crawl_policy')
+            r.table('policy')
              .order_by(index='name')
              .skip(offset)
              .limit(limit)
         )
 
         async with self._db_pool.connection() as conn:
-            count = await r.table('crawl_policy').count().run(conn)
+            count = await r.table('policy').count().run(conn)
             cursor = await query.run(conn)
             async for policy in AsyncCursorIterator(cursor):
                 policies.append(policy)
@@ -195,7 +195,7 @@ class PolicyManager:
             if 'id' in policy:
                 policy['updated_at'] = r.now()
                 await (
-                    r.table('crawl_policy')
+                    r.table('policy')
                      .get(policy['id'])
                      .update(policy)
                      .run(conn)
@@ -204,7 +204,7 @@ class PolicyManager:
             else:
                 policy['created_at'] = r.now()
                 policy['updated_at'] = r.now()
-                result = await r.table('crawl_policy').insert(policy).run(conn)
+                result = await r.table('policy').insert(policy).run(conn)
                 policy_id = result['generated_keys'][0]
 
         return policy_id
