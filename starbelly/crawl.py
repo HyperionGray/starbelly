@@ -475,13 +475,13 @@ class _CrawlJob:
                     crawl_item
                 )
                 frontier_items = list()
+                url_rules = self.policy.url_rules
+                robots_txt = self.policy.robots_txt
                 for url in extracted_urls:
-                    robots_ok = await self.policy.robots_txt.is_allowed(url)
-                    new_cost = self.policy.url_rules.get_cost(crawl_item.cost,
-                        url)
+                    new_cost = url_rules.get_cost(crawl_item.cost, url)
                     cost_ok = new_cost > 0 and \
                         not self.policy.limits.exceeds_max_cost(new_cost)
-                    if robots_ok and cost_ok:
+                    if cost_ok and await robots_txt.is_allowed(url):
                         frontier_items.append(FrontierItem(url, new_cost))
                 await self._add_frontier_items(frontier_items)
         finally:

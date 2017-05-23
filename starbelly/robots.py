@@ -53,7 +53,13 @@ class RobotsTxtManager:
         # If not in cache, get it from DB or network. _get_robots() will add
         # the object to the cache.
         if robots is None:
-            robots = await self._get_robots(robots_url)
+            try:
+                robots = await self._get_robots(robots_url)
+            except asyncio.CancelledError:
+                # Because this is called from the task that adds URLs to
+                # frontiers, it is important not to fail catastrophically if
+                # cancelled. Assume worst case: return False.
+                return False
 
         return robots.is_allowed(self._user_agent, url)
 
