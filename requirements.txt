@@ -1,5 +1,6 @@
 aiodns
 aiohttp
+aiosocks
 async_timeout
 cchardet
 lxml

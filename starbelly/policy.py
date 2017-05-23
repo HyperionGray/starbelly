@@ -53,6 +53,14 @@ class PolicyManager:
                 mime.match = match_enum.Value(mime_doc['match'])
             if 'save' in mime_doc:
                 mime.save = mime_doc['save']
+        for proxy_doc in policy_doc['proxy_rules']:
+            proxy = policy_pb.proxy_rules.add()
+            if 'pattern' in proxy_doc:
+                proxy.pattern = proxy_doc['pattern']
+            if 'match' in proxy_doc:
+                proxy.match = match_enum.Value(proxy_doc['match'])
+            if 'proxy_url' in proxy_doc:
+                proxy.proxy_url = proxy_doc['proxy_url']
         usage_enum = protobuf.shared_pb2.PolicyRobotsTxt.Usage
         usage = policy_doc['robots_txt']['usage']
         policy_pb.robots_txt.usage = usage_enum.Value(usage)
@@ -80,6 +88,7 @@ class PolicyManager:
             'name': policy_pb.name,
             'limits': dict(),
             'mime_type_rules': list(),
+            'proxy_rules': list(),
             'robots_txt': dict(),
             'url_rules': list(),
             'user_agents': list(),
@@ -103,6 +112,15 @@ class PolicyManager:
             if mime_type_rule.HasField('save'):
                new_doc['save'] = mime_type_rule.save
             policy_doc['mime_type_rules'].append(new_doc)
+        for proxy_rule in policy_pb.proxy_rules:
+            new_doc = dict()
+            if proxy_rule.HasField('pattern'):
+               new_doc['pattern'] = proxy_rule.pattern
+            if proxy_rule.HasField('match'):
+               new_doc['match'] = match_enum.Name(proxy_rule.match)
+            if proxy_rule.HasField('proxy_url'):
+               new_doc['proxy_url'] = proxy_rule.proxy_url
+            policy_doc['proxy_rules'].append(new_doc)
         if policy_pb.HasField('robots_txt'):
             robots_txt = policy_pb.robots_txt
             if robots_txt.HasField('usage'):
@@ -203,6 +221,7 @@ class Policy:
         self.limits = PolicyLimits(doc.get('limits', {}))
         self.mime_type_rules = PolicyMimeTypeRules(
             doc.get('mime_type_rules', []))
+        self.proxy_rules = PolicyProxyRules(doc.get('proxy_rules', []))
         self.robots_txt = PolicyRobotsTxt(doc.get('robots_txt', []),
             robots_txt_manager)
         self.url_rules = PolicyUrlRules(doc.get('url_rules', []), seeds)
@@ -300,6 +319,65 @@ class PolicyMimeTypeRules:
                     result = not result
                 if result:
                     return save
+
+
+class PolicyProxyRules:
+    ''' Modify which proxies are used for each request. '''
+
+    PROXY_SCHEMES = ('http', 'https', 'socks4', 'socks4a', 'socks5')
+
+    def __init__(self, docs):
+        ''' Initialize from ``docs``, a dict representation of proxy rules. '''
+
+        # Rules are stored as list of tuples: (pattern, match, proxy_type,
+        # proxy_url)
+        self._rules = list()
+        match_enum = protobuf.shared_pb2.PatternMatch
+
+        for index, proxy_rule in enumerate(docs):
+            location = 'Proxy rule #{}'.format(index+1)
+            if proxy_rule.get('pattern', '').strip() == '':
+                _invalid('Pattern is required', location)
+            if 'match' not in proxy_rule:
+                _invalid('Match selector is required', location)
+            if proxy_rule.get('proxy_url', '').strip() == '':
+                _invalid('Proxy URL', location)
+
+            try:
+                pattern_re = re.compile(proxy_rule['pattern'])
+            except:
+                _invalid('Invalid regular expression', location)
+
+            try:
+                parsed = urlparse(proxy_rule['proxy_url'])
+                proxy_type = parsed.scheme
+                if proxy_type not in self.PROXY_SCHEMES:
+                    raise ValueError()
+            except:
+                schemes = ', '.join(self.PROXY_SCHEMES)
+                _invalid('Must have a valid URL with one of the '
+                         f'following schemes: {schemes}', location)
+
+            self._rules.append((
+                pattern_re,
+                proxy_rule['match'] == 'MATCHES',
+                proxy_type,
+                proxy_rule['proxy_url'],
+            ))
+
+    def get_proxy_url(self, target_url):
+        '''
+        Return a proxy (type, URL) tuple associated with ``target_url`` or
+        (None, None) if no such proxy is defined.
+        '''
+        proxy = None, None
+
+        for pattern, needs_match, proxy_type, proxy_url in self._rules:
+            has_match = pattern.search(target_url) is not None
+            if has_match == needs_match:
+                proxy = proxy_type, proxy_url
+
+        return proxy
 
 
 class PolicyRobotsTxt:

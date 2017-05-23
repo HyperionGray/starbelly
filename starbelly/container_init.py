@@ -87,9 +87,11 @@ def connect_db(db_config):
             'RethinkDB authentication failure: {}'.format(e)
         )
 
+    time.sleep(2) # Hack to allow shards to become ready.
     logger.info('Connected to RethinkDB.')
 
     return conn
+
 
 def ensure_db(conn, name):
     ''' Create the named database, if it doesn't already exist. '''
@@ -117,6 +119,7 @@ def ensure_db_fixtures(conn):
               {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
               {'save': False}
             ],
+            'proxy_rules': [],
             'robots_txt': {
               'usage': 'OBEY'
             },
@@ -139,6 +142,7 @@ def ensure_db_fixtures(conn):
               {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
               {'save': False}
             ],
+            'proxy_rules': [],
             'robots_txt': {
               'usage': 'OBEY'
             },

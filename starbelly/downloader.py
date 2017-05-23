@@ -4,6 +4,7 @@ import logging
 import traceback
 
 import aiohttp
+import aiosocks.connector
 import async_timeout
 
 from . import cancel_futures, raise_future_exception
@@ -122,19 +123,40 @@ class Downloader:
 
     async def _download_item(self, crawl_item):
         ''' A helper to ``_download()``. '''
+        HTTP_PROXY = ('http', 'https')
+        SOCKS_PROXY = ('socks4', 'socks4a', 'socks5')
+        session_args = dict()
+        policy = crawl_item.policy
+        url = crawl_item.url
+        proxy_type, proxy_url = policy.proxy_rules.get_proxy_url(url)
+
+        if proxy_type in SOCKS_PROXY:
+            session_args = {
+                'connector': aiosocks.connector.ProxyConnector(
+                    remote_resolve=(proxy_type != 'socks4'),
+                    verify_ssl=False),
+                'request_class': aiosocks.connector.ProxyClientRequest,
+            }
+        else:
+            session_args = {
+                'connector': aiohttp.TCPConnector(verify_ssl=False),
+            }
+
+        user_agent = crawl_item.policy.user_agents.get_user_agent()
+        session_args['headers'] = {'User-Agent': user_agent}
+        session = aiohttp.ClientSession(**session_args)
+
         try:
-            connector = aiohttp.TCPConnector(verify_ssl=False)
-            user_agent = crawl_item.policy.user_agents.get_user_agent()
-            session = aiohttp.ClientSession(
-                connector=connector,
-                headers={'User-Agent': user_agent}
-            )
-            with session, async_timeout.timeout(10):
+            with session, async_timeout.timeout(20):
                 crawl_item.set_start()
-                async with session.get(crawl_item.url) as response:
+                if proxy_url is None:
+                    getter = session.get(url)
+                else:
+                    getter = session.get(url, proxy=proxy_url)
+                async with getter as response:
                     mime = response.headers.get('content-type',
                         'application/octet-stream')
-                    if not crawl_item.policy.mime_type_rules.should_save(mime):
+                    if not policy.mime_type_rules.should_save(mime):
                         raise MimeNotAllowedError()
                     body = await response.read()
                     crawl_item.set_response(response, body)
