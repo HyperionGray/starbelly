@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/server.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xba\x01\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12*\n\ncrawl_item\x18\x02 \x01(\x0b\x32\x14.starbelly.CrawlItemH\x00\x12&\n\x08job_list\x18\x04 \x01(\x0b\x32\x12.starbelly.JobListH\x00\x12<\n\x13subscription_closed\x18\x05 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x42\x06\n\x04\x42ody\"\xbf\x04\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12\x1d\n\x03job\x18\x05 \x01(\x0b\x32\x0e.starbelly.JobH\x00\x12#\n\x06policy\x18\x06 \x01(\x0b\x32\x11.starbelly.PolicyH\x00\x12\x32\n\nlist_items\x18\x07 \x01(\x0b\x32\x1c.starbelly.ResponseListItemsH\x00\x12\x30\n\tlist_jobs\x18\x08 \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12\x38\n\rlist_policies\x18\t \x01(\x0b\x32\x1f.starbelly.ResponseListPoliciesH\x00\x12=\n\x10list_rate_limits\x18\n \x01(\x0b\x32!.starbelly.ResponseListRateLimitsH\x00\x12,\n\x07new_job\x18\x0b \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12\x32\n\nnew_policy\x18\x0c \x01(\x0b\x32\x1c.starbelly.ResponseNewPolicyH\x00\x12>\n\x10new_subscription\x18\r \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\'\n\x04ping\x18\x0e \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"G\n\x11ResponseListItems\x12#\n\x05items\x18\x01 \x03(\x0b\x32\x14.starbelly.CrawlItem\x12\r\n\x05total\x18\x02 \x01(\x05\"?\n\x10ResponseListJobs\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"J\n\x14ResponseListPolicies\x12#\n\x08policies\x18\x01 \x03(\x0b\x32\x11.starbelly.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"R\n\x16ResponseListRateLimits\x12)\n\x0brate_limits\x18\x01 \x03(\x0b\x32\x14.starbelly.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"\x86\x01\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\")\n\x06Reason\x12\x0b\n\x07UNKNOWN\x10\x01\x12\x07\n\x03\x45ND\x10\x02\x12\t\n\x05\x45RROR\x10\x03')
+  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xba\x01\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12*\n\ncrawl_item\x18\x02 \x01(\x0b\x32\x14.starbelly.CrawlItemH\x00\x12&\n\x08job_list\x18\x04 \x01(\x0b\x32\x12.starbelly.JobListH\x00\x12<\n\x13subscription_closed\x18\x05 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x42\x06\n\x04\x42ody\"\xbf\x04\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12\x1d\n\x03job\x18\x05 \x01(\x0b\x32\x0e.starbelly.JobH\x00\x12#\n\x06policy\x18\x06 \x01(\x0b\x32\x11.starbelly.PolicyH\x00\x12\x32\n\nlist_items\x18\x07 \x01(\x0b\x32\x1c.starbelly.ResponseListItemsH\x00\x12\x30\n\tlist_jobs\x18\x08 \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12\x38\n\rlist_policies\x18\t \x01(\x0b\x32\x1f.starbelly.ResponseListPoliciesH\x00\x12=\n\x10list_rate_limits\x18\n \x01(\x0b\x32!.starbelly.ResponseListRateLimitsH\x00\x12,\n\x07new_job\x18\x0b \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12\x32\n\nnew_policy\x18\x0c \x01(\x0b\x32\x1c.starbelly.ResponseNewPolicyH\x00\x12>\n\x10new_subscription\x18\r \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\'\n\x04ping\x18\x0e \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"G\n\x11ResponseListItems\x12#\n\x05items\x18\x01 \x03(\x0b\x32\x14.starbelly.CrawlItem\x12\r\n\x05total\x18\x02 \x01(\x05\"?\n\x10ResponseListJobs\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"J\n\x14ResponseListPolicies\x12#\n\x08policies\x18\x01 \x03(\x0b\x32\x11.starbelly.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"R\n\x16ResponseListRateLimits\x12)\n\x0brate_limits\x18\x01 \x03(\x0b\x32\x14.starbelly.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"y\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1c\n\x06Reason\x12\x07\n\x03\x45ND\x10\x01\x12\t\n\x05\x45RROR\x10\x02')
   ,
   dependencies=[protobuf_dot_shared__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -34,22 +34,18 @@ _SUBSCRIPTIONCLOSED_REASON = _descriptor.EnumDescriptor(
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='UNKNOWN', index=0, number=1,
+      name='END', index=0, number=1,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='END', index=1, number=2,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='ERROR', index=2, number=3,
+      name='ERROR', index=1, number=2,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=1482,
-  serialized_end=1523,
+  serialized_start=1481,
+  serialized_end=1509,
 )
 _sym_db.RegisterEnumDescriptor(_SUBSCRIPTIONCLOSED_REASON)
 
@@ -578,8 +574,8 @@ _SUBSCRIPTIONCLOSED = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1389,
-  serialized_end=1523,
+  serialized_start=1388,
+  serialized_end=1509,
 )
 
 _EVENT.fields_by_name['crawl_item'].message_type = protobuf_dot_shared__pb2._CRAWLITEM
