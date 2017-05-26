@@ -116,8 +116,8 @@ class TestPolicyMimeTypeRules(unittest.TestCase):
 
 
 class TestPolicyRobotsTxt(unittest.TestCase):
-    # TODO PolicyRobotsTxt.is_allowed() is async, so I don't know how to write
-    # tests for it.
+    # PolicyRobotsTxt.is_allowed() is async, so I don't know how to write
+    # tests for it. This is just a placeholder test to fill in later.
     pass
 
 

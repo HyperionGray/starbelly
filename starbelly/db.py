@@ -37,7 +37,7 @@ class AsyncCursorIterator:
             raise
         finally:
             pass
-            #TODO close() isn't a coroutine in this version of the driver. In
+            # close() isn't a coroutine in this version of the driver. In
             # the future, it should be possible to do this:
             # await self._cursor.close()
             # But for now, calling this synchronously leads to an error.

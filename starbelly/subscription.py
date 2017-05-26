@@ -333,7 +333,7 @@ class JobStatusSubscription:
         ''' Constructor. '''
         self.id = _subscription_id_sequence.next()
         self._jobs = tracker.get_all_job_status()
-        self._last_status = {}
+        self._last_status = dict()
         self._min_interval = min_interval
         self._socket = socket
         self._status = dict(self._jobs)
@@ -389,9 +389,9 @@ class JobStatusSubscription:
             for status_code, new_count in new['http_status_counts'].items():
                 if old_status.get(status_code) != new_count:
                     pb_job.http_status_counts[int(status_code)] = new_count
+            self._last_status[job_id] = new
 
-        self._last_status = self._status
-        self._status = {}
+        self._status.clear()
         self._status_changed.clear()
         await self._socket.send(message.SerializeToString())
 

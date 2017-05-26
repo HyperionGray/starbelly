@@ -70,16 +70,14 @@ class Tracker:
                     r.table('job')
                      .pluck(*self.JOB_STATUS_FIELDS)
                      .changes(squash=True)
-                     .pluck('new_val')
                 )
                 feed = await change_query.run(conn)
                 async for change in AsyncCursorIterator(feed):
                     job = change['new_val']
                     if job is None:
-                        # TODO handle deletions: ['new_val'] will be None
-                        # Need to notify client of job deletion and remove from
-                        # tracker
-                        continue
+                        # This means the job was deleted.
+                        job = change['old_val']
+                        job['run_state'] = 'deleted'
 
                     job_id = job.pop('id')
                     self.job_status_changed.publish(job_id, job)

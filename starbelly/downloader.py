@@ -21,7 +21,7 @@ class Downloader:
     '''
     This class is responsible for downloading crawl items.
 
-    TODO The constructor takes a ``concurrent`` argument that limits
+    The constructor takes a ``concurrent`` argument that limits
     simultaneous downloads, but a better strategy would be to somehow monitor
     bandwidth and keep adding concurrent downloads until resources are maxed
     out. This also needs to take into account how quickly writes can be ingested

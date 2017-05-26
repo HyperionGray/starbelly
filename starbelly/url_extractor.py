@@ -23,8 +23,9 @@ def extract_urls(crawl_item):
     if type_ == 'text' and subtype == 'html':
         extracted_urls = _extract_html(base_url, crawl_item.body)
     else:
-        logging.error('Unsupported MIME in extract_urls(): %s/%s (%r)',
-            type_, subtype, parameters)
+        logging.error('Unsupported MIME in extract_urls(): %s/%s (params=%r)'
+                      ' (url=%s)',
+            type_, subtype, parameters, base_url)
         extracted_urls = list()
 
     return extracted_urls

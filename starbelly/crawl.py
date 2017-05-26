@@ -6,6 +6,8 @@ import functools
 import gzip
 import hashlib
 import logging
+import pickle
+import time
 
 import cchardet as chardet
 from dateutil.tz import tzlocal
@@ -179,19 +181,18 @@ class CrawlManager:
         ''' Resume a single job. '''
         async with self._db_pool.connection() as conn:
             job_data = await r.table('job').get(job_id).run(conn)
-        # Create a new job object to hold a pre-existing crawl. This is a bit
-        # hacky.
         policy = Policy(job_data['policy'], VERSION, job_data['seeds'],
             self._robots_txt_manager)
         job = _CrawlJob(self._db_pool, self._rate_limiter, job_data['id'],
             job_data['seeds'], policy, job_data['name'])
-        job.id = job_id
-        job.item_count = job_data['item_count']
-        job._run_state = job_data['run_state']
-        job._started_at = job_data['started_at']
+        job.resume(job_data)
         self._running_jobs[job.id] = job
         job_task = asyncio.ensure_future(job.run())
         job_task.add_done_callback(functools.partial(self._cleanup_job, job))
+        # Wait for job to get into 'running' status before returning. This is
+        # helpful for clients: response is sent after crawl starts running.
+        while job._run_state != 'running':
+            await asyncio.sleep(1)
 
     async def start_job(self, seeds, policy_id, name):
         '''
@@ -339,18 +340,37 @@ class _CrawlJob:
 
         logger.info('Pausing crawl id={}…'.format(self.id[:8]))
         self._run_state = 'paused'
+        await self._stop(graceful=True)
 
         query = (
             r.table('job')
              .get(self.id)
-             .update({'run_state': 'paused'})
+             .update({
+                'frontier_seen': pickle.dumps(self._frontier_seen),
+                'frontier_size': self._frontier_size,
+                'insert_item_sequence': self._insert_item_sequence,
+                'run_state': 'paused',
+             })
         )
 
         async with self._db_pool.connection() as conn:
             await query.run(conn)
 
-        await self._stop(graceful=True)
+        self._frontier_seen.clear()
+        self._frontier_size = 0
+        self._pending_count = 0
         logger.info('Crawl id={} has been paused.'.format(self.id[:8]))
+
+    def resume(self, job_data):
+        ''' On resume, restore crawl state. '''
+        self.item_count = job_data['item_count']
+        self._insert_item_sequence = job_data['insert_item_sequence']
+        self._frontier_seen = pickle.loads(job_data['frontier_seen'])
+        self._frontier_size = job_data['frontier_size']
+        logger.error('frontier_seen=%r', self._frontier_seen)
+        logger.error('frontier_size=%r', self._frontier_size)
+        self._run_state = job_data['run_state']
+        self._started_at = job_data['started_at']
 
     async def run(self):
         ''' The main loop for a job. '''
@@ -366,7 +386,6 @@ class _CrawlJob:
                 self._run_state = 'running'
                 new_data['started_at'] = datetime.now(tzlocal())
             elif self._run_state == 'paused':
-                await self._reload_frontier()
                 self._run_state = 'running'
             else:
                 raise Exception('Cannot start or resume a job with run_state={}'
@@ -498,7 +517,6 @@ class _CrawlJob:
             daemon_task(self._complete(graceful=False))
         elif self.policy.limits.exceeds_max_duration(
             (datetime.now(tzlocal()) - self._started_at).seconds):
-            #TODO This is not the ideal place to process duration limit.
             logger.info('Job %s has exceed duration limit.', self.id[:8])
             daemon_task(self._complete(graceful=False))
 
@@ -531,49 +549,6 @@ class _CrawlJob:
 
         logger.debug('Popped %s', result['url'])
         return result
-
-    async def _reload_frontier(self):
-        '''
-        When un-pausing a crawl, we need to reload the `_frontier_seen` set and
-        count how many items are in it.
-        '''
-
-        logger.info('Reloading frontier for crawl=%s (this may take a few '
-                    'seconds)', self.id[:8])
-
-        item_query = (
-            r.table('crawl_item')
-            .between((self.id, r.minval),
-                     (self.id, r.maxval),
-                     index='sync_index')
-            .order_by(index='sync_index')
-            .pluck('url_hash')
-        )
-
-        frontier_query = (
-            r.table('frontier')
-             .between((self.id, r.minval),
-                      (self.id, r.maxval),
-                      index='cost_index')
-             .order_by(index='cost_index')
-             .pluck('url_hash')
-        )
-
-        sequence_query = (
-            r.table('job')
-             .get(self.id)
-             .get_field('item_count')
-        )
-
-        async with self._db_pool.connection() as conn:
-            self._frontier_size = await frontier_query.count().run(conn)
-            self._insert_item_sequence = await sequence_query.run(conn)
-            for query in (item_query, frontier_query):
-                cursor = await query.run(conn)
-                async for item in AsyncCursorIterator(cursor):
-                    self._frontier_seen.add(bytes(item['url_hash']))
-
-        logger.info('Reloading frontier for crawl=%s is complete.', self.id[:8])
 
     async def _save_item(self, crawl_item):
         ''' Save a crawl item to the database. '''
@@ -651,9 +626,6 @@ class _CrawlJob:
             await cancel_futures(self._task)
 
         removed_items = await self._rate_limiter.remove_job(self.id, graceful)
-        self._pending_count = 0
-        self._frontier_size = 0
-        self._frontier_seen.clear()
 
         if graceful and len(removed_items) > 0:
             insert_items = list()
@@ -755,7 +727,6 @@ class _CrawlItem:
         self.duration = self.completed_at - self.started_at
         self.status_code = response.status
         self.headers = response.headers
-        #TODO try sniffing mime types if not declared?
         self.content_type = response.content_type
         if response.charset is not None:
             self.charset = response.charset
