@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import gzip
 import logging
+from time import time
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -93,6 +94,8 @@ class Server:
                 except websocket.exceptions.InvalidState:
                     pass
                 break
+            finally:
+                pending_requests.discard(request_task)
 
     async def run(self):
         ''' Run the websocket server. '''
@@ -124,6 +127,7 @@ class Server:
     async def _handle_request(self, websocket, request_data):
         ''' Handle a single request/response pair. '''
         request = Request.FromString(request_data)
+        start = time()
 
         try:
             command_name = request.WhichOneof('Command')
@@ -143,6 +147,9 @@ class Server:
             response = await handler(command, websocket)
             response.request_id = request.request_id
             response.is_success = True
+            elapsed = time() - start
+            logger.info('Request OK %s %s %0.3fs', command_name,
+                websocket.remote_address[0], elapsed)
         except Exception as e:
             logger.exception('Error while handling request:\n%r', request)
             response = Response()

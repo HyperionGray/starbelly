@@ -5,7 +5,6 @@ import logging
 import rethinkdb as r
 
 from . import cancel_futures
-from .db import AsyncCursorIterator
 from .pubsub import PubSub
 
 
@@ -59,9 +58,10 @@ class Tracker:
                      .pluck(*self.JOB_STATUS_FIELDS)
                 )
                 cursor = await initial_query.run(conn)
-                async for job in AsyncCursorIterator(cursor):
+                async for job in cursor:
                     job_id = job.pop('id')
                     self._job_statuses[job_id] = job
+                await cursor.close()
 
                 # Now track updates to job status. (There's a race between
                 # initial state and first update, but that shouldn't be a big
@@ -72,7 +72,7 @@ class Tracker:
                      .changes(squash=True)
                 )
                 feed = await change_query.run(conn)
-                async for change in AsyncCursorIterator(feed):
+                async for change in feed:
                     job = change['new_val']
                     if job is None:
                         # This means the job was deleted.
@@ -86,6 +86,7 @@ class Tracker:
                         self._job_statuses[job_id] = job
                     else:
                         self._job_statuses.pop(job_id, None)
+                await feed.close()
         except asyncio.CancelledError:
             self._task = None
             logger.info('Tracker has stopped.')

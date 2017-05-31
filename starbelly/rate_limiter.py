@@ -9,7 +9,6 @@ import urllib.parse
 import rethinkdb as r
 
 from . import cancel_futures
-from .db import AsyncCursorIterator
 
 
 logger = logging.getLogger(__name__)
@@ -64,8 +63,9 @@ class RateLimiter:
         async with self._db_pool.connection() as conn:
             count = await count_query.run(conn)
             cursor = await item_query.run(conn)
-            async for rate_limit in AsyncCursorIterator(cursor):
+            async for rate_limit in cursor:
                 rate_limits.append(rate_limit)
+            await cursor.close()
 
         return count, rate_limits
 
@@ -128,7 +128,7 @@ class RateLimiter:
 
         async with self._db_pool.connection() as conn:
             cursor = await r.table('rate_limit').run(conn)
-            async for rate_limit in AsyncCursorIterator(cursor):
+            async for rate_limit in cursor:
                 if rate_limit['type'] == 'global':
                     self._global_limit = rate_limit['delay']
                 elif rate_limit['type'] == 'domain':
@@ -137,6 +137,7 @@ class RateLimiter:
                 else:
                     raise Exception('Cannot load rate limit (unknown type): '
                         .format(repr(rate_limit)))
+            await cursor.close()
 
         logger.info('Rate limiter is running.')
 

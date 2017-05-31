@@ -62,13 +62,19 @@ def qiter(cursor, function=None):
     '''
     async def _qiter(cursor, function):
         if function is None:
-            async for item in starbelly.db.AsyncCursorIterator(cursor):
-                pass
+            try:
+                async for item in cursor:
+                    pass
+            finally:
+                await cursor.close()
             return None
         else:
             results = list()
-            async for item in starbelly.db.AsyncCursorIterator(cursor):
-                results.append(function(item))
+            try:
+                async for item in cursor:
+                    results.append(function(item))
+            finally:
+                await cursor.close()
             return results
 
     return crun(_qiter(cursor, function))
@@ -92,7 +98,7 @@ def qshow(results):
     cursor, list, etc.
     '''
     async def _qshow(results):
-        MAX_ITEMS = 10
+        MAX_ITEMS = 100
         INDENT = '    '
         if isinstance(results, list):
             len_ = len(results)
@@ -105,11 +111,14 @@ def qshow(results):
         elif isinstance(results, r.Cursor):
             print('RethinkDB Cursor: [')
             item_count = 0
-            async for item in starbelly.db.AsyncCursorIterator(results):
-                if item_count > MAX_ITEMS:
-                    print(f'{INDENT}...')
-                print(f'{INDENT}{item},')
-                item_count += 1
+            try:
+                async for item in results:
+                    if item_count > MAX_ITEMS:
+                        print(f'{INDENT}...')
+                    print(f'{INDENT}{item},')
+                    item_count += 1
+            finally:
+                await results.close()
             print(']')
         else:
             type_ = type(results)

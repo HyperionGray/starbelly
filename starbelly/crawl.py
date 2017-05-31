@@ -18,7 +18,6 @@ from rethinkdb.errors import ReqlNonExistenceError
 import w3lib.url
 
 from . import cancel_futures, daemon_task, VERSION
-from .db import AsyncCursorIterator
 from .policy import Policy
 from .pubsub import PubSub
 from .url_extractor import extract_urls
@@ -135,8 +134,9 @@ class CrawlManager:
         async with self._db_pool.connection() as conn:
             total_count = await base_query.count().run(conn)
             cursor = await query.run(conn)
-            async for item in AsyncCursorIterator(cursor):
+            async for item in cursor:
                 items.append(item)
+            await cursor.close()
 
         return total_count, items
 
@@ -149,6 +149,7 @@ class CrawlManager:
         query = (
             r.table('job')
              .order_by(index=r.desc('started_at'))
+             .without('frontier_seen')
              .skip(offset)
              .limit(limit)
         )
@@ -157,8 +158,9 @@ class CrawlManager:
 
         async with self._db_pool.connection() as conn:
             cursor = await query.run(conn)
-            async for job in AsyncCursorIterator(cursor):
+            async for job in cursor:
                 jobs.append(job)
+            await cursor.close()
 
         return jobs
 
@@ -242,7 +244,7 @@ class CrawlManager:
         startup_query = r.table('job').filter({'run_state': 'running'})
         async with self._db_pool.connection() as conn:
             cursor = await startup_query.run(conn)
-            async for job in AsyncCursorIterator(cursor):
+            async for job in cursor:
                 # Cancel the job.
                 await (
                     r.table('job')
@@ -260,6 +262,7 @@ class CrawlManager:
                      .delete()
                      .run(conn)
                 )
+            await cursor.close()
 
         if count > 0:
             logger.warning(
@@ -367,8 +370,6 @@ class _CrawlJob:
         self._insert_item_sequence = job_data['insert_item_sequence']
         self._frontier_seen = pickle.loads(job_data['frontier_seen'])
         self._frontier_size = job_data['frontier_size']
-        logger.error('frontier_seen=%r', self._frontier_seen)
-        logger.error('frontier_size=%r', self._frontier_size)
         self._run_state = job_data['run_state']
         self._started_at = job_data['started_at']
 

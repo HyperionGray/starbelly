@@ -15,7 +15,6 @@ from protobuf.server_pb2 import ServerMessage, SubscriptionClosed
 import rethinkdb as r
 
 from . import cancel_futures, daemon_task
-from .db import AsyncCursorIterator
 
 
 logger = logging.getLogger(__name__)
@@ -164,7 +163,7 @@ class CrawlSyncSubscription:
             async with self._db_pool.connection() as conn:
                 cursor = await self._get_query().run(conn)
 
-                async for item in AsyncCursorIterator(cursor):
+                async for item in cursor:
                     # Make sure this item matches the expected sequence number.
                     if item['insert_sequence'] != self._sequence:
                         logger.error(
@@ -177,6 +176,7 @@ class CrawlSyncSubscription:
                     self._sequence += 1
                     if item['is_success']:
                         await self._send_item(item)
+                await cursor.close()
 
             if self._sync_is_complete():
                 logger.info('Item sync complete for job_id=%s',

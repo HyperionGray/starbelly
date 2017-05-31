@@ -1,13 +1,13 @@
 import logging
-import rethinkdb as r
-from uuid import UUID
-
-from . import VERSION
-from .db import AsyncCursorIterator
 import random
 import re
-import protobuf.shared_pb2
 from urllib.parse import urlparse
+from uuid import UUID
+
+import rethinkdb as r
+
+from . import VERSION
+import protobuf.shared_pb2
 
 
 logger = logging.getLogger(__name__)
@@ -168,8 +168,9 @@ class PolicyManager:
         async with self._db_pool.connection() as conn:
             count = await r.table('policy').count().run(conn)
             cursor = await query.run(conn)
-            async for policy in AsyncCursorIterator(cursor):
+            async for policy in cursor:
                 policies.append(policy)
+            await cursor.close()
 
         return count, policies
 

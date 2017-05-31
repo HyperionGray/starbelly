@@ -31,8 +31,8 @@ def daemon_task(coro):
     '''
     Create a "daemon" task from a coroutine.
 
-    This is a coroutine that never returns, so the task must never be awaited,
-    but we still want to know about exceptions raised by the task.
+    A "daemon" task runs forever, so we never await it (unless shutting down the
+    entire application) but we still want to know if it rasises an exception.
     '''
     task = asyncio.ensure_future(coro)
     raise_future_exception(task)
