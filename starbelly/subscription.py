@@ -140,7 +140,7 @@ class CrawlSyncSubscription:
         self._job_id = job_id
         self._tracker = tracker
         self._crawl_run_state = None
-        self._crawl_item_count = None
+        self._item_count = None
 
         # Decode sync token if present.
         if sync_token is None:
@@ -206,8 +206,8 @@ class CrawlSyncSubscription:
         '''
         Return the query used for getting items to sync.
 
-        This query is a little funky. I want to join `crawl_item` and
-        `crawl_item_body` while preserving the `insert_sequence` order, but
+        This query is a little funky. I want to join `response` and
+        `response_body` while preserving the `insert_sequence` order, but
         RethinkDB's `eq_join()` method doesn't preserve order (see GitHub issue:
         https://github.com/rethinkdb/rethinkdb/issues/6319). Somebody on
         RethinkDB Slack showed me that you can use merge and subquery to
@@ -216,10 +216,10 @@ class CrawlSyncSubscription:
         '''
 
         def get_body(item):
-            return {'join': r.table('crawl_item_body').get(item['body_id'])}
+            return {'join': r.table('response_body').get(item['body_id'])}
 
         query = (
-            r.table('crawl_item')
+            r.table('response')
              .between((self._job_id, self._sequence),
                       (self._job_id, r.maxval),
                       index='sync_index')
@@ -253,7 +253,7 @@ class CrawlSyncSubscription:
         ''' Handle job status updates. '''
         if job_id == self._job_id:
             self._crawl_run_state = job['run_state']
-            self._crawl_item_count = job['item_count']
+            self._item_count = job['item_count']
 
     async def _send_complete(self):
         ''' Send a subscription end event. '''
@@ -262,38 +262,37 @@ class CrawlSyncSubscription:
         message.event.subscription_closed.reason = SubscriptionClosed.END
         await self._socket.send(message.SerializeToString())
 
-    async def _send_item(self, item):
-        ''' Send a crawl item to the client. '''
+    async def _send_item(self, item_doc):
+        ''' Send an item (download response) to the client. '''
         message = ServerMessage()
         message.event.subscription_id = self.id
 
-        if item['join']['is_compressed'] and not self._compression_ok:
-            body = gzip.decompress(item['join']['body'])
+        if item_doc['join']['is_compressed'] and not self._compression_ok:
+            body = gzip.decompress(item_doc['join']['body'])
             is_body_compressed = False
         else:
-            body = item['join']['body']
-            is_body_compressed = item['join']['is_compressed']
+            body = item_doc['join']['body']
+            is_body_compressed = item_doc['join']['is_compressed']
 
-        crawl_item = message.event.crawl_item
-        crawl_item.body = body
-        crawl_item.is_body_compressed = is_body_compressed
-        crawl_item.charset = item['charset']
-        crawl_item.completed_at = item['completed_at'].isoformat()
-        crawl_item.content_type = item['content_type']
-        crawl_item.cost = item['cost']
-        crawl_item.duration = item['duration']
-        for key, value in item['headers'].items():
+        item = message.event.sync_item.item
+        item.body = body
+        item.is_body_compressed = is_body_compressed
+        item.charset = item_doc['charset']
+        item.completed_at = item_doc['completed_at'].isoformat()
+        item.content_type = item_doc['content_type']
+        item.cost = item_doc['cost']
+        item.duration = item_doc['duration']
+        for key, value in item_doc['headers'].items():
             if value is None:
                 value = ''
-            crawl_item.headers[key] = value
-        crawl_item.job_id = UUID(item['job_id']).bytes
-        crawl_item.started_at = item['started_at'].isoformat()
-        crawl_item.status_code = item['status_code']
-        crawl_item.sync_token = self._get_sync_token()
-        crawl_item.url = item['url']
-        crawl_item.url_can = item['url_can']
-        crawl_item.url_hash = item['url_hash']
-        crawl_item.is_success = item['is_success']
+            item.headers[key] = value
+        item.job_id = UUID(item_doc['job_id']).bytes
+        item.started_at = item_doc['started_at'].isoformat()
+        item.status_code = item_doc['status_code']
+        item.url = item_doc['url']
+        item.url_can = item_doc['url_can']
+        item.is_success = item_doc['is_success']
+        message.event.sync_item.token = self._get_sync_token()
         await self._socket.send(message.SerializeToString())
 
     async def _set_initial_job_status(self):
@@ -308,11 +307,11 @@ class CrawlSyncSubscription:
         async with self._db_pool.connection() as conn:
             result = await query.run(conn)
             self._crawl_run_state = result['run_state']
-            self._crawl_item_count = result['item_count']
+            self._item_count = result['item_count']
 
     def _sync_is_complete(self):
         ''' Return true if the sync is finished. '''
-        return self._sequence >= self._crawl_item_count - 1 and \
+        return self._sequence >= self._item_count - 1 and \
                self._crawl_run_state in ('completed', 'cancelled')
 
 
@@ -373,7 +372,6 @@ class JobStatusSubscription:
             pb_job = message.event.job_list.jobs.add()
             pb_job.job_id = UUID(job_id).bytes
             merge(old, new, pb_job, 'name')
-            merge(old, new, pb_job, 'item_count')
             merge(old, new, pb_job, 'item_count')
             merge(old, new, pb_job, 'http_success_count')
             merge(old, new, pb_job, 'http_error_count')

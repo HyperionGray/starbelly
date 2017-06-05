@@ -178,7 +178,8 @@ class RobotsTxtManager:
         Returns None if the file cannot be fetched (e.g. 404 error).
         '''
 
-        logger.info('Fetching %s from network.', robots_url)
+        logger.info('Fetching robots.txt: %s', robots_url)
+        robots_file = None
 
         try:
             await self._downloads.acquire()
@@ -188,15 +189,19 @@ class RobotsTxtManager:
                 with async_timeout.timeout(10):
                     async with session.get(robots_url) as response:
                         if response.status != 200:
-                            logger.error('Cannot fetch robots.txt: %s %d',
-                                robots_url, response.status)
-                            robots_file = None
+                            logger.error('robots.txt: %d %s',
+                                response.status, robots_url)
                         else:
                             body = await response.read()
                             robots_file = body.decode('latin1')
+                            logger.info('robots.txt: %d %s',
+                                response.status, robots_url)
+        except asyncio.TimeoutError:
+            logger.error('robots.txt timeout: %s', robots_url)
+        except aiohttp.client_exceptions.ClientConnectorError as cce:
+            logger.error('robots.txt failed: %s', cce)
         except:
-            logger.exception('Cannot fetch robots.txt!')
-            robots_file = None
+            logger.exception('robots.txt exception')
         finally:
             self._downloads.release()
 

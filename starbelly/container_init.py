@@ -267,20 +267,20 @@ def init_db(db_config):
     db_name = db_config['db']
     ensure_db(conn, db_name)
     ensure_db_user(conn, db_name, db_config['user'], db_config['password'])
-    ensure_db_table(conn, 'crawl_item')
-    ensure_db_index(conn, 'crawl_item', 'sync_index',
-        [r.row['job_id'], r.row['insert_sequence']])
-    ensure_db_table(conn, 'crawl_item_body')
-    ensure_db_table(conn, 'policy')
-    ensure_db_index(conn, 'policy', 'name')
-    ensure_db_table(conn, 'job')
-    ensure_db_index(conn, 'job', 'started_at')
     ensure_db_table(conn, 'frontier')
     ensure_db_index(conn, 'frontier', 'cost_index',
         [r.row['job_id'], r.row['cost']])
+    ensure_db_table(conn, 'job')
+    ensure_db_index(conn, 'job', 'started_at')
+    ensure_db_table(conn, 'policy')
+    ensure_db_index(conn, 'policy', 'name')
     ensure_db_table(conn, 'rate_limit')
     ensure_db_index(conn, 'rate_limit', 'name')
     ensure_db_index(conn, 'rate_limit', 'token')
+    ensure_db_table(conn, 'response')
+    ensure_db_index(conn, 'response', 'sync_index',
+        [r.row['job_id'], r.row['insert_sequence']])
+    ensure_db_table(conn, 'response_body')
     ensure_db_table(conn, 'robots_txt')
     ensure_db_index(conn, 'robots_txt', 'url')
     ensure_db_fixtures(conn)

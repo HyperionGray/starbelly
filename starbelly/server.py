@@ -201,7 +201,7 @@ class Server:
         return response
 
     async def _get_job_items(self, command, socket):
-        ''' Get a page of items from a job. '''
+        ''' Get a page of items (crawl responses) from a job. '''
         job_id = str(UUID(bytes=command.job_id))
         limit = command.page.limit
         offset = command.page.offset
@@ -241,7 +241,6 @@ class Server:
             item.duration = item_doc['duration']
             item.url = item_doc['url']
             item.url_can = item_doc['url_can']
-            item.url_hash = item_doc['url_hash']
             item.is_success = item_doc['is_success']
         return response
 

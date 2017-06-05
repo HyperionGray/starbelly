@@ -109,6 +109,37 @@ class Reloader:
         sys.exit(0)
 
 
+def print_tasks(logger):
+    ''' this needs to be separate from monitor_tasks to prevent holding resources open '''
+    from collections import Counter
+    tasks = asyncio.Task.all_tasks()
+    task_names = list()
+
+    for task in tasks:
+        task_name = task._coro.__qualname__
+        if task._source_traceback:
+            frame = task._source_traceback[-1]
+            if '/starbelly/__init__.py' in frame[0] or '/asyncio/' in frame[0]:
+                frame = task._source_traceback[-2]
+            task_name += ' %s:%s' % (frame[0], frame[1])
+        task_names.append(task_name)
+
+    counter = Counter(task_names)
+    task_str = 'TASK MONITOR:\ntotal=%d\n'
+    task_args = [len(tasks)]
+
+    for task_name, count in counter.most_common(10):
+        task_str += '%d\t%s\n'
+        task_args.extend([count, task_name])
+    logger.error(task_str, *task_args)
+
+
+async def monitor_tasks(logger):
+    while True:
+        print_tasks(logger)
+        await asyncio.sleep(15)
+
+
 class Starbelly:
     ''' Main class for bootstrapping the crawler. '''
 
@@ -146,6 +177,7 @@ class Starbelly:
             rate_limiter_task = daemon_task(rate_limiter.run())
             tracker_task = daemon_task(tracker.run())
             server_task = daemon_task(server.run())
+            # task_monitor = daemon_task(monitor_tasks(self._logger)) #TODO
 
             # This main task idles after startup: it only supervises other
             # tasks.
@@ -158,6 +190,8 @@ class Starbelly:
             await crawl_manager.pause_all_jobs()
             await cancel_futures(rate_limiter_task, tracker_task)
             await db_pool.close()
+            # await cancel_futures(task_monitor) #TODO
+
 
     def shutdown(self, signum, frame):
         ''' Kill the main task. '''

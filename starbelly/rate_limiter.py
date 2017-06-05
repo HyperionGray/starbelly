@@ -69,18 +69,18 @@ class RateLimiter:
 
         return count, rate_limits
 
-    async def push(self, crawl_item):
+    async def push(self, request):
         '''
-        Schedule a crawl item for downloading.
+        Schedule a request for downloading.
 
         Suspends if the rate limiter is already filled to capacity.
         '''
         await self._semaphore.acquire()
-        token = self._get_token_for_url(crawl_item.url)
+        token = self._get_token_for_url(request.url)
         if token not in self._queues:
             self._queues[token] = deque()
             self._add_expiry(Expiry(time(), token))
-        self._queues[token].append(crawl_item)
+        self._queues[token].append(request)
 
     async def remove_job(self, job_id, finish_downloads=True):
         '''
@@ -154,11 +154,11 @@ class RateLimiter:
                     del self._queues[token]
                     continue
 
-                crawl_item = queue.popleft()
-                logger.debug('Popped %s', crawl_item.url)
-                await self._downloader.push(crawl_item)
+                request = queue.popleft()
+                logger.debug('Popped %s', request.url)
+                await self._downloader.push(request)
                 self._semaphore.release()
-                crawl_item.completed.add_done_callback(self._reschedule)
+                request.completed.add_done_callback(self._reschedule)
         except asyncio.CancelledError:
             # Cancellation is okay.
             raise
@@ -262,9 +262,9 @@ class RateLimiter:
         token = self._get_token_for_domain(parsed.hostname)
         return token
 
-    def _reschedule(self, crawl_item_future):
+    def _reschedule(self, request_future):
         ''' When an item finishes, re-schedule its token. '''
-        crawl_item = crawl_item_future.result()
-        token = self._get_token_for_url(crawl_item.url)
+        request = request_future.result()
+        token = self._get_token_for_url(request.url)
         limit = self._rate_limits.get(token, self._global_limit)
         self._add_expiry(Expiry(time() + limit, token))

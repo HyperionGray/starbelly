@@ -34,6 +34,28 @@ logger = logging.getLogger('sample_client')
 DATE_FMT = '%Y-%m-%d %H:%I:%S'
 
 
+async def start_crawl(args, socket):
+    ''' Start a new crawl. '''
+    request = protobuf.client_pb2.Request()
+    request.request_id = 1
+    request.start_job.policy_id = UUID(args.policy).bytes
+    if args.name:
+        request.start_job.name = args.name
+    for seed in args.seed:
+        request.start_job.seeds.append(seed)
+    logger.error('request=%r', request)
+    request_data = request.SerializeToString()
+    await socket.send(request_data)
+
+    message_data = await socket.recv()
+    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+    if message.response.is_success:
+        job_id = binascii.hexlify(message.response.new_job.job_id)
+        print('Started job: {}'.format(job_id.decode('ascii')))
+    else:
+        print('Failed to start job: {}'.format(message.response.error_message))
+
+
 async def delete_job(args, socket):
     ''' Delete a job. '''
     request = protobuf.client_pb2.Request()
@@ -69,6 +91,14 @@ def get_args():
 
     subparsers = parser.add_subparsers(help='Actions', dest='action')
     subparsers.required = True
+    crawl_parser = subparsers.add_parser('crawl', help='Start a crawl.')
+    crawl_parser.add_argument('-n', '--name',
+        help='Assign a name to this crawl.')
+    crawl_parser.add_argument('policy',
+        help='A policy ID.')
+    crawl_parser.add_argument('seed',
+        nargs='+',
+        help='One or more seeds.')
     list_parser = subparsers.add_parser('list', help='List crawl jobs.')
     show_parser = subparsers.add_parser('show', help='Display a crawl job.')
     show_parser.add_argument('job_id', help='Job ID as hex string.')
@@ -81,7 +111,7 @@ def get_args():
     delete_parser = subparsers.add_parser('delete', help='Delete a crawl job.')
     delete_parser.add_argument('job_id', help='Job ID as hex string.')
     sync_parser = subparsers.add_parser('sync',
-        help='Sync crawl items from a job.')
+        help='Sync items from a job.')
     sync_parser.add_argument('job_id', help='Job ID as hex string.')
     sync_parser.add_argument('-d', '--delay', type=float, default=0,
         help='Delay between printing items (default 0).')
@@ -167,6 +197,7 @@ async def main():
     args = get_args()
 
     actions = {
+        'crawl': start_crawl,
         'delete': delete_job,
         'list': list_jobs,
         'rates': get_rates,
@@ -268,7 +299,10 @@ async def show_job(args, socket):
     job = message.response.job
     run_state = protobuf.shared_pb2.JobRunState.Name(job.run_state)
     started_at = dateutil.parser.parse(job.started_at).strftime(DATE_FMT)
-    completed_at = dateutil.parser.parse(job.completed_at).strftime(DATE_FMT)
+    if job.HasField('completed_at'):
+        completed_at = dateutil.parser.parse(job.completed_at).strftime(DATE_FMT)
+    else:
+        completed_at = 'N/A'
     print('ID:           {}'.format(UUID(bytes=job.job_id)))
     print('Name:         {}'.format(job.name))
     print('Run State:    {}'.format(run_state))
@@ -337,7 +371,7 @@ async def show_job(args, socket):
 
 
 async def sync_job(args, socket):
-    ''' Sync crawl items from a job. '''
+    ''' Sync items from a job. '''
 
     request = protobuf.client_pb2.Request()
     request.request_id = 1
@@ -365,13 +399,13 @@ async def sync_job(args, socket):
             if event_type == 'subscription_closed':
                 print('-- End of crawl results ---')
                 break
-            item = message.event.crawl_item
+            item = message.event.sync_item.item
+            sync_token = message.event.sync_item.token
             print('| {:50s} | {:5.1f} | {:10.2f} |'.format(
                 item.url[:50],
                 item.cost,
                 len(item.body) / 1024
             ))
-            sync_token = item.sync_token
             await asyncio.sleep(args.delay)
     except asyncio.CancelledError:
         print('Interrupted! To resume sync, use token: {}'
