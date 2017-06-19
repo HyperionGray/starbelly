@@ -24,6 +24,7 @@ from .url_extractor import extract_urls
 
 logger = logging.getLogger(__name__)
 FrontierItem = namedtuple('FrontierItem', ['url', 'cost'])
+ExtractItem = namedtuple('ExtractItem', ['url', 'cost', 'content_type', 'body'])
 
 
 class CrawlManager:
@@ -289,9 +290,12 @@ class _CrawlJob:
         self.stopped = asyncio.Future()
 
         self._db_pool = db_pool
+        self._extraction_size = 0
+        self._extraction_task = None
         self._frontier_seen = set()
         self._frontier_size = 0
         self._frontier_task = None
+        self._limits_task = None
         self._insert_item_sequence = 0
         self._pending = dict()
         self._rate_limiter = rate_limiter
@@ -347,6 +351,7 @@ class _CrawlJob:
             r.table('job')
              .get(self.id)
              .update({
+                'extraction_size': self._extraction_size,
                 'frontier_seen': pickle.dumps(self._frontier_seen),
                 'frontier_size': self._frontier_size,
                 'insert_item_sequence': self._insert_item_sequence,
@@ -357,6 +362,7 @@ class _CrawlJob:
         async with self._db_pool.connection() as conn:
             await query.run(conn)
 
+        self._extraction_size = 0
         self._frontier_seen.clear()
         self._frontier_size = 0
         self._pending.clear()
@@ -366,15 +372,62 @@ class _CrawlJob:
         ''' On resume, restore crawl state. '''
         self.item_count = job_data['item_count']
         self._insert_item_sequence = job_data['insert_item_sequence']
+        self._extraction_size = job_data['extraction_size']
         self._frontier_seen = pickle.loads(job_data['frontier_seen'])
         self._frontier_size = job_data['frontier_size']
         self._run_state = job_data['run_state']
         self._started_at = job_data['started_at']
         await self.start()
 
+    async def run_extractor(self):
+        '''
+        This task fetches items from the extraction queue and finds links to
+        follow.
+        '''
+
+        def delete(item):
+            ''' Query helper for deleting an extract item. '''
+            return r.table('extraction_queue').get(item['id']).delete()
+
+        def get_body(item):
+            ''' Query helper for joining response body to extract item. '''
+            return {'join': r.table('response_body').get(item['body_id'])}
+
+        while True:
+            extract_query = (
+                r.table('extraction_queue')
+                 .between((self.id, r.minval),
+                          (self.id, r.maxval),
+                          index='cost_index')
+                 .order_by(index='cost_index')
+                 .merge(get_body)
+                 .nth(0)
+            )
+
+            try:
+                async with self._db_pool.connection() as conn:
+                    extract_doc = await extract_query.run(conn)
+                    await self._extract(extract_doc)
+                    await delete(extract_doc).run(conn)
+                    self._extraction_size -= 1
+            except ReqlNonExistenceError:
+                # No items in extraction queue.
+                pass
+
+            # Wait for an extraction to be queued.
+            change_query = (
+                r.table('extraction_queue')
+                 .filter({'job_id': self.id})
+                 .changes()
+            )
+            async with self._db_pool.connection() as conn:
+                feed = await change_query.run(conn)
+                async for result in feed:
+                    break
+
     async def run_frontier(self):
         '''
-        This coroutine takes items off the frontier and sends them to the rate
+        This task takes items off the frontier and sends them to the rate
         limiter.
         '''
         try:
@@ -396,53 +449,66 @@ class _CrawlJob:
                 async with self._db_pool.connection() as conn:
                     await r.table('frontier').insert(frontier_item).run(conn)
 
+    async def run_limits(self):
+        '''
+        This task periodically checks the crawl progress to see if any crawl
+        limits have been exceeded. If they have, then this task ends the crawl.
+
+        This task can't cancel itself, so we use ``daemon_task`` to spawn a new
+        task to cancel the crawler's tasks.
+        '''
+
+        while True:
+            logger.error('pending=%d frontier=%d extraction=%d', len(self._pending), self._frontier_size, self._extraction_size)
+            if len(self._pending) == 0 and self._frontier_size == 0 \
+                and self._extraction_size == 0:
+                logger.info('Job %s has no more items pending.', self.id[:8])
+                daemon_task(self._complete(graceful=True))
+            elif self.policy.limits.exceeds_max_duration(
+                (datetime.now(tzlocal()) - self._started_at).seconds):
+                logger.info('Job %s has exceeded duration limit.', self.id[:8])
+                daemon_task(self._complete(graceful=False))
+
+            await asyncio.sleep(1)
+
     async def run_save(self):
         '''
-        This coroutine takes items off the save queue and loads them into the
-        database, plus performs URL extraction and monitors crawl limits.
+        This task takes items off the save queue, loads them into the database,
+        and pushes responses bodies to the extraction queue.
         '''
         while True:
             response = await self._save_queue.get()
 
             if response.should_save:
-                await self._save_response(response)
+                body_id = await self._save_response(response)
                 await self._update_job_stats(response)
+            else:
+                body_id = None
 
             async with self._db_pool.connection() as conn:
                 frontier_id = self._pending.pop(response.url)
                 await r.table('frontier').get(frontier_id).delete().run(conn)
                 self._frontier_size -= 1
 
-            if response.body is not None:
-                extracted_urls = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    extract_urls,
-                    response
-                )
-                frontier_items = list()
-                url_rules = self.policy.url_rules
-                robots_txt = self.policy.robots_txt
-                for url in extracted_urls:
-                    new_cost = url_rules.get_cost(response.cost, url)
-                    cost_ok = new_cost > 0 and \
-                        not self.policy.limits.exceeds_max_cost(new_cost)
-                    if cost_ok and await robots_txt.is_allowed(url):
-                        frontier_items.append(FrontierItem(url, new_cost))
-                await self._add_frontier_items(frontier_items)
+            if body_id is not None:
+                self._extraction_size += 1
+                insert = r.table('extraction_queue').insert({
+                    'body_id': body_id,
+                    'content_type': response.content_type,
+                    'cost': response.cost,
+                    'job_id': self.id,
+                    'url': response.url,
+                })
+                async with self._db_pool.connection() as conn:
+                    await insert.run(conn)
+
 
             self._save_queue.task_done()
 
-            # Enforce policy limits. This task can't cause itself to exit
-            # so we have to complete the crawl in a separate task.
-            if len(self._pending) == 0 and self._frontier_size == 0:
-                logger.info('Job %s has no more items pending.', self.id[:8])
-                daemon_task(self._complete(graceful=True))
-            elif self.policy.limits.exceeds_max_items(self.item_count):
+            # Enforce the crawl item limit (if applicable). This task can't
+            # cancel itself, so we have to cancel the crawl in a separate task.
+            if self.policy.limits.exceeds_max_items(self.item_count):
                 logger.info('Job %s has exceeded items limit.', self.id[:8])
-                daemon_task(self._complete(graceful=False))
-            elif self.policy.limits.exceeds_max_duration(
-                (datetime.now(tzlocal()) - self._started_at).seconds):
-                logger.info('Job %s has exceeded duration limit.', self.id[:8])
                 daemon_task(self._complete(graceful=False))
 
     async def start(self):
@@ -481,7 +547,9 @@ class _CrawlJob:
             # If cancelled during startup, then don't do anything
             pass
 
+        self._extraction_task = daemon_task(self.run_extractor())
         self._frontier_task = daemon_task(self.run_frontier())
+        self._limits_task = daemon_task(self.run_limits())
         self._save_task = daemon_task(self.run_save())
         logger.info('Job id={} is running...'.format(self.id[:8]))
 
@@ -532,6 +600,49 @@ class _CrawlJob:
 
         logger.info('Crawl id={} is complete.'.format(self.id[:8]))
 
+    async def _extract(self, extract_doc):
+        ''' Find links in a response body and put them in the frontier. '''
+        if extract_doc['join']['is_compressed']:
+            body = gzip.decompress(extract_doc['join']['body'])
+        else:
+            body = extract_doc['join']['body']
+
+        extract_item = ExtractItem(
+            extract_doc['url'],
+            extract_doc['cost'],
+            extract_doc['content_type'],
+            body,
+        )
+
+        logger.debug('Extracting links from %s', extract_item.url)
+
+        extracted_urls = await asyncio.get_event_loop().run_in_executor(
+            None,
+            extract_urls,
+            extract_item
+        )
+
+        limits = self.policy.limits
+        robots_txt = self.policy.robots_txt
+        url_rules = self.policy.url_rules
+        frontier_items = list()
+        counter = 0
+
+        for url in extracted_urls:
+            new_cost = url_rules.get_cost(extract_item.cost, url)
+            if new_cost > 0 and not limits.exceeds_max_cost(new_cost):
+                # Check robots _after_ cost, since robots may require an
+                # network request (expensive).
+                if await robots_txt.is_allowed(url):
+                    frontier_items.append(FrontierItem(url, new_cost))
+
+            # Don't monopolize the event loop:
+            counter += 1
+            if counter % 1000 == 0:
+                await asyncio.sleep(0)
+
+        await self._add_frontier_items(frontier_items)
+
     async def _next_frontier_item(self):
         '''
         Get the next highest priority item from the frontier.
@@ -563,7 +674,11 @@ class _CrawlJob:
         return result
 
     async def _save_response(self, response):
-        ''' Save a response to the database. '''
+        '''
+        Save a response to the database.
+
+        Returns the (new or existing) body ID.
+        '''
         response_doc = {
             'completed_at': response.completed_at,
             'cost': response.cost,
@@ -602,6 +717,7 @@ class _CrawlJob:
             response_doc['exception'] = response.exception
             response_doc['is_success'] = False
             body = None
+            body_hash = None
 
         async with self._db_pool.connection() as conn:
             if body is not None:
@@ -622,6 +738,8 @@ class _CrawlJob:
             await r.table('response').insert(response_doc).run(conn)
             self._insert_item_sequence += 1
 
+        return body_hash
+
     def _should_compress_body(self, response):
         '''
         Returns true if the response body should be compressed.
@@ -641,11 +759,15 @@ class _CrawlJob:
         downloads to finish before returning, and items removed from the rate
         limiter will be placed back into the crawl frontier.
         '''
-        if self._frontier_task is not None:
-            await cancel_futures(self._frontier_task)
-        if self._save_task is not None:
-            await self._save_queue.join()
-            await cancel_futures(self._save_task)
+        if self._save_task is None:
+            # Crawl never started.
+            return
+
+        await cancel_futures(
+            self._extraction_task,
+            self._frontier_task,
+            self._limits_task,
+        )
 
         removed_items = await self._rate_limiter.remove_job(self.id, graceful)
 
@@ -662,6 +784,9 @@ class _CrawlJob:
             logger.info('Putting %d items back in frontier.', len(insert_items))
             async with self._db_pool.connection() as conn:
                 await r.table('frontier').insert(insert_items).run(conn)
+
+        await self._save_queue.join()
+        await cancel_futures(self._save_task)
 
     async def _update_job_stats(self, response):
         '''

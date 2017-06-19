@@ -32,7 +32,7 @@ class Downloader:
     into the database.
     '''
 
-    def __init__(self, concurrent=10):
+    def __init__(self, concurrent=1):
         ''' Constructor. '''
         self._job_downloads = defaultdict(set)
         self._job_pushes = defaultdict(set)

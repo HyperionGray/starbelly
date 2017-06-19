@@ -8,20 +8,20 @@ import mimeparse
 logger = logging.getLogger(__name__)
 
 
-def extract_urls(download_response):
+def extract_urls(extract_item):
     '''
-    Extract URLs from a download response.
+    Extract URLs from a response body.
 
     Any relative URLs found in the response body are converted to absolute URLs
     using the original request URL.
     '''
 
-    base_url = download_response.url
+    base_url = extract_item.url
     type_, subtype, parameters = mimeparse.parse_mime_type(
-        download_response.content_type)
+        extract_item.content_type)
 
     if type_ == 'text' and subtype == 'html':
-        extracted_urls = _extract_html(base_url, download_response.body)
+        extracted_urls = _extract_html(base_url, extract_item.body)
     else:
         logging.error('Unsupported MIME in extract_urls(): %s/%s (params=%r)'
                       ' (url=%s)',

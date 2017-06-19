@@ -34,28 +34,6 @@ logger = logging.getLogger('sample_client')
 DATE_FMT = '%Y-%m-%d %H:%I:%S'
 
 
-async def start_crawl(args, socket):
-    ''' Start a new crawl. '''
-    request = protobuf.client_pb2.Request()
-    request.request_id = 1
-    request.start_job.policy_id = UUID(args.policy).bytes
-    if args.name:
-        request.start_job.name = args.name
-    for seed in args.seed:
-        request.start_job.seeds.append(seed)
-    logger.error('request=%r', request)
-    request_data = request.SerializeToString()
-    await socket.send(request_data)
-
-    message_data = await socket.recv()
-    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
-    if message.response.is_success:
-        job_id = binascii.hexlify(message.response.new_job.job_id)
-        print('Started job: {}'.format(job_id.decode('ascii')))
-    else:
-        print('Failed to start job: {}'.format(message.response.error_message))
-
-
 async def delete_job(args, socket):
     ''' Delete a job. '''
     request = protobuf.client_pb2.Request()
@@ -368,6 +346,28 @@ async def show_job(args, socket):
                 if item.HasField('exception'):
                     print('Exception: \n{}'.format(
                         textwrap.indent(item.exception, prefix='> ')))
+
+
+async def start_crawl(args, socket):
+    ''' Start a new crawl. '''
+    request = protobuf.client_pb2.Request()
+    request.request_id = 1
+    request.start_job.policy_id = UUID(args.policy).bytes
+    if args.name:
+        request.start_job.name = args.name
+    for seed in args.seed:
+        request.start_job.seeds.append(seed)
+    logger.error('request=%r', request)
+    request_data = request.SerializeToString()
+    await socket.send(request_data)
+
+    message_data = await socket.recv()
+    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+    if message.response.is_success:
+        job_id = binascii.hexlify(message.response.new_job.job_id)
+        print('Started job: {}'.format(job_id.decode('ascii')))
+    else:
+        print('Failed to start job: {}'.format(message.response.error_message))
 
 
 async def sync_job(args, socket):

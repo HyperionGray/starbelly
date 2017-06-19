@@ -270,6 +270,9 @@ def init_db(db_config):
     ensure_db_table(conn, 'frontier')
     ensure_db_index(conn, 'frontier', 'cost_index',
         [r.row['job_id'], r.row['cost']])
+    ensure_db_table(conn, 'extraction_queue')
+    ensure_db_index(conn, 'extraction_queue', 'cost_index',
+        [r.row['job_id'], r.row['cost']])
     ensure_db_table(conn, 'job')
     ensure_db_index(conn, 'job', 'started_at')
     ensure_db_table(conn, 'policy')
