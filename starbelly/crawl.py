@@ -16,6 +16,7 @@ from rethinkdb.errors import ReqlNonExistenceError
 import w3lib.url
 
 from . import cancel_futures, daemon_task, VERSION
+from .db import CursorContext
 from .downloader import DownloadRequest
 from .policy import Policy
 from .pubsub import PubSub
@@ -30,9 +31,10 @@ ExtractItem = namedtuple('ExtractItem', ['url', 'cost', 'content_type', 'body'])
 class CrawlManager:
     ''' Responsible for creating and managing crawl jobs. '''
 
-    def __init__(self, db_pool, rate_limiter, robots_txt_manager):
+    def __init__(self, db_pool, rate_limiter, downloader, robots_txt_manager):
         ''' Constructor. '''
         self._db_pool = db_pool
+        self._downloader = downloader
         self._rate_limiter = rate_limiter
         self._robots_txt_manager = robots_txt_manager
         self._running_jobs = dict()
@@ -185,12 +187,11 @@ class CrawlManager:
             job_data = await r.table('job').get(job_id).run(conn)
         policy = Policy(job_data['policy'], VERSION, job_data['seeds'],
             self._robots_txt_manager)
-        job = _CrawlJob(self._db_pool, self._rate_limiter, job_data['id'],
-            job_data['seeds'], policy, job_data['name'])
-        job.resume(job_data)
+        job = _CrawlJob(self._db_pool, self._rate_limiter, self._downloader,
+            job_data['id'], job_data['seeds'], policy, job_data['name'])
+        await job.resume(job_data)
         self._running_jobs[job.id] = job
         job.stopped.add_done_callback(functools.partial(self._cleanup_job, job))
-        await job.start()
 
     async def start_job(self, seeds, policy_id, name):
         '''
@@ -220,8 +221,8 @@ class CrawlManager:
 
         policy = Policy(policy, VERSION, seeds, self._robots_txt_manager)
         job_id = result['generated_keys'][0]
-        job = _CrawlJob(self._db_pool, self._rate_limiter, job_id, seeds,
-            policy, name)
+        job = _CrawlJob(self._db_pool, self._rate_limiter, self._downloader,
+            job_id, seeds, policy, name)
         self._running_jobs[job.id] = job
         job.stopped.add_done_callback(functools.partial(self._cleanup_job, job))
         await job.start()
@@ -278,9 +279,8 @@ class CrawlManager:
 class _CrawlJob:
     ''' Manages job state and crawl frontier. '''
 
-    SAVE_QUEUE_SIZE = 5
-
-    def __init__(self, db_pool, rate_limiter, id_, seeds, policy, name):
+    def __init__(self, db_pool, rate_limiter, downloader, id_, seeds, policy,
+        name):
         ''' Constructor. '''
         self.id = id_
         self.item_count = 0
@@ -290,6 +290,7 @@ class _CrawlJob:
         self.stopped = asyncio.Future()
 
         self._db_pool = db_pool
+        self._downloader = downloader
         self._extraction_size = 0
         self._extraction_task = None
         self._frontier_seen = set()
@@ -297,10 +298,10 @@ class _CrawlJob:
         self._frontier_task = None
         self._limits_task = None
         self._insert_item_sequence = 0
-        self._pending = dict()
+        self._pending_count = 0
         self._rate_limiter = rate_limiter
         self._run_state = 'pending'
-        self._save_queue = asyncio.Queue(maxsize=self.SAVE_QUEUE_SIZE)
+        self._save_queue = asyncio.Queue(maxsize=1)
         self._save_task = None
         self._started_at = None
 
@@ -330,9 +331,18 @@ class _CrawlJob:
              .delete()
         )
 
+        extraction_query = (
+            r.table('extraction_queue')
+             .between((self.id, r.minval),
+                      (self.id, r.maxval),
+                      index='cost_index')
+             .delete()
+        )
+
         async with self._db_pool.connection() as conn:
             await cancel_query.run(conn)
             await frontier_query.run(conn)
+            await extraction_query.run(conn)
 
         logger.info('Crawl id={} has been cancelled.'.format(self.id[:8]))
 
@@ -365,7 +375,7 @@ class _CrawlJob:
         self._extraction_size = 0
         self._frontier_seen.clear()
         self._frontier_size = 0
-        self._pending.clear()
+        self._pending_count = 0
         logger.info('Crawl id={} has been paused.'.format(self.id[:8]))
 
     async def resume(self, job_data):
@@ -384,7 +394,6 @@ class _CrawlJob:
         This task fetches items from the extraction queue and finds links to
         follow.
         '''
-
         def delete(item):
             ''' Query helper for deleting an extract item. '''
             return r.table('extraction_queue').get(item['id']).delete()
@@ -393,37 +402,29 @@ class _CrawlJob:
             ''' Query helper for joining response body to extract item. '''
             return {'join': r.table('response_body').get(item['body_id'])}
 
-        while True:
-            extract_query = (
-                r.table('extraction_queue')
-                 .between((self.id, r.minval),
-                          (self.id, r.maxval),
-                          index='cost_index')
-                 .order_by(index='cost_index')
-                 .merge(get_body)
-                 .nth(0)
-            )
+        extract_query = (
+            r.table('extraction_queue')
+             .between((self.id, r.minval),
+                      (self.id, r.maxval),
+                      index='cost_index')
+             .order_by(index='cost_index')
+             .merge(get_body)
+        )
 
+        while True:
             try:
                 async with self._db_pool.connection() as conn:
-                    extract_doc = await extract_query.run(conn)
-                    await self._extract(extract_doc)
-                    await delete(extract_doc).run(conn)
-                    self._extraction_size -= 1
-            except ReqlNonExistenceError:
-                # No items in extraction queue.
-                pass
+                    async with CursorContext(extract_query, conn) as cursor:
+                        async for extract_doc in cursor:
+                            await self._extract(extract_doc)
+                            await delete(extract_doc).run(conn)
+                            self._extraction_size -= 1
 
-            # Wait for an extraction to be queued.
-            change_query = (
-                r.table('extraction_queue')
-                 .filter({'job_id': self.id})
-                 .changes()
-            )
-            async with self._db_pool.connection() as conn:
-                feed = await change_query.run(conn)
-                async for result in feed:
-                    break
+                # When cursor is exhausted, wait a bit and try again.
+                await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                # Cancellation is okay.
+                break
 
     async def run_frontier(self):
         '''
@@ -433,7 +434,11 @@ class _CrawlJob:
         try:
             while True:
                 frontier_item = await self._next_frontier_item()
-                self._pending[frontier_item['url']] = frontier_item['id']
+                robots_ok = await self.policy.robots_txt.is_allowed(
+                    frontier_item['url']
+                )
+                if not robots_ok:
+                    continue
                 download_request = DownloadRequest(
                     job_id=self.id,
                     url=frontier_item['url'],
@@ -442,12 +447,15 @@ class _CrawlJob:
                     output_queue=self._save_queue
                 )
                 await self._rate_limiter.push(download_request)
+                self._pending_count += 1
                 frontier_item = None
         except asyncio.CancelledError:
             # Put the frontier item back on the frontier
             if frontier_item is not None:
+                logger.info('Putting 1 incomplete item back in the frontier.')
                 async with self._db_pool.connection() as conn:
                     await r.table('frontier').insert(frontier_item).run(conn)
+                    self._frontier_size += 1
 
     async def run_limits(self):
         '''
@@ -459,8 +467,8 @@ class _CrawlJob:
         '''
 
         while True:
-            logger.error('pending=%d frontier=%d extraction=%d', len(self._pending), self._frontier_size, self._extraction_size)
-            if len(self._pending) == 0 and self._frontier_size == 0 \
+            logger.error('pending=%d frontier=%d extraction=%d', self._pending_count, self._frontier_size, self._extraction_size)
+            if self._pending_count == 0 and self._frontier_size == 0 \
                 and self._extraction_size == 0:
                 logger.info('Job %s has no more items pending.', self.id[:8])
                 daemon_task(self._complete(graceful=True))
@@ -485,11 +493,6 @@ class _CrawlJob:
             else:
                 body_id = None
 
-            async with self._db_pool.connection() as conn:
-                frontier_id = self._pending.pop(response.url)
-                await r.table('frontier').get(frontier_id).delete().run(conn)
-                self._frontier_size -= 1
-
             if body_id is not None:
                 self._extraction_size += 1
                 insert = r.table('extraction_queue').insert({
@@ -503,6 +506,7 @@ class _CrawlJob:
                     await insert.run(conn)
 
 
+            self._pending_count -= 1
             self._save_queue.task_done()
 
             # Enforce the crawl item limit (if applicable). This task can't
@@ -622,23 +626,18 @@ class _CrawlJob:
             extract_item
         )
 
-        limits = self.policy.limits
-        robots_txt = self.policy.robots_txt
-        url_rules = self.policy.url_rules
         frontier_items = list()
         counter = 0
 
         for url in extracted_urls:
-            new_cost = url_rules.get_cost(extract_item.cost, url)
-            if new_cost > 0 and not limits.exceeds_max_cost(new_cost):
-                # Check robots _after_ cost, since robots may require an
-                # network request (expensive).
-                if await robots_txt.is_allowed(url):
-                    frontier_items.append(FrontierItem(url, new_cost))
+            new_cost = self.policy.url_rules.get_cost(extract_item.cost, url)
+            exceeds_max_cost = self.policy.limits.exceeds_max_cost(new_cost)
+            if (new_cost > 0 and not exceeds_max_cost):
+                frontier_items.append(FrontierItem(url, new_cost))
 
             # Don't monopolize the event loop:
             counter += 1
-            if counter % 1000 == 0:
+            if counter % 100 == 0:
                 await asyncio.sleep(0)
 
         await self._add_frontier_items(frontier_items)
@@ -666,6 +665,7 @@ class _CrawlJob:
                 try:
                     response = await asyncio.shield(next_url_query.run(conn))
                     result = response['changes'][0]['old_val']
+                    self._frontier_size -= 1
                     break
                 except ReqlNonExistenceError:
                     await asyncio.sleep(1)
@@ -760,7 +760,7 @@ class _CrawlJob:
         limiter will be placed back into the crawl frontier.
         '''
         if self._save_task is None:
-            # Crawl never started.
+            logger.warning("Tried to stop a job that wasn't running")
             return
 
         await cancel_futures(
@@ -769,7 +769,8 @@ class _CrawlJob:
             self._limits_task,
         )
 
-        removed_items = await self._rate_limiter.remove_job(self.id, graceful)
+        removed_items = await self._rate_limiter.remove_job(self.id)
+        await self._downloader.remove_job(self.id, finish_downloads=graceful)
 
         if graceful and len(removed_items) > 0:
             insert_items = list()
@@ -781,12 +782,15 @@ class _CrawlJob:
                     'url': removed_item.url,
                 })
 
-            logger.info('Putting %d items back in frontier.', len(insert_items))
+            logger.info('Moving %d items from rate limiter back to frontier.',
+                len(insert_items))
             async with self._db_pool.connection() as conn:
                 await r.table('frontier').insert(insert_items).run(conn)
+                self._frontier_size += len(insert_items)
 
         await self._save_queue.join()
         await cancel_futures(self._save_task)
+        self.stopped.set_result(True)
 
     async def _update_job_stats(self, response):
         '''

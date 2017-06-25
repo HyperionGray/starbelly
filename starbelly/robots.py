@@ -11,6 +11,7 @@ from robotexclusionrulesparser import RobotExclusionRulesParser
 import rethinkdb as r
 
 from . import VERSION
+from .downloader import DownloadRequest
 
 
 logger = logging.getLogger(__name__)
@@ -18,23 +19,23 @@ logger = logging.getLogger(__name__)
 
 class RobotsTxtManager:
     ''' Store and manage robots.txt files. '''
-    def __init__(self, db_pool, max_age=7*24*60*60, max_cache=1e3,
-        max_downloads=5):
+    def __init__(self, db_pool, rate_limiter, max_age=24*60*60, max_cache=1e3):
         ''' Constructor. '''
         self._db_pool = db_pool
         self._cache = OrderedDict()
-        self._downloads = asyncio.Semaphore(max_downloads)
+        self._rate_limiter = rate_limiter
         self._max_age = max_age
         self._max_cache = max_cache
         self._robots_futures = dict()
         self._user_agent = f'Starbelly {VERSION}'
 
-    async def is_allowed(self, url):
+    async def is_allowed(self, url, policy):
         '''
         Return True if ``url`` is allowed by the applicable robots.txt file.
 
         This fetches the applicable robots.txt if we don't have a recent copy
-        of it cached in memory or in the database.
+        of it cached in memory or in the database. The ``policy`` is used if a
+        robots.txt file needs to be fetched from the network.
         '''
 
         robots_url = self._get_robots_url(url)
@@ -54,7 +55,7 @@ class RobotsTxtManager:
         # the object to the cache.
         if robots is None:
             try:
-                robots = await self._get_robots(robots_url)
+                robots = await self._get_robots(robots_url, policy)
             except asyncio.CancelledError:
                 # Because this is called from the task that adds URLs to
                 # frontiers, it is important not to fail catastrophically if
@@ -63,7 +64,7 @@ class RobotsTxtManager:
 
         return robots.is_allowed(self._user_agent, url)
 
-    async def _get_robots(self, robots_url):
+    async def _get_robots(self, robots_url, policy):
         '''
         Get a ``RobotsTxt`` that is applicable for ``url``.
 
@@ -95,7 +96,7 @@ class RobotsTxtManager:
         if robots_doc is None or \
             (now - robots_doc['updated_at']).seconds > self._max_age:
 
-            robots_file = await self._get_robots_from_net(robots_url)
+            robots_file = await self._get_robots_from_net(robots_url, policy)
         else:
             robots_file = None
 
@@ -171,7 +172,7 @@ class RobotsTxtManager:
 
         return db_robots
 
-    async def _get_robots_from_net(self, robots_url):
+    async def _get_robots_from_net(self, robots_url, policy):
         '''
         Get robots.txt file from the network.
 
@@ -179,31 +180,29 @@ class RobotsTxtManager:
         '''
 
         logger.info('Fetching robots.txt: %s', robots_url)
-        robots_file = None
+        # Bit of a hack here to work with rate DownloadRequest API: create a
+        # queue that we only use one time. This should really be one queue that
+        # all tasks access through this instance.
+        output_queue = asyncio.Queue()
+        download_request = DownloadRequest(
+            job_id='robots_txt',
+            url=robots_url,
+            cost=0,
+            policy=policy,
+            output_queue=output_queue
+        )
+        await self._rate_limiter.push(download_request)
+        response = await output_queue.get()
 
-        try:
-            await self._downloads.acquire()
-            connector = aiohttp.TCPConnector(verify_ssl=False)
-
-            with aiohttp.ClientSession(connector=connector) as session:
-                with async_timeout.timeout(10):
-                    async with session.get(robots_url) as response:
-                        if response.status != 200:
-                            logger.error('robots.txt: %d %s',
-                                response.status, robots_url)
-                        else:
-                            body = await response.read()
-                            robots_file = body.decode('latin1')
-                            logger.info('robots.txt: %d %s',
-                                response.status, robots_url)
-        except asyncio.TimeoutError:
-            logger.error('robots.txt timeout: %s', robots_url)
-        except aiohttp.client_exceptions.ClientConnectorError as cce:
-            logger.error('robots.txt failed: %s', cce)
-        except:
-            logger.exception('robots.txt exception')
-        finally:
-            self._downloads.release()
+        if response.status_code == 200 and response.body is not None:
+            try:
+                robots_file = response.body.decode('latin1')
+            except UnicodeDecodeError as ude:
+                logger.error('Robots.txt has invalid encoding: %s (%s)',
+                    robots_url, ude)
+                robots_file = None
+        else:
+            robots_file = None
 
         return robots_file
 

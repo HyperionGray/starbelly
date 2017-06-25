@@ -21,7 +21,7 @@ class TestPolicyLimits(unittest.TestCase):
     def test_duration(self):
         limits = PolicyLimits({"max_duration": 60.0})
         self.assertFalse(limits.exceeds_max_duration(59.9))
-        self.assertFalse(limits.exceeds_max_duration(60.0))
+        self.assertTrue(limits.exceeds_max_duration(60.0))
         self.assertTrue(limits.exceeds_max_duration(60.1))
 
         # These should be false because we didn't set limits on them.
@@ -31,7 +31,7 @@ class TestPolicyLimits(unittest.TestCase):
     def test_items(self):
         limits = PolicyLimits({"max_items": 60})
         self.assertFalse(limits.exceeds_max_items(59))
-        self.assertFalse(limits.exceeds_max_items(60))
+        self.assertTrue(limits.exceeds_max_items(60))
         self.assertTrue(limits.exceeds_max_items(61))
 
         # These should be false because we didn't set limits on them.

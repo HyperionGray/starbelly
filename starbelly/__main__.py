@@ -156,10 +156,11 @@ class Starbelly:
         db_pool = AsyncRethinkPool(self._db_factory())
         tracker = Tracker(db_pool)
         policy_manager = PolicyManager(db_pool)
-        downloader = Downloader()
-        rate_limiter = RateLimiter(db_pool, downloader)
-        robots_txt_manager = RobotsTxtManager(db_pool)
-        crawl_manager = CrawlManager(db_pool, rate_limiter, robots_txt_manager)
+        rate_limiter = RateLimiter(db_pool)
+        downloader = Downloader(rate_limiter)
+        robots_txt_manager = RobotsTxtManager(db_pool, rate_limiter)
+        crawl_manager = CrawlManager(db_pool, rate_limiter, downloader,
+            robots_txt_manager)
         subscription_manager = SubscriptionManager(db_pool)
         server = Server(
             self._args.ip,
@@ -174,7 +175,8 @@ class Starbelly:
 
         try:
             await crawl_manager.startup_check()
-            rate_limiter_task = daemon_task(rate_limiter.run())
+            await rate_limiter.initialize()
+            downloader.start()
             tracker_task = daemon_task(tracker.run())
             server_task = daemon_task(server.run())
             # task_monitor = daemon_task(monitor_tasks(self._logger)) #TODO
@@ -188,7 +190,8 @@ class Starbelly:
             await subscription_manager.close_all()
             await cancel_futures(server_task)
             await crawl_manager.pause_all_jobs()
-            await cancel_futures(rate_limiter_task, tracker_task)
+            await downloader.stop()
+            await cancel_futures(tracker_task)
             await db_pool.close()
             # await cancel_futures(task_monitor) #TODO
 

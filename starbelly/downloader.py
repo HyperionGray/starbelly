@@ -11,7 +11,7 @@ import cchardet as chardet
 from dateutil.tz import tzlocal
 import w3lib.url
 
-from . import cancel_futures, raise_future_exception
+from . import cancel_futures, daemon_task, raise_future_exception
 
 
 logger = logging.getLogger(__name__)
@@ -32,40 +32,37 @@ class Downloader:
     into the database.
     '''
 
-    def __init__(self, concurrent=1):
+    def __init__(self, rate_limiter, concurrent=10):
         ''' Constructor. '''
-        self._job_downloads = defaultdict(set)
-        self._job_pushes = defaultdict(set)
+        self._download_task = None
+        self._downloads_by_job = defaultdict(set)
+        self._rate_limiter = rate_limiter
+        self._rate_limit_task = None
+        self._request_queue = asyncio.Queue(maxsize=1)
         self._semaphore = asyncio.Semaphore(concurrent)
-        self._task = None
 
-    async def push(self, download_request):
-        '''
-        Schedule a download.
-
-        Blocks if the downloader is busy. If a job is paused/cancelled while a
-        task is waiting to ``push()``, then this coroutine will cancel the
-        ``push()`` and return immediately.
-        '''
-
-        task = asyncio.Task.current_task()
-        job_id = download_request.job_id
-        job_pushes = self._job_pushes[job_id]
-        job_pushes.add(task)
-
+    async def download_task(self):
+        ''' Read requests from download queue. '''
         try:
-            await self._semaphore.acquire()
-            job_id = download_request.job_id
-            dl_task = asyncio.ensure_future(self._download(download_request))
-            raise_future_exception(dl_task)
+            while True:
+                await self._semaphore.acquire()
+                request = await self._request_queue.get()
+                download_task = asyncio.ensure_future(self._download(request))
+                self._downloads_by_job[request.job_id].add(download_task)
         except asyncio.CancelledError:
-            # Cancellation is fine. Mark the item as complete so that the rate
-            # limiter can reset.
-            download_request.completed.set_result(download_request)
-        finally:
-            job_pushes.remove(task)
-            if len(job_pushes) == 0:
-                del self._job_pushes[download_request.job_id]
+            # Cancellation is okay: cancel all downloads.
+            downloads = list()
+            for dj in self._downloads_by_job.values():
+                downloads.extend(dj)
+            await cancel_futures(*downloads)
+
+    async def rate_limiter_task(self):
+        '''
+        Get requests from the rate limiter and add them to the download queue.
+        '''
+        while True:
+            request = await self._rate_limiter.get_next_request()
+            await self._request_queue.put(request)
 
     async def remove_job(self, job_id, finish_downloads=True):
         '''
@@ -74,21 +71,13 @@ class Downloader:
         If ``finish_downloads`` is True, then wait for downloads to finish.
         Otherwise, cancel downloads.
         '''
-        # If any task is currently pushing an item for this job: interrupt that
-        # task.
+        # Make a copy of the jobs list since the original list will change as
+        # jobs finish.
         try:
-            await cancel_futures(*self._job_pushes[job_id])
-        except KeyError:
-            # No pushes waiting for this job ID.
-            pass
-
-        # Now wait for (or cancel) any current downloads for this job. Make a
-        # copy of the jobs since the job list will change as jobs finish.
-        try:
-            tasks = list(self._job_downloads[job_id])
+            tasks = list(self._downloads_by_job[job_id])
         except KeyError:
             # No pending items for this job.
-            return
+            tasks = []
 
         if len(tasks) > 0:
             if finish_downloads:
@@ -101,26 +90,34 @@ class Downloader:
                 await cancel_futures(*tasks)
             logger.info('All downloads for job=%s are done.', job_id[:8])
 
+    def start(self):
+        ''' Start all tasks. '''
+        self._download_task = daemon_task(self.download_task())
+        self._rate_limit_task = daemon_task(self.rate_limiter_task())
+
+    async def stop(self):
+        '''
+        Shut down subordinate tasks.
+
+        This shuts down
+        '''
+        await cancel_futures(self._download_task, self._rate_limit_task)
+        self._download_task = None
+        self._rate_limit_task = None
+
     async def _download(self, download_request):
         ''' Download a URL and send the result to an output queue. '''
-        task = asyncio.Task.current_task()
-        job_id = download_request.job_id
-        job_downloads = self._job_downloads[job_id]
-        job_downloads.add(task)
-
         try:
             response = await self._download_helper(download_request)
-            # Use 'completed' future to trigger re-schedule in the rate limiter,
-            # this feels hacky but I haven't thought of a cleaner design.
-            download_request.completed.set_result(download_request)
             await download_request.output_queue.put(response)
-        except asyncio.CancelledError:
-            # Cancelling the download is okay.
-            raise
+            self._rate_limiter.reset(download_request.url)
         finally:
+            task = asyncio.Task.current_task()
+            job_id = download_request.job_id
+            job_downloads = self._downloads_by_job[job_id]
             job_downloads.remove(task)
             if len(job_downloads) == 0:
-                del self._job_downloads[job_id]
+                del self._downloads_by_job[job_id]
             self._semaphore.release()
 
     async def _download_helper(self, download_request):
@@ -189,7 +186,6 @@ class DownloadRequest:
         self.cost = cost
         self.policy = policy
         self.output_queue = output_queue
-        self.completed = asyncio.Future()
 
 
 class DownloadResponse:

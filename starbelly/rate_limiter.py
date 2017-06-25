@@ -37,10 +37,9 @@ class RateLimiter:
     single rate limit to a set of domains.
     '''
 
-    def __init__(self, db_pool, downloader, capacity=1e4):
+    def __init__(self, db_pool, capacity=1e4):
         ''' Constructor. '''
         self._db_pool = db_pool
-        self._downloader = downloader
         self._expires = list()
         self._expiry_added = asyncio.Event()
         self._global_limit = None
@@ -69,6 +68,47 @@ class RateLimiter:
 
         return count, rate_limits
 
+    async def get_next_request(self):
+        '''
+        Get the next download request from this rate limiter.
+
+        Maintains the invariant that if a token exists in the ``_expires`` heap,
+        then a queue exists for that token.
+        '''
+        # Get the next token and then get the next item for that token.
+        expiry = await self._get_next_expiry()
+        token = expiry.token
+        queue = self._queues[token]
+
+        if len(queue) == 0:
+            # If nothing left in this queue, delete it and get another
+            # token instead.
+            del self._queues[token]
+            request = await self.get_next_request()
+        else:
+            request = queue.popleft()
+
+        self._semaphore.release()
+        logger.debug('Popped %s', request.url)
+        return request
+
+    async def initialize(self):
+        ''' Load rate limits from database. '''
+        async with self._db_pool.connection() as conn:
+            cursor = await r.table('rate_limit').run(conn)
+            async for rate_limit in cursor:
+                if rate_limit['type'] == 'global':
+                    self._global_limit = rate_limit['delay']
+                elif rate_limit['type'] == 'domain':
+                    token = rate_limit['token']
+                    self._rate_limits[token] = rate_limit['delay']
+                else:
+                    raise Exception('Cannot load rate limit (unknown type): '
+                        .format(repr(rate_limit)))
+            await cursor.close()
+
+        logger.info('Rate limiter is initialized.')
+
     async def push(self, request):
         '''
         Schedule a request for downloading.
@@ -82,15 +122,8 @@ class RateLimiter:
             self._add_expiry(Expiry(time(), token))
         self._queues[token].append(request)
 
-    async def remove_job(self, job_id, finish_downloads=True):
-        '''
-        Remove all pending items for the given job.
-
-        If ``finish_downloads`` is ``True``, this will wait until the downloader
-        finishes any downloads it has started for this job. Otherwise, download
-        tasks are canceled, too.
-        '''
-
+    async def remove_job(self, job_id):
+        ''' Remove all download requests for the given job. '''
         # Copy all existing queues to new queues but drop items matching the
         # given job_id. This is faster than modifying queues in-place.
         new_queues = dict()
@@ -109,61 +142,15 @@ class RateLimiter:
 
         self._queues = new_queues
 
-        # Ask the download to remove this job.
-        await self._downloader.remove_job(job_id, finish_downloads)
-
         # Return the removed items so the crawl job can place them back into
         # the frontier.
         return removed_items
 
-    async def run(self):
-        '''
-        Schedule items for download.
-
-        Maintains the invariant that if a token exists in the ``_expires`` heap,
-        then a queue exists for that token.
-        '''
-
-        logger.info('Loading rate limits from DB.')
-
-        async with self._db_pool.connection() as conn:
-            cursor = await r.table('rate_limit').run(conn)
-            async for rate_limit in cursor:
-                if rate_limit['type'] == 'global':
-                    self._global_limit = rate_limit['delay']
-                elif rate_limit['type'] == 'domain':
-                    token = rate_limit['token']
-                    self._rate_limits[token] = rate_limit['delay']
-                else:
-                    raise Exception('Cannot load rate limit (unknown type): '
-                        .format(repr(rate_limit)))
-            await cursor.close()
-
-        logger.info('Rate limiter is running.')
-
-        try:
-            while True:
-                # Get the next token and then get the next item for that token.
-                expiry = await self._get_next_expiry()
-                token = expiry.token
-                queue = self._queues[token]
-
-                if len(queue) == 0:
-                    # If nothing left in this queue, delete it and get another
-                    # token instead.
-                    del self._queues[token]
-                    continue
-
-                request = queue.popleft()
-                logger.debug('Popped %s', request.url)
-                await self._downloader.push(request)
-                self._semaphore.release()
-                request.completed.add_done_callback(self._reschedule)
-        except asyncio.CancelledError:
-            # Cancellation is okay.
-            raise
-        finally:
-            logger.info('Rate limiter has stopped.')
+    def reset(self, url):
+        ''' Reset the rate limit for the specified URL. '''
+        token = self._get_token_for_url(url)
+        limit = self._rate_limits.get(token, self._global_limit)
+        self._add_expiry(Expiry(time() + limit, token))
 
     async def set_domain_limit(self, domain, delay):
         '''
@@ -261,10 +248,3 @@ class RateLimiter:
         parsed = urllib.parse.urlparse(url)
         token = self._get_token_for_domain(parsed.hostname)
         return token
-
-    def _reschedule(self, request_future):
-        ''' When an item finishes, re-schedule its token. '''
-        request = request_future.result()
-        token = self._get_token_for_url(request.url)
-        limit = self._rate_limits.get(token, self._global_limit)
-        self._add_expiry(Expiry(time() + limit, token))

@@ -1,8 +1,9 @@
 import logging
 from urllib.parse import urljoin
 
-import lxml.html
+from bs4 import BeautifulSoup
 import mimeparse
+import validators
 
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,8 @@ def extract_urls(extract_item):
         extract_item.content_type)
 
     if type_ == 'text' and subtype == 'html':
-        extracted_urls = _extract_html(base_url, extract_item.body)
+        charset = parameters.get('charset', 'utf8')
+        extracted_urls = _extract_html(base_url, charset, extract_item.body)
     else:
         logging.error('Unsupported MIME in extract_urls(): %s/%s (params=%r)'
                       ' (url=%s)',
@@ -31,16 +33,16 @@ def extract_urls(extract_item):
     return extracted_urls
 
 
-def _extract_html(base_url, body):
+def _extract_html(base_url, charset, body):
     ''' Extract links from HTML document <a> tags. '''
-    doc = lxml.html.document_fromstring(body)
-    doc.make_links_absolute(base_url, resolve_base_href=True)
+    doc = BeautifulSoup(body, 'lxml')
     extracted_urls = list()
 
-    for el, attr, url, pos in doc.iterlinks():
-        if el.tag == 'a' and \
-            (url.startswith('http:') or url.startswith('https:')):
-
-            extracted_urls.append(url)
+    for anchor in doc.find_all('a', href=True):
+        absolute_url = urljoin(base_url, anchor['href'], allow_fragments=False)
+        is_http = absolute_url.startswith('http:') or \
+                  absolute_url.startswith('https:')
+        if is_http and validators.url(absolute_url):
+            extracted_urls.append(absolute_url)
 
     return extracted_urls

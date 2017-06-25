@@ -111,6 +111,29 @@ class AsyncRethinkPool:
             await conn.close()
 
 
+class CursorContext:
+    '''
+    A context manager for an AsyncioCursor.
+
+    The RethinkDB library has a synchronous context manager for Cursor but
+    doesn't have an asynchronous context manager for AsyncioCursor.
+    '''
+    def __init__(self, query, conn):
+        ''' Constructor. '''
+        self._query = query
+        self._conn = conn
+        self._cursor = None
+
+    async def __aenter__(self):
+        ''' Context manager interface. '''
+        self._cursor = await self._query.run(self._conn)
+        return self._cursor
+
+    async def __aexit__(self, exc_type, exc, tb):
+        ''' Context manager interface. '''
+        await self._cursor.close()
+
+
 class _AsyncRethinkContextManager:
     ''' An async context manager for RethinkDbPool. '''
 

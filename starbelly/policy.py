@@ -224,7 +224,7 @@ class Policy:
             doc.get('mime_type_rules', []))
         self.proxy_rules = PolicyProxyRules(doc.get('proxy_rules', []))
         self.robots_txt = PolicyRobotsTxt(doc.get('robots_txt', []),
-            robots_txt_manager)
+            robots_txt_manager, self)
         self.url_rules = PolicyUrlRules(doc.get('url_rules', []), seeds)
         self.user_agents = PolicyUserAgents(doc.get('user_agents', []), version)
 
@@ -384,10 +384,11 @@ class PolicyProxyRules:
 class PolicyRobotsTxt:
     ''' Designate how robots.txt affects crawl behavior. '''
 
-    def __init__(self, doc, robots_txt_manager):
+    def __init__(self, doc, robots_txt_manager, parent_policy):
         ''' Initialize from ``doc``, a dict representation of robots policy. '''
         if 'usage' not in doc:
             _invalid('Robots.txt usage is required')
+        self._parent_policy = parent_policy
         self._usage = doc['usage']
         self._robots_txt_manager = robots_txt_manager
 
@@ -396,7 +397,10 @@ class PolicyRobotsTxt:
         if self._usage == 'IGNORE':
             return True
 
-        result = await self._robots_txt_manager.is_allowed(url)
+        result = await self._robots_txt_manager.is_allowed(
+            url,
+            self._parent_policy
+        )
 
         if self._usage == 'INVERT':
             result = not result
