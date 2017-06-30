@@ -1,8 +1,11 @@
 import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta
+import cProfile
 import gzip
 import logging
+import operator
+import pstats
 from time import time
 from urllib.parse import urlparse
 from uuid import UUID
@@ -13,9 +16,10 @@ import protobuf.shared_pb2
 import websockets
 import websockets.exceptions
 
-from . import cancel_futures, raise_future_exception
+from . import cancel_futures, daemon_task, raise_future_exception
 from .pubsub import PubSub
-from .subscription import CrawlSyncSubscription, JobStatusSubscription
+from .subscription import CrawlSyncSubscription, JobStatusSubscription, \
+    ResourceMonitorSubscription, TaskMonitorSubscription
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +33,7 @@ class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
     def __init__(self, host, port, db_pool, crawl_manager, subscription_manager,
-                 tracker, rate_limiter, policy_manager):
+                 tracker, rate_limiter, policy_manager, resource_monitor):
         ''' Constructor. '''
         self._clients = set()
         self._crawl_manager = crawl_manager
@@ -38,6 +42,7 @@ class Server:
         self._policy_manager = policy_manager
         self._port = port
         self._rate_limiter = rate_limiter
+        self._resource_monitor = resource_monitor
         self._subscription_manager = subscription_manager
         self._tracker = tracker
         self._websocket_server = None
@@ -52,12 +57,15 @@ class Server:
             'list_jobs': self._list_jobs,
             'list_policies': self._list_policies,
             'ping': self._ping,
+            'performance_profile': self._profile,
             'set_job_run_state': self._set_job_run_state,
             'set_policy': self._set_policy,
             'set_rate_limit': self._set_rate_limit,
             'start_job': self._start_job,
             'subscribe_job_sync': self._subscribe_crawl_sync,
             'subscribe_job_status': self._subscribe_job_status,
+            'subscribe_resource_monitor': self._subscribe_resource_monitor,
+            'subscribe_task_monitor': self._subscribe_task_monitor,
             'unsubscribe': self._unsubscribe,
         }
 
@@ -73,16 +81,18 @@ class Server:
 
         while True:
             try:
+                request_task = None
                 request_data = await websocket.recv()
-                request_task = asyncio.ensure_future(
+                request_task = daemon_task(
                     self._handle_request(websocket, request_data))
                 pending_requests.add(request_task)
-                raise_future_exception(request_task)
+                request_task.add_done_callback(
+                    lambda task: pending_requests.remove(task))
+                del request_task
             except websockets.exceptions.ConnectionClosed:
                 await self._subscription_manager.close_for_socket(websocket)
                 await cancel_futures(*pending_requests)
-                self._clients.remove(websocket)
-                logger.info('Connection closed: %s:%s',
+                logger.info('Client closed connection: %s:%s',
                     websocket.remote_address[0],
                     websocket.remote_address[1],
                 )
@@ -94,8 +104,8 @@ class Server:
                 except websocket.exceptions.InvalidState:
                     pass
                 break
-            finally:
-                pending_requests.discard(request_task)
+
+        self._clients.remove(websocket)
 
     async def run(self):
         ''' Run the websocket server. '''
@@ -151,7 +161,13 @@ class Server:
             logger.info('Request OK %s %s %0.3fs', command_name,
                 websocket.remote_address[0], elapsed)
         except Exception as e:
-            logger.exception('Error while handling request:\n%r', request)
+            if isinstance(e, InvalidRequestException):
+                elapsed = time() - start
+                logger.error('Request ERROR %s %s %0.3fs', command_name,
+                    websocket.remote_address[0], elapsed)
+            else:
+                logger.exception('Exception while handling request:\n%r',
+                    request)
             response = Response()
             response.is_success = False
             response.error_message = str(e)
@@ -329,6 +345,50 @@ class Server:
         response.ping.pong = command.pong
         return response
 
+    async def _profile(self, command, socket):
+        ''' Run CPU profiler. '''
+        profile = cProfile.Profile()
+        profile.enable()
+        await asyncio.sleep(command.duration)
+        profile.disable()
+
+        # pstats sorting only works when you use pstats printing... so we have
+        # to build our own data structure in order to sort it.
+        pr_stats = pstats.Stats(profile)
+        stats = list()
+        for key, value in pr_stats.stats.items():
+            stats.append({
+                'file': key[0],
+                'line_number': key[1],
+                'function': key[2],
+                'calls': value[0],
+                'non_recursive_calls': value[1],
+                'total_time': value[2],
+                'cumulative_time': value[3],
+            })
+
+        try:
+            stats.sort(key=operator.itemgetter(command.sort_by), reverse=True)
+        except KeyError:
+            raise InvalidRequestException('Invalid sort key: {}'
+                .format(command.sort_by))
+
+        response = Response()
+        response.performance_profile.total_calls = pr_stats.total_calls
+        response.performance_profile.total_time = pr_stats.total_tt
+
+        for stat in stats[:command.top_n]:
+            function = response.performance_profile.functions.add()
+            function.file = stat['file']
+            function.line_number = stat['line_number']
+            function.function = stat['function']
+            function.calls = stat['calls']
+            function.non_recursive_calls = stat['non_recursive_calls']
+            function.total_time = stat['total_time']
+            function.cumulative_time = stat['cumulative_time']
+
+        return response
+
     async def _set_job_run_state(self, command, socket):
         ''' Set a job's run state, i.e. paused, running, etc. '''
 
@@ -407,7 +467,7 @@ class Server:
 
         self._subscription_manager.add(subscription)
         response = Response()
-        response.new_subscription.subscription_id = subscription.id
+        response.new_subscription.subscription_id = subscription.get_id()
         return response
 
     async def _subscribe_job_status(self, command, socket):
@@ -419,11 +479,29 @@ class Server:
         )
         self._subscription_manager.add(subscription)
         response = Response()
-        response.new_subscription.subscription_id = subscription.id
+        response.new_subscription.subscription_id = subscription.get_id()
+        return response
+
+    async def _subscribe_resource_monitor(self, command, socket):
+        ''' Handle the subscribe resource monitor command. '''
+        subscription = ResourceMonitorSubscription(socket,
+            self._resource_monitor, command.history)
+        self._subscription_manager.add(subscription)
+        response = Response()
+        response.new_subscription.subscription_id = subscription.get_id()
+        return response
+
+    async def _subscribe_task_monitor(self, command, socket):
+        ''' Handle the subscribe task monitor command. '''
+        subscription = TaskMonitorSubscription(socket, command.period,
+            command.top_n)
+        self._subscription_manager.add(subscription)
+        response = Response()
+        response.new_subscription.subscription_id = subscription.get_id()
         return response
 
     async def _unsubscribe(self, command, socket):
         ''' Handle an unsubscribe command. '''
-        subscription_id = command.subscription_id
-        await self._subscription_manager.unsubscribe(socket, subscription_id)
+        sub_id = command.subscription_id
+        await self._subscription_manager.unsubscribe(socket, sub_id)
         return Response()

@@ -21,6 +21,7 @@ import tty
 from uuid import UUID
 
 import dateutil.parser
+from humanize import naturalsize
 import websockets
 import websockets.exceptions
 
@@ -77,24 +78,17 @@ def get_args():
     crawl_parser.add_argument('seed',
         nargs='+',
         help='One or more seeds.')
-    list_parser = subparsers.add_parser('list', help='List crawl jobs.')
-    show_parser = subparsers.add_parser('show', help='Display a crawl job.')
-    show_parser.add_argument('job_id', help='Job ID as hex string.')
-    show_parser.add_argument('--items', action='store_true',
-        help='Show some of the job\'s items.')
-    show_parser.add_argument('--errors', action='store_true',
-        help='Show some of the job\'s HTTP errors.')
-    show_parser.add_argument('--exceptions', action='store_true',
-        help='Show some of the job\'s exceptions.')
     delete_parser = subparsers.add_parser('delete', help='Delete a crawl job.')
     delete_parser.add_argument('job_id', help='Job ID as hex string.')
-    sync_parser = subparsers.add_parser('sync',
-        help='Sync items from a job.')
-    sync_parser.add_argument('job_id', help='Job ID as hex string.')
-    sync_parser.add_argument('-d', '--delay', type=float, default=0,
-        help='Delay between printing items (default 0).')
-    sync_parser.add_argument('-t', '--token',
-        help='To resume syncing, supply a sync token.')
+    list_parser = subparsers.add_parser('list', help='List crawl jobs.')
+    profiler_parser = subparsers.add_parser('profile',
+        help='Run CPU profiler.')
+    profiler_parser.add_argument('--duration', type=float, default=3.0,
+        help='Amount of time to run profile (default 3.0).')
+    profiler_parser.add_argument('--sort', default='tottime',
+        help='Field to sort profile data on (default "tottime").')
+    profiler_parser.add_argument('--top', type=int, default=20,
+        help='How many results to display (default 20).')
     rate_limit_parser = subparsers.add_parser('rates',
         help='Show rate limits.')
     rate_limit_parser = subparsers.add_parser('set_rate',
@@ -104,6 +98,37 @@ def get_args():
     rate_limit_parser.add_argument('domain',
         nargs='?',
         help='Domain name to rate limit. (If omitted, modifies global limit.)')
+    resource_parser = subparsers.add_parser('resources',
+        help='Show resource usage.')
+    resource_parser.add_argument('--history', type=int, default=1,
+        help='The number of historical data points to retrieve (default 1).')
+    rate_limit_parser = subparsers.add_parser('set_rate',
+        help='Set a rate limit.')
+    rate_limit_parser.add_argument('delay', type=float,
+        help='Delay in seconds. (-1 to clear)')
+    rate_limit_parser.add_argument('domain',
+        nargs='?',
+        help='Domain name to rate limit. (If omitted, modifies global limit.)')
+    show_parser = subparsers.add_parser('show', help='Display a crawl job.')
+    show_parser.add_argument('job_id', help='Job ID as hex string.')
+    show_parser.add_argument('--items', action='store_true',
+        help='Show some of the job\'s items.')
+    show_parser.add_argument('--errors', action='store_true',
+        help='Show some of the job\'s HTTP errors.')
+    show_parser.add_argument('--exceptions', action='store_true',
+        help='Show some of the job\'s exceptions.')
+    sync_parser = subparsers.add_parser('sync',
+        help='Sync items from a job.')
+    sync_parser.add_argument('job_id', help='Job ID as hex string.')
+    sync_parser.add_argument('-d', '--delay', type=float, default=0,
+        help='Delay between printing items (default 0).')
+    sync_parser.add_argument('-t', '--token',
+        help='To resume syncing, supply a sync token.')
+    task_parser = subparsers.add_parser('tasks', help='List async tasks.')
+    task_parser.add_argument('--period', type=float, default=3.0,
+        help='Seconds between updates (default 3.0).')
+    task_parser.add_argument('--top', type=int, default=20,
+        help='How many tasks to display (default 20).')
 
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.verbosity.upper()))
@@ -123,6 +148,102 @@ def getch():
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
+
+
+async def get_rates(args, socket):
+    ''' Show rate limits. '''
+    current_page = 0
+    action = 'm'
+
+    print('| {:40s} | {:5} |'.format('Name', 'Delay'))
+    print('-' * 52)
+
+    while action == 'm':
+        current_page += 1
+        limit = 10
+        offset = (current_page - 1) * limit
+
+        request = protobuf.client_pb2.Request()
+        request.request_id = 1
+        request.get_rate_limits.page.limit = limit
+        request.get_rate_limits.page.offset = offset
+        request_data = request.SerializeToString()
+        await socket.send(request_data)
+
+        message_data = await socket.recv()
+        message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+        response = message.response
+        for rate_limit in response.list_rate_limits.rate_limits:
+            name = rate_limit.name
+            print('| {:40s} | {:5.3f} |'.format(
+                rate_limit.name[:40],
+                rate_limit.delay
+            ))
+        start = offset + 1
+        end = offset + len(response.list_rate_limits.rate_limits)
+        total = response.list_rate_limits.total
+        if end == total:
+            print('Showing {}-{} of {}.'.format(start, end, total))
+            action = 'q'
+        else:
+            print('Showing {}-{} of {}. [m]ore or [q]uit?'
+                .format(start, end, total))
+            action = await asyncio.get_event_loop().run_in_executor(None, getch)    #
+
+
+async def get_resources(args, socket):
+    ''' Display resource consumption. '''
+
+    request = protobuf.client_pb2.Request()
+    request.request_id = 1
+    request.subscribe_resource_monitor.history = args.history
+    request_data = request.SerializeToString()
+    await socket.send(request_data)
+
+    message_data = await socket.recv()
+    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+    response = message.response
+    if not response.is_success:
+        raise Exception('Server failure: ' + response.error_message)
+
+    while True:
+        try:
+            message_data = await socket.recv()
+            message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+            event_type = message.event.WhichOneof('Body')
+            if event_type == 'subscription_closed':
+                break
+            frame = message.event.resource_frame
+            print('-- Resource Frame --')
+            cpus = ' '.join(['{:3.1f}%'
+                .format(cpu.usage) for cpu in frame.cpus])
+            print('CPUs: {}'.format(cpus))
+            memory = frame.memory
+            print('Memory: used={:8s} total={:8s} ({:3.1f}%)'.format(
+                naturalsize(memory.used), naturalsize(memory.total),
+                100 * memory.used / memory.total))
+            print('Disks:')
+            for disk in frame.disks:
+                print('    {:20s} {:3.1f}% ({:s} free)'.format(disk.mount,
+                    100 * disk.used / disk.total,
+                    naturalsize(disk.total - disk.used)))
+            print('Networks:')
+            for network in frame.networks:
+                print('    {:10s} sent={:8s} recv={:8s}'.format(network.name,
+                    naturalsize(network.sent), naturalsize(network.received)))
+            if len(frame.crawls) == 0:
+                print('Crawls: (none)')
+            else:
+                print('Crawls:')
+            for crawl in frame.crawls:
+                print('    {:8s} frontier={:<9,d} pending={:<9,d}'
+                      ' extraction={:<9,d}'
+                    .format(binascii.hexlify(crawl.job_id[:4]).decode('ascii'), crawl.frontier,
+                    crawl.pending, crawl.extraction))
+            print('Rate Limiter: {:9,d}'.format(frame.rate_limiter.count))
+            print('Downloader:   {:9,d}'.format(frame.downloader.count))
+        except asyncio.CancelledError:
+            break
 
 
 async def list_jobs(args, socket):
@@ -178,10 +299,13 @@ async def main():
         'crawl': start_crawl,
         'delete': delete_job,
         'list': list_jobs,
+        'profile': profile,
         'rates': get_rates,
+        'resources': get_resources,
         'set_rate': set_rate,
         'show': show_job,
         'sync': sync_job,
+        'tasks': tasks,
     }
 
     ssl_context = ssl.create_default_context()
@@ -197,45 +321,51 @@ async def main():
         await socket.close()
 
 
-async def get_rates(args, socket):
-    ''' Show rate limits. '''
-    current_page = 0
-    action = 'm'
+async def profile(args, socket):
+    ''' Run the CPU profiler. '''
+    # Map client sort keys to server sort keys.
+    sort_keys = {
+        'calls': 'calls',
+        'nrcalls': 'non_recursive_calls',
+        'tottime': 'total_time',
+        'cumtime': 'cumulative_time',
+        'file': 'file',
+        'function': 'function',
+        'line': 'line_number',
+    }
+    request = protobuf.client_pb2.Request()
+    request.request_id = 1
+    request.performance_profile.duration = args.duration
 
-    print('| {:40s} | {:5} |'.format('Name', 'Delay'))
-    print('-' * 52)
+    try:
+        request.performance_profile.sort_by = sort_keys[args.sort]
+    except KeyError:
+        logger.error('Invalid sort key: {}'.format(args.sort))
+        return
 
-    while action == 'm':
-        current_page += 1
-        limit = 10
-        offset = (current_page - 1) * limit
+    request.performance_profile.top_n = args.top
+    request_data = request.SerializeToString()
+    await socket.send(request_data)
 
-        request = protobuf.client_pb2.Request()
-        request.request_id = 1
-        request.get_rate_limits.page.limit = limit
-        request.get_rate_limits.page.offset = offset
-        request_data = request.SerializeToString()
-        await socket.send(request_data)
+    message_data = await socket.recv()
+    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
 
-        message_data = await socket.recv()
-        message = protobuf.server_pb2.ServerMessage.FromString(message_data)
-        response = message.response
-        for rate_limit in response.list_rate_limits.rate_limits:
-            name = rate_limit.name
-            print('| {:40s} | {:5.3f} |'.format(
-                rate_limit.name[:40],
-                rate_limit.delay
-            ))
-        start = offset + 1
-        end = offset + len(response.list_rate_limits.rate_limits)
-        total = response.list_rate_limits.total
-        if end == total:
-            print('Showing {}-{} of {}.'.format(start, end, total))
-            action = 'q'
-        else:
-            print('Showing {}-{} of {}. [m]ore or [q]uit?'
-                .format(start, end, total))
-            action = await asyncio.get_event_loop().run_in_executor(None, getch)    #
+    if not message.response.is_success:
+        print('Server error: {}'.format(message.response.error_message))
+        return
+
+    profile = message.response.performance_profile
+    print('Total Calls: {:d}\nTotal Time: {:0.3f}\n'
+        .format(profile.total_calls, profile.total_time))
+    print('{:8s} {:8s} {:8s} {:8s} {}'
+        .format('calls', 'nrcalls', 'tottime', 'cumtime', 'file function:line_number'))
+    for function in profile.functions:
+        location = '{} {}:{}'.format(
+            function.file, function.function, function.line_number)
+        print('{:<8d} {:<8d} {:<8.3f} {:<8.3f} {:s}'
+            .format(function.calls, function.non_recursive_calls,
+            function.total_time,
+                    function.cumulative_time, location))
 
 
 async def set_rate(args, socket):
@@ -410,6 +540,37 @@ async def sync_job(args, socket):
     except asyncio.CancelledError:
         print('Interrupted! To resume sync, use token: {}'
             .format(binascii.hexlify(sync_token).decode('ascii')))
+
+
+async def tasks(args, socket):
+    ''' Display asyncio tasks. '''
+
+    request = protobuf.client_pb2.Request()
+    request.request_id = 1
+    request.subscribe_task_monitor.period = args.period
+    request.subscribe_task_monitor.top_n = args.top
+    request_data = request.SerializeToString()
+    await socket.send(request_data)
+
+    message_data = await socket.recv()
+    message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+    response = message.response
+    if not response.is_success:
+        raise Exception('Server failure: ' + response.error_message)
+
+    while True:
+        try:
+            message_data = await socket.recv()
+            message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+            event_type = message.event.WhichOneof('Body')
+            if event_type == 'subscription_closed':
+                break
+            task_monitor = message.event.task_monitor
+            print('-- {} Tasks --'.format(task_monitor.count))
+            for task in task_monitor.tasks:
+                print('    {:5d} {}'.format(task.count, task.name))
+        except asyncio.CancelledError:
+            break
 
 
 if __name__ == '__main__':

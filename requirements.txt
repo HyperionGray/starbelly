@@ -4,14 +4,15 @@ aiosocks
 async_timeout
 beautifulsoup4
 cchardet
+humanize
 lxml
 nose
 protobuf
+psutil
 python-dateutil
 python-mimeparse
 rethinkdb
 robotexclusionrulesparser
-validators
 watchdog
 websockets
 w3lib

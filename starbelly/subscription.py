@@ -1,7 +1,8 @@
+from abc import ABCMeta, abstractmethod
 import asyncio
 import base64
 from binascii import hexlify, unhexlify
-from collections import defaultdict
+from collections import Counter, defaultdict
 import enum
 import functools
 import gzip
@@ -20,22 +21,6 @@ from . import cancel_futures, daemon_task
 logger = logging.getLogger(__name__)
 
 
-class Sequence:
-    ''' An incrementing sequence of integers. '''
-
-    def __init__(self):
-        ''' Constructor. '''
-        self._sequence = -1
-
-    def next(self):
-        ''' Get the next number from the sequence. '''
-        self._sequence += 1
-        return self._sequence
-
-
-_subscription_id_sequence = Sequence()
-
-
 class InvalidSyncToken(Exception):
     '''
     A sync token is syntactically invalid or was used with an incompatible
@@ -46,11 +31,11 @@ class InvalidSyncToken(Exception):
 class SubscriptionManager():
     ''' Manages all open subscriptions. '''
 
-    def __init__(self, db_pool):
+    def __init__(self):
         ''' Constructor. '''
         self._closed = False
         self._closing = set()
-        self._db_pool = db_pool
+        self._next_id = defaultdict(int)
         self._subscriptions = defaultdict(dict)
 
     def add(self, subscription):
@@ -58,6 +43,9 @@ class SubscriptionManager():
         Add a subscription and run it.
         '''
         socket = subscription.get_socket()
+        new_id = self._next_id[socket]
+        self._next_id[socket] += 1
+        subscription.set_id(new_id)
 
         if self._closed:
             raise Exception('The subscription manager is closed.')
@@ -65,12 +53,8 @@ class SubscriptionManager():
             raise Exception(
                 'Cannot add subscription: the socket is being closed.')
 
-        def task_ended(f):
-            daemon_task(self.unsubscribe(socket, subscription.id))
-
         task = daemon_task(subscription.run())
-        task.add_done_callback(task_ended)
-        self._subscriptions[socket][subscription.id] = task
+        self._subscriptions[socket][new_id] = task
 
     async def close_all(self):
         '''
@@ -78,7 +62,6 @@ class SubscriptionManager():
 
         No new subcriptions may be added after this manager is closed.
         '''
-
         logger.info('Closing subscription manager...')
         self._closed = True
         sub_tasks = list()
@@ -86,11 +69,17 @@ class SubscriptionManager():
             for subscription_id, subscription in socket_subs.items():
                 sub_tasks.append(subscription)
         await cancel_futures(*sub_tasks)
+        self._subscriptions.clear()
+        self._next_id.clear()
+        self._closing.clear()
         logger.info('Subscription manager is closed.')
 
     async def close_for_socket(self, socket):
         ''' Close all subscriptions opened by the specified socket. '''
-        subscriptions = self._subscriptions.get(socket, {}).values()
+        if socket not in self._subscriptions:
+            return
+
+        subscriptions = self._subscriptions[socket].values()
 
         if len(subscriptions) > 0:
             logger.info('Closing subscriptions for: %s:%s',
@@ -99,24 +88,46 @@ class SubscriptionManager():
             )
             self._closing.add(socket)
             await cancel_futures(*subscriptions)
-            del self._subscriptions[socket]
             self._closing.remove(socket)
+
+        del self._subscriptions[socket]
+        del self._next_id[socket]
 
     async def unsubscribe(self, socket, subscription_id):
         ''' Close a subscription. '''
+        logger.error('unsubscribe socket=%r id=%d', socket, subscription_id)
         try:
             task = self._subscriptions[socket][subscription_id]
             await cancel_futures(task)
             del self._subscriptions[socket][subscription_id]
         except KeyError:
-            logger.error('Invalid subscription id=%d on socket %s:%s',
-                subscription_id,
-                socket.remote_address[0],
-                socket.remote_address[1],
+            raise Exception('Invalid subscription id={} on socket {}:{}'
+                .format(subscription_id,
+                        socket.remote_address[0],
+                        socket.remote_address[1])
             )
 
 
-class CrawlSyncSubscription:
+class BaseSubscription(metaclass=ABCMeta):
+    ''' Base class for a subscription. '''
+    @abstractmethod
+    def get_id(self):
+        pass
+
+    @abstractmethod
+    def get_socket(self):
+        pass
+
+    @abstractmethod
+    async def run(self):
+        pass
+
+    @abstractmethod
+    def set_id(self, id):
+        pass
+
+
+class CrawlSyncSubscription(BaseSubscription):
     '''
     A subscription stream that allows a client to sync items from a specific
     crawl.
@@ -133,7 +144,7 @@ class CrawlSyncSubscription:
     def __init__(self, tracker, db_pool, socket, job_id, compression_ok,
                  sync_token=None):
         ''' Constructor. '''
-        self.id = _subscription_id_sequence.next()
+        self._id = None
         self._compression_ok = compression_ok
         self._db_pool = db_pool
         self._socket = socket
@@ -148,8 +159,12 @@ class CrawlSyncSubscription:
         else:
             self._sequence = self._decode_sync_token(sync_token)
 
+    def get_id(self):
+        ''' Get ID. '''
+        return self._id
+
     def get_socket(self):
-        ''' Return the associated socket. '''
+        ''' Get socket. '''
         return self._socket
 
     async def run(self):
@@ -189,6 +204,10 @@ class CrawlSyncSubscription:
 
         self._tracker.job_status_changed.cancel(self._handle_job_status)
         logger.info('Stop syncing items from job_id=%s', self._job_id[:8])
+
+    def set_id(self, id_):
+        ''' Set ID. '''
+        self._id = id_
 
     def _decode_sync_token(self, token):
         ''' Unpack a token and return a sequence number. '''
@@ -258,14 +277,14 @@ class CrawlSyncSubscription:
     async def _send_complete(self):
         ''' Send a subscription end event. '''
         message = ServerMessage()
-        message.event.subscription_id = self.id
+        message.event.subscription_id = self._id
         message.event.subscription_closed.reason = SubscriptionClosed.END
         await self._socket.send(message.SerializeToString())
 
     async def _send_item(self, item_doc):
         ''' Send an item (download response) to the client. '''
         message = ServerMessage()
-        message.event.subscription_id = self.id
+        message.event.subscription_id = self._id
 
         if item_doc['join']['is_compressed'] and not self._compression_ok:
             body = gzip.decompress(item_doc['join']['body'])
@@ -315,7 +334,7 @@ class CrawlSyncSubscription:
                self._crawl_run_state in ('completed', 'cancelled')
 
 
-class JobStatusSubscription:
+class JobStatusSubscription(BaseSubscription):
     '''
     A subscription stream that emits updates about the status of all running
     crawls.
@@ -330,7 +349,7 @@ class JobStatusSubscription:
 
     def __init__(self, tracker, socket, min_interval):
         ''' Constructor. '''
-        self.id = _subscription_id_sequence.next()
+        self._id = None
         self._jobs = tracker.get_all_job_status()
         self._last_status = dict()
         self._min_interval = min_interval
@@ -339,8 +358,12 @@ class JobStatusSubscription:
         self._status_changed = asyncio.Event()
         tracker.job_status_changed.listen(self._handle_status_changed)
 
+    def get_id(self):
+        ''' Get ID. '''
+        return self._id
+
     def get_socket(self):
-        ''' Return the associated socket. '''
+        ''' Get socket. '''
         return self._socket
 
     async def run(self):
@@ -357,10 +380,14 @@ class JobStatusSubscription:
             )
             await self._send_event()
 
+    def set_id(self, id_):
+        ''' Set ID. '''
+        self._id = id_
+
     async def _send_event(self):
         ''' Send an event to send to the client and update internal state. '''
         message = ServerMessage()
-        message.event.subscription_id = self.id
+        message.event.subscription_id = self._id
 
         def merge(old, new, pb_job, attr):
             ''' A helper that doesn't set fields which haven't changed. '''
@@ -397,3 +424,117 @@ class JobStatusSubscription:
         ''' Handle an update from the job tracker. '''
         self._status[job_id] = job
         self._status_changed.set()
+
+
+class ResourceMonitorSubscription:
+    ''' Keep track of consumption for various resources. '''
+    # The maximum buffer size for outgoing frames. This number should be higher
+    # than ResourceMonitor's FRAME_BUFFER.
+    QUEUE_SIZE = 500
+
+    def __init__(self, socket, resource_monitor, history):
+        ''' Constructor. '''
+        self._id = None
+        self._socket = socket
+        self._resource_monitor = resource_monitor
+        self._resource_monitor.new_frame.listen(self._add_frame)
+        self._history = history
+        self._queue = asyncio.Queue(maxsize=1000)
+
+    def get_id(self):
+        ''' Get ID. '''
+        return self._id
+
+    def get_socket(self):
+        ''' Get socket. '''
+        return self._socket
+
+    async def run(self):
+        ''' Start the subscription stream. '''
+
+        for frame in self._resource_monitor.history(self._history):
+            self._add_frame(frame)
+
+        while True:
+            message = await self._queue.get()
+            message.event.subscription_id = self._id
+            await self._socket.send(message.SerializeToString())
+
+    def set_id(self, id_):
+        ''' Set ID. '''
+        self._id = id_
+
+    def _add_frame(self, frame):
+        ''' Add a frame to the subscription queue. '''
+        try:
+            self._queue.put_nowait(frame)
+        except asyncio.QueueFull:
+            # Skip events if the buffer is full.
+            pass
+
+
+class TaskMonitorSubscription:
+    '''
+    Sends data showing whats kinds of tasks and how many of each are running.
+    '''
+
+    def __init__(self, socket, period, top_n):
+        ''' Constructor. '''
+        self._id = None
+        self._socket = socket
+        self._period = period
+        self._top_n = top_n
+
+    def get_id(self):
+        ''' Get ID. '''
+        return self._id
+
+    def get_socket(self):
+        ''' Get socket. '''
+        return self._socket
+
+    async def run(self):
+        ''' Start the subscription stream. '''
+
+        while True:
+            await self._send_event()
+            await asyncio.sleep(self._period)
+
+    def set_id(self, id_):
+        ''' Set ID. '''
+        self._id = id_
+
+    async def _send_event(self):
+        ''' Send an event containing task status data. '''
+        tasks = asyncio.Task.all_tasks()
+        task_names = list()
+
+        for task in tasks:
+            task_name = task._coro.__qualname__
+            if task._source_traceback:
+                frame = task._source_traceback[-1]
+                if '/starbelly/__init__.py' in frame[0] or \
+                    '/asyncio/' in frame[0]:
+                    frame = task._source_traceback[-2]
+                task_name += ' %s:%s' % (frame[0], frame[1])
+                if task.done():
+                    if task.cancelled():
+                        task_name = task_name + ' [CANCELLED]'
+                    else:
+                        task_name = task_name + ' [DONE]'
+                        exc = task.exception()
+                        if exc is not None:
+                            task_name += ' [EXCEPTION {}]'.format(repr(exc))
+            task_names.append(task_name)
+
+        message = ServerMessage()
+        message.event.subscription_id = self._id
+        message.event.task_monitor.count = len(tasks)
+        counter = Counter(task_names)
+
+        for task_name, count in counter.most_common(self._top_n):
+            pb_task = message.event.task_monitor.tasks.add()
+            pb_task.name = task_name
+            pb_task.count = count
+
+        await self._socket.send(message.SerializeToString())

@@ -18,6 +18,7 @@ from .crawl import CrawlManager
 from .downloader import Downloader
 from .policy import PolicyManager
 from .rate_limiter import RateLimiter
+from .resource_monitor import ResourceMonitor
 from .robots import RobotsTxtManager
 from .server import Server
 from .subscription import SubscriptionManager
@@ -109,37 +110,6 @@ class Reloader:
         sys.exit(0)
 
 
-def print_tasks(logger):
-    ''' this needs to be separate from monitor_tasks to prevent holding resources open '''
-    from collections import Counter
-    tasks = asyncio.Task.all_tasks()
-    task_names = list()
-
-    for task in tasks:
-        task_name = task._coro.__qualname__
-        if task._source_traceback:
-            frame = task._source_traceback[-1]
-            if '/starbelly/__init__.py' in frame[0] or '/asyncio/' in frame[0]:
-                frame = task._source_traceback[-2]
-            task_name += ' %s:%s' % (frame[0], frame[1])
-        task_names.append(task_name)
-
-    counter = Counter(task_names)
-    task_str = 'TASK MONITOR:\ntotal=%d\n'
-    task_args = [len(tasks)]
-
-    for task_name, count in counter.most_common(10):
-        task_str += '%d\t%s\n'
-        task_args.extend([count, task_name])
-    logger.error(task_str, *task_args)
-
-
-async def monitor_tasks(logger):
-    while True:
-        print_tasks(logger)
-        await asyncio.sleep(15)
-
-
 class Starbelly:
     ''' Main class for bootstrapping the crawler. '''
 
@@ -161,7 +131,12 @@ class Starbelly:
         robots_txt_manager = RobotsTxtManager(db_pool, rate_limiter)
         crawl_manager = CrawlManager(db_pool, rate_limiter, downloader,
             robots_txt_manager)
-        subscription_manager = SubscriptionManager(db_pool)
+        subscription_manager = SubscriptionManager()
+        resource_monitor = ResourceMonitor(
+            crawl_manager,
+            rate_limiter,
+            downloader
+        )
         server = Server(
             self._args.ip,
             self._args.port,
@@ -170,7 +145,8 @@ class Starbelly:
             subscription_manager,
             tracker,
             rate_limiter,
-            policy_manager
+            policy_manager,
+            resource_monitor
         )
 
         try:
@@ -179,7 +155,7 @@ class Starbelly:
             downloader.start()
             tracker_task = daemon_task(tracker.run())
             server_task = daemon_task(server.run())
-            # task_monitor = daemon_task(monitor_tasks(self._logger)) #TODO
+            resource_monitor_task = daemon_task(resource_monitor.run())
 
             # This main task idles after startup: it only supervises other
             # tasks.
@@ -188,12 +164,11 @@ class Starbelly:
         except asyncio.CancelledError:
             # Components must be shut down in the proper order.
             await subscription_manager.close_all()
-            await cancel_futures(server_task)
+            await cancel_futures(resource_monitor_task, server_task)
             await crawl_manager.pause_all_jobs()
             await downloader.stop()
             await cancel_futures(tracker_task)
             await db_pool.close()
-            # await cancel_futures(task_monitor) #TODO
 
 
     def shutdown(self, signum, frame):

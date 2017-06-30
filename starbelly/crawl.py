@@ -26,6 +26,8 @@ from .url_extractor import extract_urls
 logger = logging.getLogger(__name__)
 FrontierItem = namedtuple('FrontierItem', ['url', 'cost'])
 ExtractItem = namedtuple('ExtractItem', ['url', 'cost', 'content_type', 'body'])
+CrawlStats = namedtuple('CrawlStats', ['job_id', 'frontier', 'pending',
+    'extraction'])
 
 
 class CrawlManager:
@@ -141,6 +143,15 @@ class CrawlManager:
             await cursor.close()
 
         return total_count, items
+
+    def get_stats(self):
+        ''' Get resource statistics for all jobs. '''
+        stats = list()
+
+        for job in self._running_jobs.values():
+            stats.append(job.get_stats())
+
+        return stats
 
     async def list_jobs(self, limit=10, offset=0):
         '''
@@ -345,6 +356,11 @@ class _CrawlJob:
             await extraction_query.run(conn)
 
         logger.info('Crawl id={} has been cancelled.'.format(self.id[:8]))
+
+    def get_stats(self):
+        ''' Return resource stats for this job. '''
+        return CrawlStats(self.id, self._frontier_size, self._pending_count,
+            self._extraction_size)
 
     async def pause(self):
         '''
@@ -625,7 +641,6 @@ class _CrawlJob:
             extract_urls,
             extract_item
         )
-
         frontier_items = list()
         counter = 0
 

@@ -1,9 +1,8 @@
 import logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 import mimeparse
-import validators
 
 
 logger = logging.getLogger(__name__)
@@ -40,9 +39,13 @@ def _extract_html(base_url, charset, body):
 
     for anchor in doc.find_all('a', href=True):
         absolute_url = urljoin(base_url, anchor['href'], allow_fragments=False)
-        is_http = absolute_url.startswith('http:') or \
-                  absolute_url.startswith('https:')
-        if is_http and validators.url(absolute_url):
+
+        try:
+            parsed = urlparse(absolute_url)
+        except:
+            continue
+
+        if parsed.scheme == 'http' or parsed.scheme == 'https':
             extracted_urls.append(absolute_url)
 
     return extracted_urls

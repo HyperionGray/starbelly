@@ -47,6 +47,10 @@ class RateLimiter:
         self._rate_limits = dict()
         self._semaphore = asyncio.Semaphore(capacity)
 
+    def count(self):
+        ''' Return number of buffered requests. '''
+        return sum(len(q) for q in self._queues.values())
+
     async def get_limits(self, limit, skip):
         ''' Return a list of rate limits ordered by name. '''
         count_query = r.table('rate_limit').count()

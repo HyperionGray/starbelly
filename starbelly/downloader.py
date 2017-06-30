@@ -41,6 +41,10 @@ class Downloader:
         self._request_queue = asyncio.Queue(maxsize=1)
         self._semaphore = asyncio.Semaphore(concurrent)
 
+    def count(self):
+        ''' Return number of active downloads. '''
+        return sum(len(dls) for dls in self._downloads_by_job.values())
+
     async def download_task(self):
         ''' Read requests from download queue. '''
         try:
