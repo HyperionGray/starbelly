@@ -32,7 +32,7 @@ class Downloader:
     into the database.
     '''
 
-    def __init__(self, rate_limiter, concurrent=10):
+    def __init__(self, rate_limiter, concurrent=20):
         ''' Constructor. '''
         self._download_task = None
         self._downloads_by_job = defaultdict(set)
@@ -151,7 +151,7 @@ class Downloader:
         dl_response = DownloadResponse(download_request)
 
         try:
-            with session, async_timeout.timeout(20):
+            with session, async_timeout.timeout(10):
                 if proxy_url is None:
                     getter = session.get(url)
                 else:
@@ -162,7 +162,17 @@ class Downloader:
                     if not policy.mime_type_rules.should_save(mime):
                         raise MimeNotAllowedError()
                     body = await http_response.read()
-                    dl_response.set_response(http_response, body)
+                    if http_response.charset is not None:
+                        charset = http_response.charset
+                    else:
+                        loop = asyncio.get_event_loop()
+                        detected = await loop.run_in_executor(
+                            None,
+                            chardet.detect,
+                            body
+                        )
+                        charset = detected['encoding']
+                    dl_response.set_response(http_response, body, charset)
             logger.info('%d %s (cost=%0.2f)', dl_response.status_code,
                 dl_response.url, dl_response.cost)
         except asyncio.CancelledError:
@@ -171,9 +181,16 @@ class Downloader:
             logger.info('MIME %s disallowed by policy for URL %s', mime,
                 download_request.url)
             dl_response.should_save = False
+        except aiohttp.ClientError as ce:
+            # Don't need a full stack trace for these common exceptions.
+            msg = str(ce)
+            logger.warn('Failed downloading %s: %s', download_request.url, msg)
+            dl_response.set_exception(msg)
+        except asyncio.TimeoutError as te:
+            logger.warn('Timed out downloading %s', download_request.url)
+            dl_response.set_exception('Timed out')
         except Exception as exc:
-            logger.error('Failed downloading %s (exc=%r)', download_request.url,
-                exc)
+            logger.exception('Failed downloading %s', download_request.url)
             dl_response.set_exception(traceback.format_exc())
 
         return dl_response
@@ -219,15 +236,12 @@ class DownloadResponse:
         self.duration = self.completed_at - self.started_at
         self.exception = exception
 
-    def set_response(self, http_response, body):
+    def set_response(self, http_response, body, charset):
         ''' Update state from HTTP response. '''
         self.completed_at = datetime.now(tzlocal())
         self.duration = self.completed_at - self.started_at
         self.status_code = http_response.status
         self.headers = http_response.headers
         self.content_type = http_response.content_type
-        if http_response.charset is not None:
-            self.charset = http_response.charset
-        else:
-            self.charset = chardet.detect(body)['encoding']
+        self.charset = charset
         self.body = body

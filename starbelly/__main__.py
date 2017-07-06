@@ -222,17 +222,32 @@ class Starbelly:
         return db_connect
 
 
-def configure_logging(log_level):
+def configure_logging(log_level, asyncio_log, error_log):
     ''' Set default format and output stream for logging. '''
 
     log_format = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
     log_date_format = '%Y-%m-%d %H:%M:%S'
     log_formatter = logging.Formatter(log_format, log_date_format)
+    log_level = getattr(logging, log_level.upper())
     log_handler = logging.StreamHandler(sys.stderr)
     log_handler.setFormatter(log_formatter)
+    log_handler.setLevel(log_level)
     logger = logging.getLogger('starbelly')
     logger.addHandler(log_handler)
-    logger.setLevel(getattr(logging, log_level.upper()))
+    logger.setLevel(log_level)
+
+    if error_log is not None:
+        exc_handler = logging.FileHandler(error_log)
+        exc_handler.setFormatter(log_formatter)
+        exc_handler.setLevel(logging.ERROR)
+        logger.addHandler(exc_handler)
+    
+    if asyncio_log is not None:
+        aio_log = logging.getLogger('asyncio')
+        aio_handler = logging.FileHandler(asyncio_log)
+        aio_handler.setFormatter(log_formatter)
+        aio_handler.setLevel(logging.DEBUG)
+        aio_log.addHandler(aio_handler)
 
     return logger
 
@@ -269,6 +284,16 @@ def get_args():
         help='Auto-reload when code or static assets are modified.'
     )
 
+    arg_parser.add_argument(
+        '--asyncio-log',
+        help='Redirect asyncio logs to the specified file.'
+    )
+
+    arg_parser.add_argument(
+        '--error-log',
+        help='Copy error logs to the specified file.'
+    )
+
     return arg_parser.parse_args()
 
 
@@ -277,7 +302,7 @@ def main():
 
     args = get_args()
     config = get_config()
-    logger = configure_logging(args.log_level)
+    logger = configure_logging(args.log_level, args.asyncio_log, args.error_log)
 
     if args.reload and os.getenv('WATCHDOG_RUNNING') is None:
         reloader = Reloader()

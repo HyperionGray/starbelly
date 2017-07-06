@@ -95,7 +95,6 @@ class SubscriptionManager():
 
     async def unsubscribe(self, socket, subscription_id):
         ''' Close a subscription. '''
-        logger.error('unsubscribe socket=%r id=%d', socket, subscription_id)
         try:
             task = self._subscriptions[socket][subscription_id]
             await cancel_futures(task)

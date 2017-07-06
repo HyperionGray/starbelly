@@ -253,6 +253,8 @@ class CrawlManager:
         async with self._db_pool.connection() as conn:
             cursor = await startup_query.run(conn)
             async for job in cursor:
+                logger.warning('Startup: cancelling unfinished job %s.',
+                    job['id'][:8])
                 # Cancel the job.
                 await (
                     r.table('job')
@@ -262,8 +264,21 @@ class CrawlManager:
                      .run(conn)
                 )
                 # And clear its frontier.
+                logger.warning('Startup: clearing job=%s frontier.',
+                    job['id'][:8])
                 await (
                     r.table('frontier')
+                     .between((job['id'], r.minval),
+                              (job['id'], r.maxval),
+                              index='cost_index')
+                     .delete()
+                     .run(conn)
+                )
+                # And its extraction queue.
+                logger.warning('Startup: clearing job=%s extraction queue.',
+                    job['id'][:8])
+                await (
+                    r.table('extraction_queue')
                      .between((job['id'], r.minval),
                               (job['id'], r.maxval),
                               index='cost_index')
@@ -441,12 +456,16 @@ class _CrawlJob:
             except asyncio.CancelledError:
                 # Cancellation is okay.
                 break
+            except Exception as e:
+                logger.exception('run_extractor() exception')
 
     async def run_frontier(self):
         '''
         This task takes items off the frontier and sends them to the rate
         limiter.
         '''
+        frontier_item = None
+
         try:
             while True:
                 frontier_item = await self._next_frontier_item()
@@ -483,7 +502,6 @@ class _CrawlJob:
         '''
 
         while True:
-            logger.error('pending=%d frontier=%d extraction=%d', self._pending_count, self._frontier_size, self._extraction_size)
             if self._pending_count == 0 and self._frontier_size == 0 \
                 and self._extraction_size == 0:
                 logger.info('Job %s has no more items pending.', self.id[:8])

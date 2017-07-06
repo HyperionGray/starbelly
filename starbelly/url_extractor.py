@@ -38,10 +38,12 @@ def _extract_html(base_url, charset, body):
     extracted_urls = list()
 
     for anchor in doc.find_all('a', href=True):
-        absolute_url = urljoin(base_url, anchor['href'], allow_fragments=False)
-
         try:
+            absolute_url = urljoin(base_url, anchor['href'],
+                allow_fragments=False)
             parsed = urlparse(absolute_url)
+            # Reject URLs with invalid character encoding.
+            absolute_url.encode('ascii')
         except:
             continue
 

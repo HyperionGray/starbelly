@@ -112,7 +112,8 @@ def ensure_db_fixtures(conn):
             'updated_at': r.now(),
             'name': 'Broad Crawl',
             'limits': {
-              'max_items': 10000
+              'max_items': 1_000_000,
+              'max_cost': 3,
             },
             'mime_type_rules': [
               {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
