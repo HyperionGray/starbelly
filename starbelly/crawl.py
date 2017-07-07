@@ -473,6 +473,7 @@ class _CrawlJob:
                     frontier_item['url']
                 )
                 if not robots_ok:
+                    frontier_item = None
                     continue
                 download_request = DownloadRequest(
                     job_id=self.id,
@@ -482,7 +483,6 @@ class _CrawlJob:
                     output_queue=self._save_queue
                 )
                 await self._rate_limiter.push(download_request)
-                self._pending_count += 1
                 frontier_item = None
         except asyncio.CancelledError:
             # Put the frontier item back on the frontier
@@ -699,6 +699,7 @@ class _CrawlJob:
                     response = await asyncio.shield(next_url_query.run(conn))
                     result = response['changes'][0]['old_val']
                     self._frontier_size -= 1
+                    self._pending_count += 1
                     break
                 except ReqlNonExistenceError:
                     await asyncio.sleep(1)
