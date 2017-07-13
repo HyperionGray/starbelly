@@ -313,12 +313,16 @@ async def main():
     ssl_context.verify_mode = ssl.CERT_NONE
     url = 'wss://{}/ws/'.format(args.host)
     logger.info('Connecting to %s', url)
+    socket = await websockets.connect(url, ssl=ssl_context, max_queue=1)
 
-    socket = await websockets.connect(url, ssl=ssl_context)
-    await actions[args.action](args, socket)
-
-    if socket.open:
-        await socket.close()
+    try:
+        await actions[args.action](args, socket)
+    except websockets.exceptions.ConnectionClosed:
+        # Nothing we can do here except exit.
+        logger.error('Server unexpectedly closed the connection.')
+    except Exception:
+        if socket.open:
+            await socket.close()
 
 
 async def profile(args, socket):
@@ -516,9 +520,12 @@ async def sync_job(args, socket):
     response = message.response
     if not response.is_success:
         raise Exception('Server failure: ' + response.error_message)
+    else:
+        subscription_id = response.new_subscription.subscription_id
 
-    print('| {:50s} | {:5s} | {:10s} |'.format('URL', 'Cost', 'Size (KB)'))
-    print('-' * 75)
+    print('| {:50s} | {:5s} | {:4s} | {:10s} |'
+        .format('URL', 'Cost', 'Code', 'Size (KB)'))
+    print('-' * 82)
     sync_token = None
 
     try:
@@ -530,16 +537,43 @@ async def sync_job(args, socket):
                 print('-- End of crawl results ---')
                 break
             item = message.event.sync_item.item
-            sync_token = message.event.sync_item.token
-            print('| {:50s} | {:5.1f} | {:10.2f} |'.format(
+            if item.HasField('body'):
+                body_len = '{:10.2f}'.format(len(item.body) / 1024)
+            else:
+                body_len = 'N/A'
+            if item.HasField('exception'):
+                status = 'exc'
+            else:
+                status = str(item.status_code)
+
+            print('| {:50s} | {:5.1f} | {:>4s} | {:>10s} |'.format(
                 item.url[:50],
                 item.cost,
-                len(item.body) / 1024
+                status,
+                body_len
             ))
+            # Update sync_token _after_ successfully processing the item.
+            sync_token = message.event.sync_item.token
             await asyncio.sleep(args.delay)
     except asyncio.CancelledError:
-        print('Interrupted! To resume sync, use token: {}'
-            .format(binascii.hexlify(sync_token).decode('ascii')))
+        print('Interrupted! Cancelling subscription...')
+        request = protobuf.client_pb2.Request()
+        request.request_id = 2
+        request.unsubscribe.subscription_id = subscription_id
+        request_data = request.SerializeToString()
+        await socket.send(request_data)
+
+        # Keep reading events until we see the subscription has ended.
+        while True:
+            message_data = await socket.recv()
+            message = protobuf.server_pb2.ServerMessage.FromString(message_data)
+            if message.WhichOneof('MessageType') == 'response':
+                break
+        if not message.response.is_success:
+            logger.error('Could not unsubscribe: %s', response.error_message)
+        token = binascii.hexlify(sync_token).decode('ascii')
+        print('To resume sync, use token: {}'.format(token))
+        raise
 
 
 async def tasks(args, socket):
@@ -579,8 +613,10 @@ if __name__ == '__main__':
     try:
         loop.run_until_complete(main_task)
     except KeyboardInterrupt:
-        main_task.cancel()
-        loop.run_until_complete(main_task)
-    except websockets.exceptions.ConnectionClosed:
-        logger.error('Server unexpectedly closed the connection.')
+        g = asyncio.gather(main_task)
+        g.cancel()
+        try:
+            loop.run_until_complete(g)
+        except asyncio.CancelledError:
+            pass
     loop.close()

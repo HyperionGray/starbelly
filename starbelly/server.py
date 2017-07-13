@@ -73,39 +73,33 @@ class Server:
         ''' Handle an incoming connection. '''
         self._clients.add(websocket)
         pending_requests = set()
-        logger.info('Websocket connection from %s:%s, path=%s',
-            websocket.remote_address[0],
-            websocket.remote_address[1],
-            path
-        )
+        client_ip = websocket.request_headers.get('X-Client-IP') or \
+                    websocket.remote_address[0]
+        logger.info('Websocket connection from %s path=%s', client_ip, path)
 
-        while True:
-            try:
+        try:
+            while True:
                 request_task = None
                 request_data = await websocket.recv()
                 request_task = daemon_task(
-                    self._handle_request(websocket, request_data))
+                    self._handle_request(client_ip, websocket, request_data))
                 pending_requests.add(request_task)
                 request_task.add_done_callback(
                     lambda task: pending_requests.remove(task))
                 del request_task
-            except websockets.exceptions.ConnectionClosed:
-                await self._subscription_manager.close_for_socket(websocket)
-                await cancel_futures(*pending_requests)
-                logger.info('Client closed connection: %s:%s',
-                    websocket.remote_address[0],
-                    websocket.remote_address[1],
-                )
-                break
-            except asyncio.CancelledError:
-                await cancel_futures(*pending_requests)
-                try:
-                    await websocket.close()
-                except websocket.exceptions.InvalidState:
-                    pass
-                break
-
-        self._clients.remove(websocket)
+        except websockets.exceptions.ConnectionClosed:
+            await self._subscription_manager.close_for_socket(websocket)
+            await cancel_futures(*pending_requests)
+            logger.info('Client closed connection: %s', client_ip)
+        except asyncio.CancelledError:
+            await cancel_futures(*pending_requests)
+            try:
+                await websocket.close()
+            except websocket.exceptions.InvalidState:
+                pass
+            raise
+        finally:
+            self._clients.remove(websocket)
 
     async def run(self):
         ''' Run the websocket server. '''
@@ -134,7 +128,7 @@ class Server:
         await self._policy_manager.delete_policy(policy_id)
         return Response()
 
-    async def _handle_request(self, websocket, request_data):
+    async def _handle_request(self, client_ip, websocket, request_data):
         ''' Handle a single request/response pair. '''
         request = Request.FromString(request_data)
         start = time()
@@ -158,13 +152,15 @@ class Server:
             response.request_id = request.request_id
             response.is_success = True
             elapsed = time() - start
-            logger.info('Request OK %s %s %0.3fs', command_name,
-                websocket.remote_address[0], elapsed)
+            logger.info('Request OK %s %s %0.3fs', command_name, client_ip,
+                elapsed)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             if isinstance(e, InvalidRequestException):
                 elapsed = time() - start
                 logger.error('Request ERROR %s %s %0.3fs', command_name,
-                    websocket.remote_address[0], elapsed)
+                    client_ip, elapsed)
             else:
                 logger.exception('Exception while handling request:\n%r',
                     request)
@@ -300,6 +296,8 @@ class Server:
             job = response.list_jobs.jobs.add()
             job.job_id = UUID(job_doc['id']).bytes
             job.name = job_doc['name']
+            for seed in job_doc['seeds']:
+                job.seeds.append(seed)
             job.item_count = job_doc['item_count']
             job.http_success_count = job_doc['http_success_count']
             job.http_error_count = job_doc['http_error_count']

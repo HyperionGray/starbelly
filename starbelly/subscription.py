@@ -188,8 +188,7 @@ class CrawlSyncSubscription(BaseSubscription):
                         self._sequence = item['insert_sequence']
 
                     self._sequence += 1
-                    if item['is_success']:
-                        await self._send_item(item)
+                    await self._send_item(item)
                 await cursor.close()
 
             if self._sync_is_complete():
@@ -234,7 +233,13 @@ class CrawlSyncSubscription(BaseSubscription):
         '''
 
         def get_body(item):
-            return {'join': r.table('response_body').get(item['body_id'])}
+            return {
+                'join': r.branch(
+                    item.has_fields('body_id'),
+                    r.table('response_body').get(item['body_id']),
+                    None
+                )
+            }
 
         query = (
             r.table('response')
@@ -285,31 +290,35 @@ class CrawlSyncSubscription(BaseSubscription):
         message = ServerMessage()
         message.event.subscription_id = self._id
 
-        if item_doc['join']['is_compressed'] and not self._compression_ok:
-            body = gzip.decompress(item_doc['join']['body'])
-            is_body_compressed = False
-        else:
-            body = item_doc['join']['body']
-            is_body_compressed = item_doc['join']['is_compressed']
-
         item = message.event.sync_item.item
-        item.body = body
-        item.is_body_compressed = is_body_compressed
-        item.charset = item_doc['charset']
         item.completed_at = item_doc['completed_at'].isoformat()
-        item.content_type = item_doc['content_type']
         item.cost = item_doc['cost']
         item.duration = item_doc['duration']
-        for key, value in item_doc['headers'].items():
-            if value is None:
-                value = ''
-            item.headers[key] = value
+        item.is_success = item_doc['is_success']
         item.job_id = UUID(item_doc['job_id']).bytes
         item.started_at = item_doc['started_at'].isoformat()
-        item.status_code = item_doc['status_code']
         item.url = item_doc['url']
         item.url_can = item_doc['url_can']
-        item.is_success = item_doc['is_success']
+
+        if 'exception' in item_doc:
+            item.exception = item_doc['exception']
+        else:
+            if item_doc['join']['is_compressed'] and not self._compression_ok:
+                body = gzip.decompress(item_doc['join']['body'])
+                is_body_compressed = False
+            else:
+                body = item_doc['join']['body']
+                is_body_compressed = item_doc['join']['is_compressed']
+            item.body = body
+            item.is_body_compressed = is_body_compressed
+            item.charset = item_doc['charset']
+            item.content_type = item_doc['content_type']
+            for key, value in item_doc['headers'].items():
+                if value is None:
+                    value = ''
+                item.headers[key] = value
+            item.status_code = item_doc['status_code']
+
         message.event.sync_item.token = self._get_sync_token()
         await self._socket.send(message.SerializeToString())
 
@@ -343,9 +352,6 @@ class JobStatusSubscription(BaseSubscription):
     the previous event.
     '''
 
-    KEYS = ('name', 'run_state', 'started_at', 'completed_at', 'item_count',
-        'http_success_count', 'http_error_count', 'exception_count')
-
     def __init__(self, tracker, socket, min_interval):
         ''' Constructor. '''
         self._id = None
@@ -364,7 +370,7 @@ class JobStatusSubscription(BaseSubscription):
     def get_socket(self):
         ''' Get socket. '''
         return self._socket
-
++
     async def run(self):
         ''' Start the subscription stream. '''
 
@@ -398,6 +404,9 @@ class JobStatusSubscription(BaseSubscription):
             pb_job = message.event.job_list.jobs.add()
             pb_job.job_id = UUID(job_id).bytes
             merge(old, new, pb_job, 'name')
+            if old.get('seeds') is None:
+                for seed in new['seeds']:
+                    pb_job.seeds.append(seed)
             merge(old, new, pb_job, 'item_count')
             merge(old, new, pb_job, 'http_success_count')
             merge(old, new, pb_job, 'http_error_count')

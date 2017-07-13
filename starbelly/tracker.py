@@ -20,9 +20,9 @@ class Tracker:
     '''
 
     JOB_STATUS_FIELDS = [
-        'id', 'name', 'run_state', 'started_at', 'completed_at', 'item_count',
-        'http_success_count', 'http_error_count', 'exception_count',
-        'http_status_counts',
+        'id', 'name', 'seeds', 'run_state', 'started_at', 'completed_at',
+        'item_count', 'http_success_count', 'http_error_count',
+        'exception_count', 'http_status_counts',
     ]
 
     def __init__(self, db_pool):

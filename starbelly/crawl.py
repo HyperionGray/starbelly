@@ -473,6 +473,7 @@ class _CrawlJob:
                     frontier_item['url']
                 )
                 if not robots_ok:
+                    self._pending_count -= 1
                     frontier_item = None
                     continue
                 download_request = DownloadRequest(
