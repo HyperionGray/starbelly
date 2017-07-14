@@ -14,6 +14,7 @@ from uuid import UUID
 from protobuf.shared_pb2 import JobRunState
 from protobuf.server_pb2 import ServerMessage, SubscriptionClosed
 import rethinkdb as r
+import websockets.exceptions
 
 from . import cancel_futures, daemon_task
 
@@ -173,35 +174,14 @@ class CrawlSyncSubscription(BaseSubscription):
         self._tracker.job_status_changed.listen(self._handle_job_status)
         logger.info('Syncing items from job_id=%s', self._job_id[:8])
 
-        while True:
-            async with self._db_pool.connection() as conn:
-                cursor = await self._get_query().run(conn)
-
-                async for item in cursor:
-                    # Make sure this item matches the expected sequence number.
-                    if item['insert_sequence'] != self._sequence:
-                        logger.error(
-                            'Crawl sync item is out-of-order: job=%s expected '
-                            '%d but found %d.', self._job_id[:8],
-                            self._sequence, item['insert_sequence']
-                        )
-                        self._sequence = item['insert_sequence']
-
-                    self._sequence += 1
-                    await self._send_item(item)
-                await cursor.close()
-
-            if self._sync_is_complete():
-                logger.info('Item sync complete for job_id=%s',
-                    self._job_id[:8])
-                await self._send_complete()
-                break
-
-            # Wait for more results to come in.
-            await asyncio.sleep(1)
-
-        self._tracker.job_status_changed.cancel(self._handle_job_status)
-        logger.info('Stop syncing items from job_id=%s', self._job_id[:8])
+        try:
+            await self._run_sync()
+        except websockets.exceptions.ConnectionClosed:
+            logger.error('Sync error: connection closed (job_id=%s)',
+                         self._job_id[:8])
+        finally:
+            self._tracker.job_status_changed.cancel(self._handle_job_status)
+            logger.info('Stop syncing items from job_id=%s', self._job_id[:8])
 
     def set_id(self, id_):
         ''' Set ID. '''
@@ -277,6 +257,35 @@ class CrawlSyncSubscription(BaseSubscription):
         if job_id == self._job_id:
             self._crawl_run_state = job['run_state']
             self._item_count = job['item_count']
+
+    async def _run_sync(self):
+        ''' Run the main sync loop. '''
+        while True:
+            async with self._db_pool.connection() as conn:
+                cursor = await self._get_query().run(conn)
+
+                async for item in cursor:
+                    # Make sure this item matches the expected sequence number.
+                    if item['insert_sequence'] != self._sequence:
+                        logger.error(
+                            'Crawl sync item is out-of-order: job=%s expected '
+                            '%d but found %d.', self._job_id[:8],
+                            self._sequence, item['insert_sequence']
+                        )
+                        self._sequence = item['insert_sequence']
+
+                    self._sequence += 1
+                    await self._send_item(item)
+                await cursor.close()
+
+            if self._sync_is_complete():
+                logger.info('Item sync complete for job_id=%s',
+                    self._job_id[:8])
+                await self._send_complete()
+                break
+
+            # Wait for more results to come in.
+            await asyncio.sleep(1)
 
     async def _send_complete(self):
         ''' Send a subscription end event. '''
@@ -370,7 +379,7 @@ class JobStatusSubscription(BaseSubscription):
     def get_socket(self):
         ''' Get socket. '''
         return self._socket
-+
+
     async def run(self):
         ''' Start the subscription stream. '''
 
@@ -407,6 +416,10 @@ class JobStatusSubscription(BaseSubscription):
             if old.get('seeds') is None:
                 for seed in new['seeds']:
                     pb_job.seeds.append(seed)
+            new_tags = new.get('tags')
+            if old.get('tags') != new_tags:
+                for tag in new_tags:
+                    pb_job.tag_list.tags.append(tag)
             merge(old, new, pb_job, 'item_count')
             merge(old, new, pb_job, 'http_success_count')
             merge(old, new, pb_job, 'http_error_count')

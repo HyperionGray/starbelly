@@ -10,6 +10,7 @@ from time import time
 from urllib.parse import urlparse
 from uuid import UUID
 
+import dateutil.parser
 from protobuf.client_pb2 import Request
 from protobuf.server_pb2 import Response, ServerMessage
 import protobuf.shared_pb2
@@ -58,10 +59,9 @@ class Server:
             'list_policies': self._list_policies,
             'ping': self._ping,
             'performance_profile': self._profile,
-            'set_job_run_state': self._set_job_run_state,
+            'set_job': self._set_job,
             'set_policy': self._set_policy,
             'set_rate_limit': self._set_rate_limit,
-            'start_job': self._start_job,
             'subscribe_job_sync': self._subscribe_crawl_sync,
             'subscribe_job_status': self._subscribe_job_status,
             'subscribe_resource_monitor': self._subscribe_resource_monitor,
@@ -75,7 +75,7 @@ class Server:
         pending_requests = set()
         client_ip = websocket.request_headers.get('X-Client-IP') or \
                     websocket.remote_address[0]
-        logger.info('Websocket connection from %s path=%s', client_ip, path)
+        logger.info('Connection opened: client=%s path=%s', client_ip, path)
 
         try:
             while True:
@@ -87,10 +87,11 @@ class Server:
                 request_task.add_done_callback(
                     lambda task: pending_requests.remove(task))
                 del request_task
-        except websockets.exceptions.ConnectionClosed:
+        except websockets.exceptions.ConnectionClosed as cc:
             await self._subscription_manager.close_for_socket(websocket)
             await cancel_futures(*pending_requests)
-            logger.info('Client closed connection: %s', client_ip)
+            logger.info('Connection closed: client=%s code=%d reason="%s"',
+                client_ip, cc.code, cc.reason)
         except asyncio.CancelledError:
             await cancel_futures(*pending_requests)
             try:
@@ -196,6 +197,8 @@ class Server:
             job.job_id = UUID(job_doc['id']).bytes
             for seed in job_doc['seeds']:
                 job.seeds.append(seed)
+            for tag in job_doc['tags']:
+                job.tag_list.tags.append(tag)
             self._policy_manager.convert_doc_to_pb(job_doc['policy'], job.policy)
             job.name = job_doc['name']
             job.item_count = job_doc['item_count']
@@ -286,8 +289,13 @@ class Server:
         ''' Return a list of jobs. '''
         limit = command.page.limit
         offset = command.page.offset
-        job_docs = await self._crawl_manager.list_jobs(limit, offset)
-        count = await self._crawl_manager.count_jobs()
+        if command.HasField('started_after'):
+            started_after = dateutil.parser.parse(command.started_after)
+        else:
+            started_after = None
+        tag = command.tag if command.HasField('tag') else None
+        count, job_docs = await self._crawl_manager.list_jobs(limit, offset,
+            started_after, tag)
 
         response = Response()
         response.list_jobs.total = count
@@ -298,6 +306,8 @@ class Server:
             job.name = job_doc['name']
             for seed in job_doc['seeds']:
                 job.seeds.append(seed)
+            for tag in job_doc['tags']:
+                job.tag_list.tags.append(tag)
             job.item_count = job_doc['item_count']
             job.http_success_count = job_doc['http_success_count']
             job.http_error_count = job_doc['http_error_count']
@@ -387,24 +397,6 @@ class Server:
 
         return response
 
-    async def _set_job_run_state(self, command, socket):
-        ''' Set a job's run state, i.e. paused, running, etc. '''
-
-        job_id = str(UUID(bytes=command.job_id))
-        run_state = command.run_state
-
-        if run_state == protobuf.shared_pb2.CANCELLED:
-            await self._crawl_manager.cancel_job(job_id)
-        elif run_state == protobuf.shared_pb2.PAUSED:
-            await self._crawl_manager.pause_job(job_id)
-        elif run_state == protobuf.shared_pb2.RUNNING:
-            await self._crawl_manager.resume_job(job_id)
-        else:
-            raise Exception('Not allowed to set job run state: {}'
-                .format(run_state))
-
-        return Response()
-
     async def _set_policy(self, command, socket):
         '''
         Create or update a single policy.
@@ -431,21 +423,54 @@ class Server:
 
         return Response()
 
-    async def _start_job(self, command, socket):
-        ''' Handle the start crawl command. '''
-        name = command.name
-        policy_id = str(UUID(bytes=command.policy_id))
-        seeds = command.seeds
+    async def _set_job(self, command, socket):
+        ''' Handle the "set job" command. '''
+        if command.HasField('tag_list'):
+            tags = [t.strip() for t in command.tag_list.tags]
+        else:
+            tags = None
 
-        if name.strip() == '':
-            url = urlparse(seeds[0])
-            name = url.hostname
-            if len(seeds) > 1:
-                name += '& {} more'.format(len(seeds) - 1)
+        if command.HasField('job_id'):
+            # Update state of existing job.
+            job_id = str(UUID(bytes=command.job_id))
+            name = command.name if command.HasField('name') else None
+            await self._crawl_manager.update_job(job_id, name, tags)
 
-        job_id = await self._crawl_manager.start_job(seeds, policy_id, name)
-        response = Response()
-        response.new_job.job_id = UUID(job_id).bytes
+            if command.HasField('run_state'):
+                run_state = command.run_state
+                if run_state == protobuf.shared_pb2.CANCELLED:
+                    await self._crawl_manager.cancel_job(job_id)
+                elif run_state == protobuf.shared_pb2.PAUSED:
+                    await self._crawl_manager.pause_job(job_id)
+                elif run_state == protobuf.shared_pb2.RUNNING:
+                    await self._crawl_manager.resume_job(job_id)
+                else:
+                    raise Exception('Not allowed to set job run state: {}'
+                        .format(run_state))
+
+            response = Response()
+        else:
+            # Create new job.
+            name = command.name
+            policy_id = str(UUID(bytes=command.policy_id))
+            seeds = command.seeds
+            tags = tags or []
+
+            if name.strip() == '':
+                url = urlparse(seeds[0])
+                name = url.hostname
+                if len(seeds) > 1:
+                    name += '& {} more'.format(len(seeds) - 1)
+
+            if command.run_state != protobuf.shared_pb2.RUNNING:
+                raise InvalidRequestException(
+                    'New job state must be set to RUNNING')
+
+            job_id = await self._crawl_manager.start_job(seeds, policy_id, name,
+                tags)
+            response = Response()
+            response.new_job.job_id = UUID(job_id).bytes
+
         return response
 
     async def _subscribe_crawl_sync(self, command, socket):

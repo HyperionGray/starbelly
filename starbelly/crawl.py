@@ -56,12 +56,6 @@ class CrawlManager:
             async with self._db_pool.connection() as conn:
                 await cancel_query.run(conn)
 
-    async def count_jobs(self):
-        ''' Return the number of jobs that exist. '''
-        async with self._db_pool.connection() as conn:
-            count = await r.table('job').count().run(conn)
-        return count
-
     async def delete_job(self, job_id):
         ''' Delete a job. '''
         job_query = r.table('job').get(job_id).pluck('run_state')
@@ -86,7 +80,11 @@ class CrawlManager:
     async def get_job(self, job_id):
         ''' Get data for the specified job. '''
         async with self._db_pool.connection() as conn:
-            job = await r.table('job').get(job_id).run(conn)
+            query = r.table('job').get(job_id).without('frontier_seen')
+            try:
+                job = await query.run(conn)
+            except rethinkdb.errors.ReqlNonExistenceError:
+                job = None
         return job
 
     async def get_job_items(self, job_id, include_success, include_error,
@@ -153,18 +151,30 @@ class CrawlManager:
 
         return stats
 
-    async def list_jobs(self, limit=10, offset=0):
+    async def list_jobs(self, limit, offset, started_after, tag):
         '''
         List up to `limit` jobs, starting at row number `offset`, ordered by
         start date.
         '''
+        query = r.table('job')
+
+        if started_after is not None:
+            query = query.between(started_after, r.maxval, index='started_at')
+
+        # Have to order_by() before filter().
+        query = query.order_by(index=r.desc('started_at'))
+
+        if tag is not None:
+            query = query.filter(r.row['tags'].contains(tag))
+
+        async with self._db_pool.connection() as conn:
+            count = await query.count().run(conn)
 
         query = (
-            r.table('job')
-             .order_by(index=r.desc('started_at'))
-             .without('frontier_seen')
-             .skip(offset)
-             .limit(limit)
+            query
+            .without('frontier_seen')
+            .skip(offset)
+            .limit(limit)
         )
 
         jobs = list()
@@ -175,7 +185,7 @@ class CrawlManager:
                 jobs.append(job)
             await cursor.close()
 
-        return jobs
+        return count, jobs
 
     async def pause_all_jobs(self):
         ''' Pause all currently running jobs. '''
@@ -204,9 +214,9 @@ class CrawlManager:
         self._running_jobs[job.id] = job
         job.stopped.add_done_callback(functools.partial(self._cleanup_job, job))
 
-    async def start_job(self, seeds, policy_id, name):
+    async def start_job(self, seeds, policy_id, name, tags):
         '''
-        Create a new job with a given seeds, policy, and name.
+        Create a new job with a given seeds, policy, name, and tags.
 
         Returns a job ID.
         '''
@@ -214,6 +224,7 @@ class CrawlManager:
         job_data = {
             'name': name,
             'seeds': seeds,
+            'tags': tags,
             'run_state': 'pending',
             'started_at': None,
             'completed_at': None,
@@ -291,6 +302,19 @@ class CrawlManager:
             logger.warning(
                 '%d jobs have been cancelled by the startup check.', count
             )
+
+    async def update_job(self, job_id, name, tags):
+        ''' Update job metadata. '''
+        update = dict()
+
+        if name is not None:
+            update['name'] = name
+        if tags is not None:
+            update['tags'] = tags
+
+        if len(update) > 0:
+            async with self._db_pool.connection() as conn:
+                await r.table('job').get(job_id).update(update).run(conn)
 
     def _cleanup_job(self, job, future):
         ''' Remove a job from _running_jobs when it completes. '''

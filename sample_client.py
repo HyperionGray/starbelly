@@ -13,10 +13,13 @@ import asyncio
 import binascii
 import gzip
 import logging
+import os
+import signal
 import ssl
 import sys
 import termios
 import textwrap
+import traceback
 import tty
 from uuid import UUID
 
@@ -33,6 +36,38 @@ import protobuf.server_pb2
 logging.basicConfig()
 logger = logging.getLogger('sample_client')
 DATE_FMT = '%Y-%m-%d %H:%I:%S'
+
+
+def async_excepthook(type_, exc, tb):
+    cause_exc = None
+    cause_str = None
+
+    if exc.__cause__ is not None:
+        cause_exc = exc.__cause__
+        cause_str = 'The above exception was the direct cause ' \
+                    'of the following exception:'
+    elif exc.__context__ is not None and not exc.__suppress_context__:
+        cause_exc = exc.__context__
+        cause_str = 'During handling of the above exception, ' \
+                    'another exception occurred:'
+
+    if cause_exc:
+        async_excepthook(type(cause_exc), cause_exc, cause_exc.__traceback__)
+
+    if cause_str:
+        print('\n{}\n'.format(cause_str))
+
+    print('Async Traceback (most recent call last):')
+    for frame in traceback.extract_tb(tb):
+        head, tail = os.path.split(frame.filename)
+        if (head.endswith('asyncio') or tail == 'traceback.py') and \
+            frame.name.startswith('_'):
+            print('  ...')
+            continue
+        print('  File "{}", line {}, in {}'
+            .format(frame.filename, frame.lineno, frame.name))
+        print('    {}'.format(frame.line))
+    print('{}: {}'.format(type_.__name__, exc))
 
 
 async def delete_job(args, socket):
@@ -81,6 +116,10 @@ def get_args():
     delete_parser = subparsers.add_parser('delete', help='Delete a crawl job.')
     delete_parser.add_argument('job_id', help='Job ID as hex string.')
     list_parser = subparsers.add_parser('list', help='List crawl jobs.')
+    list_parser.add_argument('--started-after', metavar='DATETIME',
+        help='Show jobs started after given datetime (ISO-8601).')
+    list_parser.add_argument('--tag',
+        help='Filter by tag.')
     profiler_parser = subparsers.add_parser('profile',
         help='Run CPU profiler.')
     profiler_parser.add_argument('--duration', type=float, default=3.0,
@@ -264,6 +303,15 @@ async def list_jobs(args, socket):
         request.request_id = 1
         request.list_jobs.page.limit = limit
         request.list_jobs.page.offset = offset
+        if args.started_after is not None:
+            try:
+                started_after = dateutil.parser.parse(args.started_after)
+            except:
+                logger.error('Invalid date "%s" (must be YYYY-MM-DDTHH:mm:ssZ)',
+                    args.started_after)
+            request.list_jobs.started_after = started_after.isoformat()
+        if args.tag is not None:
+            request.list_jobs.tag = args.tag
         request_data = request.SerializeToString()
         await socket.send(request_data)
 
@@ -279,8 +327,8 @@ async def list_jobs(args, socket):
                 job.started_at[:19],
                 job.item_count
             ))
-        start = offset + 1
         end = offset + len(response.list_jobs.jobs)
+        start = offset + 1 if end > 0 else 0
         total = response.list_jobs.total
         if end == total:
             print('Showing {}-{} of {}.'.format(start, end, total))
@@ -317,12 +365,15 @@ async def main():
 
     try:
         await actions[args.action](args, socket)
-    except websockets.exceptions.ConnectionClosed:
+    except websockets.exceptions.ConnectionClosed as cc:
         # Nothing we can do here except exit.
-        logger.error('Server unexpectedly closed the connection.')
-    except Exception:
-        if socket.open:
-            await socket.close()
+        logger.error('Connection unexpectedly closed: code=%s reason="%s"',
+            cc.code, cc.reason)
+    finally:
+        try:
+            await socket.close(4000, 'sample_client process is complete')
+        except:
+            pass
 
 
 async def profile(args, socket):
@@ -486,12 +537,12 @@ async def start_crawl(args, socket):
     ''' Start a new crawl. '''
     request = protobuf.client_pb2.Request()
     request.request_id = 1
-    request.start_job.policy_id = UUID(args.policy).bytes
+    request.set_job.run_state = protobuf.shared_pb2.RUNNING
+    request.set_job.policy_id = UUID(args.policy).bytes
     if args.name:
-        request.start_job.name = args.name
+        request.set_job.name = args.name
     for seed in args.seed:
-        request.start_job.seeds.append(seed)
-    logger.error('request=%r', request)
+        request.set_job.seeds.append(seed)
     request_data = request.SerializeToString()
     await socket.send(request_data)
 
@@ -556,7 +607,8 @@ async def sync_job(args, socket):
             sync_token = message.event.sync_item.token
             await asyncio.sleep(args.delay)
     except asyncio.CancelledError:
-        print('Interrupted! Cancelling subscription...')
+        print('Interrupted! Cancelling subscription...'
+             ' (this may take a few seconds)')
         request = protobuf.client_pb2.Request()
         request.request_id = 2
         request.unsubscribe.subscription_id = subscription_id
@@ -608,15 +660,9 @@ async def tasks(args, socket):
 
 
 if __name__ == '__main__':
+    sys.excepthook = async_excepthook
     loop = asyncio.get_event_loop()
     main_task = asyncio.ensure_future(main())
-    try:
-        loop.run_until_complete(main_task)
-    except KeyboardInterrupt:
-        g = asyncio.gather(main_task)
-        g.cancel()
-        try:
-            loop.run_until_complete(g)
-        except asyncio.CancelledError:
-            pass
+    signal.signal(signal.SIGINT, lambda sig, frame: main_task.cancel())
+    loop.run_until_complete(main_task)
     loop.close()

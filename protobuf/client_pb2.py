@@ -20,10 +20,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/client.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/client.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xf6\x08\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x31\n\ndelete_job\x18\x02 \x01(\x0b\x32\x1b.starbelly.RequestDeleteJobH\x00\x12\x37\n\rdelete_policy\x18\x03 \x01(\x0b\x32\x1e.starbelly.RequestDeletePolicyH\x00\x12+\n\x07get_job\x18\x04 \x01(\x0b\x32\x18.starbelly.RequestGetJobH\x00\x12\x36\n\rget_job_items\x18\x05 \x01(\x0b\x32\x1d.starbelly.RequestGetJobItemsH\x00\x12\x31\n\nget_policy\x18\x06 \x01(\x0b\x32\x1b.starbelly.RequestGetPolicyH\x00\x12:\n\x0fget_rate_limits\x18\x07 \x01(\x0b\x32\x1f.starbelly.RequestGetRateLimitsH\x00\x12/\n\tlist_jobs\x18\x08 \x01(\x0b\x32\x1a.starbelly.RequestListJobsH\x00\x12\x37\n\rlist_policies\x18\t \x01(\x0b\x32\x1e.starbelly.RequestListPoliciesH\x00\x12\x43\n\x13performance_profile\x18\n \x01(\x0b\x32$.starbelly.RequestPerformanceProfileH\x00\x12&\n\x04ping\x18\x0b \x01(\x0b\x32\x16.starbelly.RequestPingH\x00\x12=\n\x11set_job_run_state\x18\x0c \x01(\x0b\x32 .starbelly.RequestSetJobRunStateH\x00\x12\x31\n\nset_policy\x18\r \x01(\x0b\x32\x1b.starbelly.RequestSetPolicyH\x00\x12\x38\n\x0eset_rate_limit\x18\x0e \x01(\x0b\x32\x1e.starbelly.RequestSetRateLimitH\x00\x12/\n\tstart_job\x18\x0f \x01(\x0b\x32\x1a.starbelly.RequestStartJobH\x00\x12\x44\n\x14subscribe_job_status\x18\x10 \x01(\x0b\x32$.starbelly.RequestSubscribeJobStatusH\x00\x12@\n\x12subscribe_job_sync\x18\x11 \x01(\x0b\x32\".starbelly.RequestSubscribeJobSyncH\x00\x12P\n\x1asubscribe_resource_monitor\x18\x12 \x01(\x0b\x32*.starbelly.RequestSubscribeResourceMonitorH\x00\x12H\n\x16subscribe_task_monitor\x18\x13 \x01(\x0b\x32&.starbelly.RequestSubscribeTaskMonitorH\x00\x12\x34\n\x0bunsubscribe\x18\x14 \x01(\x0b\x32\x1d.starbelly.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"\"\n\x10RequestDeleteJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"(\n\x13RequestDeletePolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"\x1f\n\rRequestGetJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"\xac\x01\n\x12RequestGetJobItems\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x17\n\x0finclude_success\x18\x02 \x01(\x08\x12\x15\n\rinclude_error\x18\x03 \x01(\x08\x12\x19\n\x11include_exception\x18\x04 \x01(\x08\x12\x1c\n\x0e\x63ompression_ok\x18\x05 \x01(\x08:\x04true\x12\x1d\n\x04page\x18\x06 \x01(\x0b\x32\x0f.starbelly.Page\"%\n\x10RequestGetPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"5\n\x14RequestGetRateLimits\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"0\n\x0fRequestListJobs\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"4\n\x13RequestListPolicies\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"V\n\x19RequestPerformanceProfile\x12\x13\n\x08\x64uration\x18\x01 \x01(\x01:\x01\x35\x12\x15\n\x07sort_by\x18\x02 \x01(\t:\x04time\x12\r\n\x05top_n\x18\x03 \x01(\x05\"\x1b\n\x0bRequestPing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"R\n\x15RequestSetJobRunState\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12)\n\trun_state\x18\x02 \x02(\x0e\x32\x16.starbelly.JobRunState\"?\n\x13RequestSetRateLimit\x12(\n\nrate_limit\x18\x01 \x02(\x0b\x32\x14.starbelly.RateLimit\"5\n\x10RequestSetPolicy\x12!\n\x06policy\x18\x01 \x02(\x0b\x32\x11.starbelly.Policy\"A\n\x0fRequestStartJob\x12\r\n\x05seeds\x18\x01 \x03(\t\x12\x11\n\tpolicy_id\x18\x03 \x02(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"[\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\x12\x1c\n\x0e\x63ompression_ok\x18\x03 \x01(\x08:\x04true\"7\n\x1fRequestSubscribeResourceMonitor\x12\x14\n\x07history\x18\x01 \x01(\x05:\x03\x33\x30\x30\"C\n\x1bRequestSubscribeTaskMonitor\x12\x11\n\x06period\x18\x01 \x01(\x01:\x01\x33\x12\x11\n\x05top_n\x18\x02 \x01(\x05:\x02\x32\x30\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05')
+  serialized_pb=_b('\n\x15protobuf/client.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xb3\x08\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x31\n\ndelete_job\x18\x02 \x01(\x0b\x32\x1b.starbelly.RequestDeleteJobH\x00\x12\x37\n\rdelete_policy\x18\x03 \x01(\x0b\x32\x1e.starbelly.RequestDeletePolicyH\x00\x12+\n\x07get_job\x18\x04 \x01(\x0b\x32\x18.starbelly.RequestGetJobH\x00\x12\x36\n\rget_job_items\x18\x05 \x01(\x0b\x32\x1d.starbelly.RequestGetJobItemsH\x00\x12\x31\n\nget_policy\x18\x06 \x01(\x0b\x32\x1b.starbelly.RequestGetPolicyH\x00\x12:\n\x0fget_rate_limits\x18\x07 \x01(\x0b\x32\x1f.starbelly.RequestGetRateLimitsH\x00\x12/\n\tlist_jobs\x18\x08 \x01(\x0b\x32\x1a.starbelly.RequestListJobsH\x00\x12\x37\n\rlist_policies\x18\t \x01(\x0b\x32\x1e.starbelly.RequestListPoliciesH\x00\x12\x43\n\x13performance_profile\x18\n \x01(\x0b\x32$.starbelly.RequestPerformanceProfileH\x00\x12&\n\x04ping\x18\x0b \x01(\x0b\x32\x16.starbelly.RequestPingH\x00\x12+\n\x07set_job\x18\x0c \x01(\x0b\x32\x18.starbelly.RequestSetJobH\x00\x12\x31\n\nset_policy\x18\r \x01(\x0b\x32\x1b.starbelly.RequestSetPolicyH\x00\x12\x38\n\x0eset_rate_limit\x18\x0e \x01(\x0b\x32\x1e.starbelly.RequestSetRateLimitH\x00\x12\x44\n\x14subscribe_job_status\x18\x0f \x01(\x0b\x32$.starbelly.RequestSubscribeJobStatusH\x00\x12@\n\x12subscribe_job_sync\x18\x10 \x01(\x0b\x32\".starbelly.RequestSubscribeJobSyncH\x00\x12P\n\x1asubscribe_resource_monitor\x18\x11 \x01(\x0b\x32*.starbelly.RequestSubscribeResourceMonitorH\x00\x12H\n\x16subscribe_task_monitor\x18\x12 \x01(\x0b\x32&.starbelly.RequestSubscribeTaskMonitorH\x00\x12\x34\n\x0bunsubscribe\x18\x13 \x01(\x0b\x32\x1d.starbelly.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"\"\n\x10RequestDeleteJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"(\n\x13RequestDeletePolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"\x1f\n\rRequestGetJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"\xac\x01\n\x12RequestGetJobItems\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x17\n\x0finclude_success\x18\x02 \x01(\x08\x12\x15\n\rinclude_error\x18\x03 \x01(\x08\x12\x19\n\x11include_exception\x18\x04 \x01(\x08\x12\x1c\n\x0e\x63ompression_ok\x18\x05 \x01(\x08:\x04true\x12\x1d\n\x04page\x18\x06 \x01(\x0b\x32\x0f.starbelly.Page\"%\n\x10RequestGetPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"5\n\x14RequestGetRateLimits\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"T\n\x0fRequestListJobs\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\x12\x15\n\rstarted_after\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\"4\n\x13RequestListPolicies\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"V\n\x19RequestPerformanceProfile\x12\x13\n\x08\x64uration\x18\x01 \x01(\x01:\x01\x35\x12\x15\n\x07sort_by\x18\x02 \x01(\t:\x04time\x12\r\n\x05top_n\x18\x03 \x01(\x05\"\x1b\n\x0bRequestPing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"\xa0\x01\n\rRequestSetJob\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12)\n\trun_state\x18\x02 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x11\n\tpolicy_id\x18\x03 \x01(\x0c\x12\r\n\x05seeds\x18\x04 \x03(\t\x12\x0c\n\x04name\x18\x05 \x01(\t\x12$\n\x08tag_list\x18\x06 \x01(\x0b\x32\x12.starbelly.TagList\"?\n\x13RequestSetRateLimit\x12(\n\nrate_limit\x18\x01 \x02(\x0b\x32\x14.starbelly.RateLimit\"5\n\x10RequestSetPolicy\x12!\n\x06policy\x18\x01 \x02(\x0b\x32\x11.starbelly.Policy\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"[\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\x12\x1c\n\x0e\x63ompression_ok\x18\x03 \x01(\x08:\x04true\"7\n\x1fRequestSubscribeResourceMonitor\x12\x14\n\x07history\x18\x01 \x01(\x05:\x03\x33\x30\x30\"C\n\x1bRequestSubscribeTaskMonitor\x12\x11\n\x06period\x18\x01 \x01(\x01:\x01\x33\x12\x11\n\x05top_n\x18\x02 \x01(\x05:\x02\x32\x30\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05')
   ,
   dependencies=[protobuf_dot_shared__pb2.DESCRIPTOR,])
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -113,7 +112,7 @@ _REQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='set_job_run_state', full_name='starbelly.Request.set_job_run_state', index=11,
+      name='set_job', full_name='starbelly.Request.set_job', index=11,
       number=12, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -134,43 +133,36 @@ _REQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='start_job', full_name='starbelly.Request.start_job', index=14,
+      name='subscribe_job_status', full_name='starbelly.Request.subscribe_job_status', index=14,
       number=15, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_job_status', full_name='starbelly.Request.subscribe_job_status', index=15,
+      name='subscribe_job_sync', full_name='starbelly.Request.subscribe_job_sync', index=15,
       number=16, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_job_sync', full_name='starbelly.Request.subscribe_job_sync', index=16,
+      name='subscribe_resource_monitor', full_name='starbelly.Request.subscribe_resource_monitor', index=16,
       number=17, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_resource_monitor', full_name='starbelly.Request.subscribe_resource_monitor', index=17,
+      name='subscribe_task_monitor', full_name='starbelly.Request.subscribe_task_monitor', index=17,
       number=18, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_task_monitor', full_name='starbelly.Request.subscribe_task_monitor', index=18,
+      name='unsubscribe', full_name='starbelly.Request.unsubscribe', index=18,
       number=19, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='unsubscribe', full_name='starbelly.Request.unsubscribe', index=19,
-      number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -191,7 +183,7 @@ _REQUEST = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=60,
-  serialized_end=1202,
+  serialized_end=1135,
 )
 
 
@@ -221,8 +213,8 @@ _REQUESTDELETEJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1204,
-  serialized_end=1238,
+  serialized_start=1137,
+  serialized_end=1171,
 )
 
 
@@ -252,8 +244,8 @@ _REQUESTDELETEPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1240,
-  serialized_end=1280,
+  serialized_start=1173,
+  serialized_end=1213,
 )
 
 
@@ -283,8 +275,8 @@ _REQUESTGETJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1282,
-  serialized_end=1313,
+  serialized_start=1215,
+  serialized_end=1246,
 )
 
 
@@ -349,8 +341,8 @@ _REQUESTGETJOBITEMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1316,
-  serialized_end=1488,
+  serialized_start=1249,
+  serialized_end=1421,
 )
 
 
@@ -380,8 +372,8 @@ _REQUESTGETPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1490,
-  serialized_end=1527,
+  serialized_start=1423,
+  serialized_end=1460,
 )
 
 
@@ -411,8 +403,8 @@ _REQUESTGETRATELIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1529,
-  serialized_end=1582,
+  serialized_start=1462,
+  serialized_end=1515,
 )
 
 
@@ -430,6 +422,20 @@ _REQUESTLISTJOBS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='started_after', full_name='starbelly.RequestListJobs.started_after', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='tag', full_name='starbelly.RequestListJobs.tag', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -442,8 +448,8 @@ _REQUESTLISTJOBS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1584,
-  serialized_end=1632,
+  serialized_start=1517,
+  serialized_end=1601,
 )
 
 
@@ -473,8 +479,8 @@ _REQUESTLISTPOLICIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1634,
-  serialized_end=1686,
+  serialized_start=1603,
+  serialized_end=1655,
 )
 
 
@@ -518,8 +524,8 @@ _REQUESTPERFORMANCEPROFILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1688,
-  serialized_end=1774,
+  serialized_start=1657,
+  serialized_end=1743,
 )
 
 
@@ -549,29 +555,57 @@ _REQUESTPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1776,
-  serialized_end=1803,
+  serialized_start=1745,
+  serialized_end=1772,
 )
 
 
-_REQUESTSETJOBRUNSTATE = _descriptor.Descriptor(
-  name='RequestSetJobRunState',
-  full_name='starbelly.RequestSetJobRunState',
+_REQUESTSETJOB = _descriptor.Descriptor(
+  name='RequestSetJob',
+  full_name='starbelly.RequestSetJob',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='job_id', full_name='starbelly.RequestSetJobRunState.job_id', index=0,
-      number=1, type=12, cpp_type=9, label=2,
+      name='job_id', full_name='starbelly.RequestSetJob.job_id', index=0,
+      number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='run_state', full_name='starbelly.RequestSetJobRunState.run_state', index=1,
-      number=2, type=14, cpp_type=8, label=2,
+      name='run_state', full_name='starbelly.RequestSetJob.run_state', index=1,
+      number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=1,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='policy_id', full_name='starbelly.RequestSetJob.policy_id', index=2,
+      number=3, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='seeds', full_name='starbelly.RequestSetJob.seeds', index=3,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='starbelly.RequestSetJob.name', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='tag_list', full_name='starbelly.RequestSetJob.tag_list', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -587,8 +621,8 @@ _REQUESTSETJOBRUNSTATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1805,
-  serialized_end=1887,
+  serialized_start=1775,
+  serialized_end=1935,
 )
 
 
@@ -618,8 +652,8 @@ _REQUESTSETRATELIMIT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1889,
-  serialized_end=1952,
+  serialized_start=1937,
+  serialized_end=2000,
 )
 
 
@@ -649,53 +683,8 @@ _REQUESTSETPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1954,
-  serialized_end=2007,
-)
-
-
-_REQUESTSTARTJOB = _descriptor.Descriptor(
-  name='RequestStartJob',
-  full_name='starbelly.RequestStartJob',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='seeds', full_name='starbelly.RequestStartJob.seeds', index=0,
-      number=1, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='policy_id', full_name='starbelly.RequestStartJob.policy_id', index=1,
-      number=3, type=12, cpp_type=9, label=2,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='name', full_name='starbelly.RequestStartJob.name', index=2,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto2',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2009,
-  serialized_end=2074,
+  serialized_start=2002,
+  serialized_end=2055,
 )
 
 
@@ -725,8 +714,8 @@ _REQUESTSUBSCRIBEJOBSTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2076,
-  serialized_end=2128,
+  serialized_start=2057,
+  serialized_end=2109,
 )
 
 
@@ -770,8 +759,8 @@ _REQUESTSUBSCRIBEJOBSYNC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2130,
-  serialized_end=2221,
+  serialized_start=2111,
+  serialized_end=2202,
 )
 
 
@@ -801,8 +790,8 @@ _REQUESTSUBSCRIBERESOURCEMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2223,
-  serialized_end=2278,
+  serialized_start=2204,
+  serialized_end=2259,
 )
 
 
@@ -839,8 +828,8 @@ _REQUESTSUBSCRIBETASKMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2280,
-  serialized_end=2347,
+  serialized_start=2261,
+  serialized_end=2328,
 )
 
 
@@ -870,8 +859,8 @@ _REQUESTUNSUBSCRIBE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2349,
-  serialized_end=2394,
+  serialized_start=2330,
+  serialized_end=2375,
 )
 
 _REQUEST.fields_by_name['delete_job'].message_type = _REQUESTDELETEJOB
@@ -884,10 +873,9 @@ _REQUEST.fields_by_name['list_jobs'].message_type = _REQUESTLISTJOBS
 _REQUEST.fields_by_name['list_policies'].message_type = _REQUESTLISTPOLICIES
 _REQUEST.fields_by_name['performance_profile'].message_type = _REQUESTPERFORMANCEPROFILE
 _REQUEST.fields_by_name['ping'].message_type = _REQUESTPING
-_REQUEST.fields_by_name['set_job_run_state'].message_type = _REQUESTSETJOBRUNSTATE
+_REQUEST.fields_by_name['set_job'].message_type = _REQUESTSETJOB
 _REQUEST.fields_by_name['set_policy'].message_type = _REQUESTSETPOLICY
 _REQUEST.fields_by_name['set_rate_limit'].message_type = _REQUESTSETRATELIMIT
-_REQUEST.fields_by_name['start_job'].message_type = _REQUESTSTARTJOB
 _REQUEST.fields_by_name['subscribe_job_status'].message_type = _REQUESTSUBSCRIBEJOBSTATUS
 _REQUEST.fields_by_name['subscribe_job_sync'].message_type = _REQUESTSUBSCRIBEJOBSYNC
 _REQUEST.fields_by_name['subscribe_resource_monitor'].message_type = _REQUESTSUBSCRIBERESOURCEMONITOR
@@ -924,17 +912,14 @@ _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['ping'])
 _REQUEST.fields_by_name['ping'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
-  _REQUEST.fields_by_name['set_job_run_state'])
-_REQUEST.fields_by_name['set_job_run_state'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+  _REQUEST.fields_by_name['set_job'])
+_REQUEST.fields_by_name['set_job'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['set_policy'])
 _REQUEST.fields_by_name['set_policy'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['set_rate_limit'])
 _REQUEST.fields_by_name['set_rate_limit'].containing_oneof = _REQUEST.oneofs_by_name['Command']
-_REQUEST.oneofs_by_name['Command'].fields.append(
-  _REQUEST.fields_by_name['start_job'])
-_REQUEST.fields_by_name['start_job'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['subscribe_job_status'])
 _REQUEST.fields_by_name['subscribe_job_status'].containing_oneof = _REQUEST.oneofs_by_name['Command']
@@ -954,7 +939,8 @@ _REQUESTGETJOBITEMS.fields_by_name['page'].message_type = protobuf_dot_shared__p
 _REQUESTGETRATELIMITS.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
 _REQUESTLISTJOBS.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
 _REQUESTLISTPOLICIES.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
-_REQUESTSETJOBRUNSTATE.fields_by_name['run_state'].enum_type = protobuf_dot_shared__pb2._JOBRUNSTATE
+_REQUESTSETJOB.fields_by_name['run_state'].enum_type = protobuf_dot_shared__pb2._JOBRUNSTATE
+_REQUESTSETJOB.fields_by_name['tag_list'].message_type = protobuf_dot_shared__pb2._TAGLIST
 _REQUESTSETRATELIMIT.fields_by_name['rate_limit'].message_type = protobuf_dot_shared__pb2._RATELIMIT
 _REQUESTSETPOLICY.fields_by_name['policy'].message_type = protobuf_dot_shared__pb2._POLICY
 DESCRIPTOR.message_types_by_name['Request'] = _REQUEST
@@ -968,15 +954,15 @@ DESCRIPTOR.message_types_by_name['RequestListJobs'] = _REQUESTLISTJOBS
 DESCRIPTOR.message_types_by_name['RequestListPolicies'] = _REQUESTLISTPOLICIES
 DESCRIPTOR.message_types_by_name['RequestPerformanceProfile'] = _REQUESTPERFORMANCEPROFILE
 DESCRIPTOR.message_types_by_name['RequestPing'] = _REQUESTPING
-DESCRIPTOR.message_types_by_name['RequestSetJobRunState'] = _REQUESTSETJOBRUNSTATE
+DESCRIPTOR.message_types_by_name['RequestSetJob'] = _REQUESTSETJOB
 DESCRIPTOR.message_types_by_name['RequestSetRateLimit'] = _REQUESTSETRATELIMIT
 DESCRIPTOR.message_types_by_name['RequestSetPolicy'] = _REQUESTSETPOLICY
-DESCRIPTOR.message_types_by_name['RequestStartJob'] = _REQUESTSTARTJOB
 DESCRIPTOR.message_types_by_name['RequestSubscribeJobStatus'] = _REQUESTSUBSCRIBEJOBSTATUS
 DESCRIPTOR.message_types_by_name['RequestSubscribeJobSync'] = _REQUESTSUBSCRIBEJOBSYNC
 DESCRIPTOR.message_types_by_name['RequestSubscribeResourceMonitor'] = _REQUESTSUBSCRIBERESOURCEMONITOR
 DESCRIPTOR.message_types_by_name['RequestSubscribeTaskMonitor'] = _REQUESTSUBSCRIBETASKMONITOR
 DESCRIPTOR.message_types_by_name['RequestUnsubscribe'] = _REQUESTUNSUBSCRIBE
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Request = _reflection.GeneratedProtocolMessageType('Request', (_message.Message,), dict(
   DESCRIPTOR = _REQUEST,
@@ -1055,12 +1041,12 @@ RequestPing = _reflection.GeneratedProtocolMessageType('RequestPing', (_message.
   ))
 _sym_db.RegisterMessage(RequestPing)
 
-RequestSetJobRunState = _reflection.GeneratedProtocolMessageType('RequestSetJobRunState', (_message.Message,), dict(
-  DESCRIPTOR = _REQUESTSETJOBRUNSTATE,
+RequestSetJob = _reflection.GeneratedProtocolMessageType('RequestSetJob', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTSETJOB,
   __module__ = 'protobuf.client_pb2'
-  # @@protoc_insertion_point(class_scope:starbelly.RequestSetJobRunState)
+  # @@protoc_insertion_point(class_scope:starbelly.RequestSetJob)
   ))
-_sym_db.RegisterMessage(RequestSetJobRunState)
+_sym_db.RegisterMessage(RequestSetJob)
 
 RequestSetRateLimit = _reflection.GeneratedProtocolMessageType('RequestSetRateLimit', (_message.Message,), dict(
   DESCRIPTOR = _REQUESTSETRATELIMIT,
@@ -1075,13 +1061,6 @@ RequestSetPolicy = _reflection.GeneratedProtocolMessageType('RequestSetPolicy', 
   # @@protoc_insertion_point(class_scope:starbelly.RequestSetPolicy)
   ))
 _sym_db.RegisterMessage(RequestSetPolicy)
-
-RequestStartJob = _reflection.GeneratedProtocolMessageType('RequestStartJob', (_message.Message,), dict(
-  DESCRIPTOR = _REQUESTSTARTJOB,
-  __module__ = 'protobuf.client_pb2'
-  # @@protoc_insertion_point(class_scope:starbelly.RequestStartJob)
-  ))
-_sym_db.RegisterMessage(RequestStartJob)
 
 RequestSubscribeJobStatus = _reflection.GeneratedProtocolMessageType('RequestSubscribeJobStatus', (_message.Message,), dict(
   DESCRIPTOR = _REQUESTSUBSCRIBEJOBSTATUS,

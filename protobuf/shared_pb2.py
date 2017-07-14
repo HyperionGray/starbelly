@@ -20,9 +20,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/shared.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/shared.proto\x12\tstarbelly\"\xfc\x02\n\rCrawlResponse\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x0f\n\x07\x63harset\x18\x02 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x03 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x04 \x01(\t\x12\x0c\n\x04\x63ost\x18\x05 \x01(\x01\x12\x10\n\x08\x64uration\x18\x06 \x01(\x01\x12\x11\n\texception\x18\x07 \x01(\t\x12\x36\n\x07headers\x18\x08 \x03(\x0b\x32%.starbelly.CrawlResponse.HeadersEntry\x12\x1a\n\x12is_body_compressed\x18\t \x01(\x08\x12\x12\n\nis_success\x18\n \x01(\x08\x12\x0e\n\x06job_id\x18\x0b \x01(\x0c\x12\x12\n\nstarted_at\x18\x0c \x01(\t\x12\x13\n\x0bstatus_code\x18\r \x01(\x05\x12\x0b\n\x03url\x18\x0e \x01(\t\x12\x0f\n\x07url_can\x18\x0f \x01(\t\x1a.\n\x0cHeadersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x98\x03\n\x03Job\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\r\n\x05seeds\x18\x02 \x03(\t\x12!\n\x06policy\x18\x03 \x01(\x0b\x32\x11.starbelly.Policy\x12\x0c\n\x04name\x18\x04 \x01(\t\x12)\n\trun_state\x18\x05 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x12\n\nstarted_at\x18\x06 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x07 \x01(\t\x12\x16\n\nitem_count\x18\x08 \x01(\x05:\x02-1\x12\x1e\n\x12http_success_count\x18\t \x01(\x05:\x02-1\x12\x1c\n\x10http_error_count\x18\n \x01(\x05:\x02-1\x12\x1b\n\x0f\x65xception_count\x18\x0b \x01(\x05:\x02-1\x12@\n\x12http_status_counts\x18\x0c \x03(\x0b\x32$.starbelly.Job.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\'\n\x07JobList\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\")\n\x04Page\x12\x11\n\x05limit\x18\x01 \x01(\x05:\x02\x31\x30\x12\x0e\n\x06offset\x18\x02 \x01(\x05\"\xf1\x02\n\x06Policy\x12\x11\n\tpolicy_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12\'\n\x06limits\x18\x05 \x01(\x0b\x32\x17.starbelly.PolicyLimits\x12/\n\x0bproxy_rules\x18\x06 \x03(\x0b\x32\x1a.starbelly.PolicyProxyRule\x12\x36\n\x0fmime_type_rules\x18\x07 \x03(\x0b\x32\x1d.starbelly.PolicyMimeTypeRule\x12.\n\nrobots_txt\x18\x08 \x01(\x0b\x32\x1a.starbelly.PolicyRobotsTxt\x12+\n\turl_rules\x18\t \x03(\x0b\x32\x18.starbelly.PolicyUrlRule\x12/\n\x0buser_agents\x18\n \x03(\x0b\x32\x1a.starbelly.PolicyUserAgent\"I\n\x0cPolicyLimits\x12\x10\n\x08max_cost\x18\x01 \x01(\x01\x12\x14\n\x0cmax_duration\x18\x02 \x01(\x01\x12\x11\n\tmax_items\x18\x03 \x01(\x05\"[\n\x12PolicyMimeTypeRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x0c\n\x04save\x18\x03 \x01(\x08\"]\n\x0fPolicyProxyRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x11\n\tproxy_url\x18\x03 \x02(\t\"m\n\x0fPolicyRobotsTxt\x12/\n\x05usage\x18\x01 \x02(\x0e\x32 .starbelly.PolicyRobotsTxt.Usage\")\n\x05Usage\x12\x08\n\x04OBEY\x10\x01\x12\n\n\x06INVERT\x10\x02\x12\n\n\x06IGNORE\x10\x03\"\xaa\x01\n\rPolicyUrlRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12/\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32\x1f.starbelly.PolicyUrlRule.Action\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\"\x1f\n\x06\x41\x63tion\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08MULTIPLY\x10\x02\"\x1f\n\x0fPolicyUserAgent\x12\x0c\n\x04name\x18\x01 \x02(\t\"8\n\tRateLimit\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x64\x65lay\x18\x02 \x01(\x02\x12\x0e\n\x06\x64omain\x18\x03 \x01(\t*^\n\x0bJobRunState\x12\r\n\tCANCELLED\x10\x01\x12\r\n\tCOMPLETED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\x0b\n\x07PENDING\x10\x04\x12\x0b\n\x07RUNNING\x10\x05\x12\x0b\n\x07\x44\x45LETED\x10\x06*/\n\x0cPatternMatch\x12\x0b\n\x07MATCHES\x10\x01\x12\x12\n\x0e\x44OES_NOT_MATCH\x10\x02')
+  serialized_pb=_b('\n\x15protobuf/shared.proto\x12\tstarbelly\"\xfc\x02\n\rCrawlResponse\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x0f\n\x07\x63harset\x18\x02 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x03 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x04 \x01(\t\x12\x0c\n\x04\x63ost\x18\x05 \x01(\x01\x12\x10\n\x08\x64uration\x18\x06 \x01(\x01\x12\x11\n\texception\x18\x07 \x01(\t\x12\x36\n\x07headers\x18\x08 \x03(\x0b\x32%.starbelly.CrawlResponse.HeadersEntry\x12\x1a\n\x12is_body_compressed\x18\t \x01(\x08\x12\x12\n\nis_success\x18\n \x01(\x08\x12\x0e\n\x06job_id\x18\x0b \x01(\x0c\x12\x12\n\nstarted_at\x18\x0c \x01(\t\x12\x13\n\x0bstatus_code\x18\r \x01(\x05\x12\x0b\n\x03url\x18\x0e \x01(\t\x12\x0f\n\x07url_can\x18\x0f \x01(\t\x1a.\n\x0cHeadersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xbe\x03\n\x03Job\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\r\n\x05seeds\x18\x02 \x03(\t\x12!\n\x06policy\x18\x03 \x01(\x0b\x32\x11.starbelly.Policy\x12\x0c\n\x04name\x18\x04 \x01(\t\x12$\n\x08tag_list\x18\x05 \x01(\x0b\x32\x12.starbelly.TagList\x12)\n\trun_state\x18\x06 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x12\n\nstarted_at\x18\x07 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x08 \x01(\t\x12\x16\n\nitem_count\x18\t \x01(\x05:\x02-1\x12\x1e\n\x12http_success_count\x18\n \x01(\x05:\x02-1\x12\x1c\n\x10http_error_count\x18\x0b \x01(\x05:\x02-1\x12\x1b\n\x0f\x65xception_count\x18\x0c \x01(\x05:\x02-1\x12@\n\x12http_status_counts\x18\r \x03(\x0b\x32$.starbelly.Job.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\'\n\x07JobList\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\")\n\x04Page\x12\x11\n\x05limit\x18\x01 \x01(\x05:\x02\x31\x30\x12\x0e\n\x06offset\x18\x02 \x01(\x05\"\xf1\x02\n\x06Policy\x12\x11\n\tpolicy_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12\'\n\x06limits\x18\x05 \x01(\x0b\x32\x17.starbelly.PolicyLimits\x12/\n\x0bproxy_rules\x18\x06 \x03(\x0b\x32\x1a.starbelly.PolicyProxyRule\x12\x36\n\x0fmime_type_rules\x18\x07 \x03(\x0b\x32\x1d.starbelly.PolicyMimeTypeRule\x12.\n\nrobots_txt\x18\x08 \x01(\x0b\x32\x1a.starbelly.PolicyRobotsTxt\x12+\n\turl_rules\x18\t \x03(\x0b\x32\x18.starbelly.PolicyUrlRule\x12/\n\x0buser_agents\x18\n \x03(\x0b\x32\x1a.starbelly.PolicyUserAgent\"I\n\x0cPolicyLimits\x12\x10\n\x08max_cost\x18\x01 \x01(\x01\x12\x14\n\x0cmax_duration\x18\x02 \x01(\x01\x12\x11\n\tmax_items\x18\x03 \x01(\x05\"[\n\x12PolicyMimeTypeRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x0c\n\x04save\x18\x03 \x01(\x08\"]\n\x0fPolicyProxyRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x11\n\tproxy_url\x18\x03 \x02(\t\"m\n\x0fPolicyRobotsTxt\x12/\n\x05usage\x18\x01 \x02(\x0e\x32 .starbelly.PolicyRobotsTxt.Usage\")\n\x05Usage\x12\x08\n\x04OBEY\x10\x01\x12\n\n\x06INVERT\x10\x02\x12\n\n\x06IGNORE\x10\x03\"\xaa\x01\n\rPolicyUrlRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12/\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32\x1f.starbelly.PolicyUrlRule.Action\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\"\x1f\n\x06\x41\x63tion\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08MULTIPLY\x10\x02\"\x1f\n\x0fPolicyUserAgent\x12\x0c\n\x04name\x18\x01 \x02(\t\"8\n\tRateLimit\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x64\x65lay\x18\x02 \x01(\x02\x12\x0e\n\x06\x64omain\x18\x03 \x01(\t\"\x17\n\x07TagList\x12\x0c\n\x04tags\x18\x01 \x03(\t*^\n\x0bJobRunState\x12\r\n\tCANCELLED\x10\x01\x12\r\n\tCOMPLETED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\x0b\n\x07PENDING\x10\x04\x12\x0b\n\x07RUNNING\x10\x05\x12\x0b\n\x07\x44\x45LETED\x10\x06*/\n\x0cPatternMatch\x12\x0b\n\x07MATCHES\x10\x01\x12\x12\n\x0e\x44OES_NOT_MATCH\x10\x02')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 _JOBRUNSTATE = _descriptor.EnumDescriptor(
   name='JobRunState',
@@ -57,8 +56,8 @@ _JOBRUNSTATE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1924,
-  serialized_end=2018,
+  serialized_start=1987,
+  serialized_end=2081,
 )
 _sym_db.RegisterEnumDescriptor(_JOBRUNSTATE)
 
@@ -80,8 +79,8 @@ _PATTERNMATCH = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2020,
-  serialized_end=2067,
+  serialized_start=2083,
+  serialized_end=2130,
 )
 _sym_db.RegisterEnumDescriptor(_PATTERNMATCH)
 
@@ -117,8 +116,8 @@ _POLICYROBOTSTXT_USAGE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1617,
-  serialized_end=1658,
+  serialized_start=1655,
+  serialized_end=1696,
 )
 _sym_db.RegisterEnumDescriptor(_POLICYROBOTSTXT_USAGE)
 
@@ -139,8 +138,8 @@ _POLICYURLRULE_ACTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1800,
-  serialized_end=1831,
+  serialized_start=1838,
+  serialized_end=1869,
 )
 _sym_db.RegisterEnumDescriptor(_POLICYURLRULE_ACTION)
 
@@ -344,8 +343,8 @@ _JOB_HTTPSTATUSCOUNTSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=773,
-  serialized_end=828,
+  serialized_start=811,
+  serialized_end=866,
 )
 
 _JOB = _descriptor.Descriptor(
@@ -384,57 +383,64 @@ _JOB = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='run_state', full_name='starbelly.Job.run_state', index=4,
-      number=5, type=14, cpp_type=8, label=1,
+      name='tag_list', full_name='starbelly.Job.tag_list', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='run_state', full_name='starbelly.Job.run_state', index=5,
+      number=6, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='started_at', full_name='starbelly.Job.started_at', index=5,
-      number=6, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='completed_at', full_name='starbelly.Job.completed_at', index=6,
+      name='started_at', full_name='starbelly.Job.started_at', index=6,
       number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='item_count', full_name='starbelly.Job.item_count', index=7,
-      number=8, type=5, cpp_type=1, label=1,
-      has_default_value=True, default_value=-1,
+      name='completed_at', full_name='starbelly.Job.completed_at', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='http_success_count', full_name='starbelly.Job.http_success_count', index=8,
+      name='item_count', full_name='starbelly.Job.item_count', index=8,
       number=9, type=5, cpp_type=1, label=1,
       has_default_value=True, default_value=-1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='http_error_count', full_name='starbelly.Job.http_error_count', index=9,
+      name='http_success_count', full_name='starbelly.Job.http_success_count', index=9,
       number=10, type=5, cpp_type=1, label=1,
       has_default_value=True, default_value=-1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='exception_count', full_name='starbelly.Job.exception_count', index=10,
+      name='http_error_count', full_name='starbelly.Job.http_error_count', index=10,
       number=11, type=5, cpp_type=1, label=1,
       has_default_value=True, default_value=-1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='http_status_counts', full_name='starbelly.Job.http_status_counts', index=11,
-      number=12, type=11, cpp_type=10, label=3,
+      name='exception_count', full_name='starbelly.Job.exception_count', index=11,
+      number=12, type=5, cpp_type=1, label=1,
+      has_default_value=True, default_value=-1,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='http_status_counts', full_name='starbelly.Job.http_status_counts', index=12,
+      number=13, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -452,7 +458,7 @@ _JOB = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=420,
-  serialized_end=828,
+  serialized_end=866,
 )
 
 
@@ -482,8 +488,8 @@ _JOBLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=830,
-  serialized_end=869,
+  serialized_start=868,
+  serialized_end=907,
 )
 
 
@@ -520,8 +526,8 @@ _PAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=871,
-  serialized_end=912,
+  serialized_start=909,
+  serialized_end=950,
 )
 
 
@@ -614,8 +620,8 @@ _POLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=915,
-  serialized_end=1284,
+  serialized_start=953,
+  serialized_end=1322,
 )
 
 
@@ -659,8 +665,8 @@ _POLICYLIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1286,
-  serialized_end=1359,
+  serialized_start=1324,
+  serialized_end=1397,
 )
 
 
@@ -704,8 +710,8 @@ _POLICYMIMETYPERULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1361,
-  serialized_end=1452,
+  serialized_start=1399,
+  serialized_end=1490,
 )
 
 
@@ -749,8 +755,8 @@ _POLICYPROXYRULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1454,
-  serialized_end=1547,
+  serialized_start=1492,
+  serialized_end=1585,
 )
 
 
@@ -781,8 +787,8 @@ _POLICYROBOTSTXT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1549,
-  serialized_end=1658,
+  serialized_start=1587,
+  serialized_end=1696,
 )
 
 
@@ -834,8 +840,8 @@ _POLICYURLRULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1661,
-  serialized_end=1831,
+  serialized_start=1699,
+  serialized_end=1869,
 )
 
 
@@ -865,8 +871,8 @@ _POLICYUSERAGENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1833,
-  serialized_end=1864,
+  serialized_start=1871,
+  serialized_end=1902,
 )
 
 
@@ -910,14 +916,46 @@ _RATELIMIT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1866,
-  serialized_end=1922,
+  serialized_start=1904,
+  serialized_end=1960,
+)
+
+
+_TAGLIST = _descriptor.Descriptor(
+  name='TagList',
+  full_name='starbelly.TagList',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='tags', full_name='starbelly.TagList.tags', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1962,
+  serialized_end=1985,
 )
 
 _CRAWLRESPONSE_HEADERSENTRY.containing_type = _CRAWLRESPONSE
 _CRAWLRESPONSE.fields_by_name['headers'].message_type = _CRAWLRESPONSE_HEADERSENTRY
 _JOB_HTTPSTATUSCOUNTSENTRY.containing_type = _JOB
 _JOB.fields_by_name['policy'].message_type = _POLICY
+_JOB.fields_by_name['tag_list'].message_type = _TAGLIST
 _JOB.fields_by_name['run_state'].enum_type = _JOBRUNSTATE
 _JOB.fields_by_name['http_status_counts'].message_type = _JOB_HTTPSTATUSCOUNTSENTRY
 _JOBLIST.fields_by_name['jobs'].message_type = _JOB
@@ -946,8 +984,10 @@ DESCRIPTOR.message_types_by_name['PolicyRobotsTxt'] = _POLICYROBOTSTXT
 DESCRIPTOR.message_types_by_name['PolicyUrlRule'] = _POLICYURLRULE
 DESCRIPTOR.message_types_by_name['PolicyUserAgent'] = _POLICYUSERAGENT
 DESCRIPTOR.message_types_by_name['RateLimit'] = _RATELIMIT
+DESCRIPTOR.message_types_by_name['TagList'] = _TAGLIST
 DESCRIPTOR.enum_types_by_name['JobRunState'] = _JOBRUNSTATE
 DESCRIPTOR.enum_types_by_name['PatternMatch'] = _PATTERNMATCH
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 CrawlResponse = _reflection.GeneratedProtocolMessageType('CrawlResponse', (_message.Message,), dict(
 
@@ -1048,6 +1088,13 @@ RateLimit = _reflection.GeneratedProtocolMessageType('RateLimit', (_message.Mess
   # @@protoc_insertion_point(class_scope:starbelly.RateLimit)
   ))
 _sym_db.RegisterMessage(RateLimit)
+
+TagList = _reflection.GeneratedProtocolMessageType('TagList', (_message.Message,), dict(
+  DESCRIPTOR = _TAGLIST,
+  __module__ = 'protobuf.shared_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.TagList)
+  ))
+_sym_db.RegisterMessage(TagList)
 
 
 _CRAWLRESPONSE_HEADERSENTRY.has_options = True
