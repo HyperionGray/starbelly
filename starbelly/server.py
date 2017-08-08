@@ -237,18 +237,18 @@ class Server:
             else:
                 item.body = item_doc['join']['body']
                 item.is_body_compressed = item_doc['join']['is_compressed']
-            if item_doc.get('charset') is not None:
-                item.charset = item_doc['charset']
             if 'content_type' in item_doc:
                 item.content_type = item_doc['content_type']
             if 'exception' in item_doc:
                 item.exception = item_doc['exception']
             if 'status_code' in item_doc:
                 item.status_code = item_doc['status_code']
-            for key, value in item_doc.get('headers', {}).items():
-                if value is None:
-                    value = ''
-                item.headers[key] = value
+            header_iter = iter(item_doc.get('headers', []))
+            for key in header_iter:
+                value = next(header_iter)
+                header = item.headers.add()
+                header.key = key
+                header.value = value
             item.cost = item_doc['cost']
             item.job_id = UUID(item_doc['job_id']).bytes
             item.completed_at = item_doc['completed_at'].isoformat()

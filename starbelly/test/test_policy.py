@@ -115,6 +115,56 @@ class TestPolicyMimeTypeRules(unittest.TestCase):
             ])
 
 
+class TestPolicyProxyRules(unittest.TestCase):
+    def test_never_proxy(self):
+        ''' Never use a proxy. '''
+        proxy_rules = PolicyProxyRules([
+            {},
+        ])
+        self.assertEqual(
+            (None, None),
+            proxy_rules.get_proxy_url('https://foo.com/index.html')
+        )
+
+    def test_last_rule(self):
+        ''' Last rule may not contain match or pattern. '''
+        with self.assertRaises(PolicyValidationError):
+            proxy_rules = PolicyProxyRules([
+                {'match': 'MATCHES'},
+            ])
+        with self.assertRaises(PolicyValidationError):
+            proxy_rules = PolicyProxyRules([
+                {'pattern': '[a-z]+'},
+            ])
+
+    def test_always_proxy(self):
+        ''' Always use a proxy. '''
+        proxy_rules = PolicyProxyRules([
+            {'proxy_url': 'socks5://squid:3128'},
+        ])
+        self.assertEqual(
+            ('socks5', 'socks5://squid:3128'),
+            proxy_rules.get_proxy_url('https://foo.com/index.html')
+        )
+
+    def test_conditional_proxy(self):
+        ''' Use a proxy for certain hosts. '''
+        proxy_rules = PolicyProxyRules([
+            {'match': 'MATCHES',
+             'pattern': '\.onion',
+             'proxy_url': 'socks5://tor:9050'},
+            {}
+        ])
+        self.assertEqual(
+            ('socks5', 'socks5://tor:9050'),
+            proxy_rules.get_proxy_url('https://foo.onion/index.html')
+        )
+        self.assertEqual(
+            (None, None),
+            proxy_rules.get_proxy_url('https://foo.com/index.html')
+        )
+
+
 class TestPolicyRobotsTxt(unittest.TestCase):
     # PolicyRobotsTxt.is_allowed() is async, so I don't know how to write
     # tests for it. This is just a placeholder test to fill in later.

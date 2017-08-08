@@ -162,17 +162,7 @@ class Downloader:
                     if not policy.mime_type_rules.should_save(mime):
                         raise MimeNotAllowedError()
                     body = await http_response.read()
-                    if http_response.charset is not None:
-                        charset = http_response.charset
-                    else:
-                        loop = asyncio.get_event_loop()
-                        detected = await loop.run_in_executor(
-                            None,
-                            chardet.detect,
-                            body
-                        )
-                        charset = detected['encoding']
-                    dl_response.set_response(http_response, body, charset)
+                    dl_response.set_response(http_response, body)
             logger.info('%d %s (cost=%0.2f)', dl_response.status_code,
                 dl_response.url, dl_response.cost)
         except asyncio.CancelledError:
@@ -217,7 +207,6 @@ class DownloadResponse:
     def __init__(self, download_request):
         ''' Construct a result from a ``DownloadRequest`` object. '''
         self.body = None
-        self.charset = None
         self.completed_at = None
         self.content_type = None
         self.cost = download_request.cost
@@ -236,12 +225,11 @@ class DownloadResponse:
         self.duration = self.completed_at - self.started_at
         self.exception = exception
 
-    def set_response(self, http_response, body, charset):
+    def set_response(self, http_response, body):
         ''' Update state from HTTP response. '''
         self.completed_at = datetime.now(tzlocal())
         self.duration = self.completed_at - self.started_at
         self.status_code = http_response.status
         self.headers = http_response.headers
         self.content_type = http_response.content_type
-        self.charset = charset
         self.body = body

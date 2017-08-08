@@ -750,13 +750,17 @@ class _CrawlJob:
         }
 
         if response.exception is None:
-            response_doc['charset'] = response.charset
             response_doc['completed_at'] = response.completed_at
             response_doc['content_type'] = response.content_type
-            response_doc['headers'] = response.headers
             response_doc['is_success'] = response.status_code // 100 == 2
             response_doc['status_code'] = response.status_code
             compress_body = self._should_compress_body(response)
+
+            headers = list()
+            for key, value in response.headers.items():
+                headers.append(key.upper())
+                headers.append(value)
+            response_doc['headers'] = headers
 
             if compress_body:
                 body = gzip.compress(response.body, compresslevel=6)

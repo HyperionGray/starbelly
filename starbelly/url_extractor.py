@@ -1,11 +1,14 @@
 import logging
 from urllib.parse import urljoin, urlparse
 
-from bs4 import BeautifulSoup
+import cchardet
+import lxml.html
 import mimeparse
+import w3lib.encoding
 
 
 logger = logging.getLogger(__name__)
+chardet = lambda s: cchardet.detect(s).get('encoding')
 
 
 def extract_urls(extract_item):
@@ -21,8 +24,7 @@ def extract_urls(extract_item):
         extract_item.content_type)
 
     if type_ == 'text' and subtype == 'html':
-        charset = parameters.get('charset', 'utf8')
-        extracted_urls = _extract_html(base_url, charset, extract_item.body)
+        extracted_urls = _extract_html(extract_item)
     else:
         logging.error('Unsupported MIME in extract_urls(): %s/%s (params=%r)'
                       ' (url=%s)',
@@ -32,14 +34,22 @@ def extract_urls(extract_item):
     return extracted_urls
 
 
-def _extract_html(base_url, charset, body):
+def _extract_html(extract_item):
     ''' Extract links from HTML document <a> tags. '''
-    doc = BeautifulSoup(body, 'lxml')
+
+    encoding, html = w3lib.encoding.html_to_unicode(
+        extract_item.content_type,
+        extract_item.body,
+        auto_detect_fun=chardet
+    )
+
+    base_url = extract_item.url
+    doc = lxml.html.document_fromstring(html)
     extracted_urls = list()
 
-    for anchor in doc.find_all('a', href=True):
+    for anchor in doc.xpath('//a'):
         try:
-            absolute_url = urljoin(base_url, anchor['href'],
+            absolute_url = urljoin(base_url, anchor.get('href'),
                 allow_fragments=False)
             parsed = urlparse(absolute_url)
             # Reject URLs with invalid character encoding.

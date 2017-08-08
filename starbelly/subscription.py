@@ -291,7 +291,7 @@ class CrawlSyncSubscription(BaseSubscription):
         ''' Send a subscription end event. '''
         message = ServerMessage()
         message.event.subscription_id = self._id
-        message.event.subscription_closed.reason = SubscriptionClosed.END
+        message.event.subscription_closed.reason = SubscriptionClosed.COMPLETE
         await self._socket.send(message.SerializeToString())
 
     async def _send_item(self, item_doc):
@@ -320,12 +320,13 @@ class CrawlSyncSubscription(BaseSubscription):
                 is_body_compressed = item_doc['join']['is_compressed']
             item.body = body
             item.is_body_compressed = is_body_compressed
-            item.charset = item_doc['charset']
             item.content_type = item_doc['content_type']
-            for key, value in item_doc['headers'].items():
-                if value is None:
-                    value = ''
-                item.headers[key] = value
+            header_iter = iter(item_doc.get('headers', []))
+            for key in header_iter:
+                value = next(header_iter)
+                header = item.headers.add()
+                header.key = key
+                header.value = value
             item.status_code = item_doc['status_code']
 
         message.event.sync_item.token = self._get_sync_token()

@@ -333,37 +333,61 @@ class PolicyProxyRules:
         # Rules are stored as list of tuples: (pattern, match, proxy_type,
         # proxy_url)
         self._rules = list()
+        max_index = len(docs) - 1
         match_enum = protobuf.shared_pb2.PatternMatch
 
         for index, proxy_rule in enumerate(docs):
-            location = 'Proxy rule #{}'.format(index+1)
-            if proxy_rule.get('pattern', '').strip() == '':
-                _invalid('Pattern is required', location)
-            if 'match' not in proxy_rule:
-                _invalid('Match selector is required', location)
-            if proxy_rule.get('proxy_url', '').strip() == '':
-                _invalid('Proxy URL', location)
+            if index < max_index:
+                location = 'proxy rule #{}'.format(index+1)
 
-            try:
-                pattern_re = re.compile(proxy_rule['pattern'])
-            except:
-                _invalid('Invalid regular expression', location)
+                if proxy_rule.get('pattern', '').strip() == '':
+                    _invalid('Pattern is required', location)
+                try:
+                    pattern_re = re.compile(proxy_rule['pattern'])
+                except:
+                    _invalid('Invalid regular expression', location)
 
-            try:
-                parsed = urlparse(proxy_rule['proxy_url'])
-                proxy_type = parsed.scheme
-                if proxy_type not in self.PROXY_SCHEMES:
-                    raise ValueError()
-            except:
-                schemes = ', '.join(self.PROXY_SCHEMES)
-                _invalid('Must have a valid URL with one of the '
-                         f'following schemes: {schemes}', location)
+                try:
+                    match = (proxy_rule['match'] == 'MATCHES')
+                except KeyError:
+                    _invalid('Match selector is required', location)
+
+                proxy_url = proxy_rule.get('proxy_url', '')
+                if proxy_url == '':
+                    _invalid('Proxy URL is required', location)
+            else:
+                location = 'last proxy rule'
+
+                if 'pattern' in proxy_rule:
+                    _invalid('Pattern is not allowed', location)
+                if 'match' in proxy_rule:
+                    _invalid('Pattern is not allowed', location)
+                    
+                pattern_re = None
+                match = None
+                proxy_type = None
+                proxy_url = proxy_rule.get('proxy_url')
+
+            if proxy_url is None:
+                proxy_type = None
+            else:
+                proxy_url = proxy_url.strip()
+                try:
+                    parsed = urlparse(proxy_url)
+                    proxy_type = parsed.scheme
+                    if proxy_type not in self.PROXY_SCHEMES:
+                        raise ValueError()
+                except:
+                    schemes = ', '.join(self.PROXY_SCHEMES)
+                    _invalid('Must have a valid URL with one of the '
+                             f'following schemes: {schemes}', location)
+
 
             self._rules.append((
                 pattern_re,
-                proxy_rule['match'] == 'MATCHES',
+                match,
                 proxy_type,
-                proxy_rule['proxy_url'],
+                proxy_url,
             ))
 
     def get_proxy_url(self, target_url):
@@ -374,9 +398,14 @@ class PolicyProxyRules:
         proxy = None, None
 
         for pattern, needs_match, proxy_type, proxy_url in self._rules:
-            has_match = pattern.search(target_url) is not None
-            if has_match == needs_match:
+            if pattern is not None:
+                has_match = pattern.search(target_url) is not None
+                if has_match == needs_match:
+                    proxy = proxy_type, proxy_url
+                    break
+            elif proxy_url is not None:
                 proxy = proxy_type, proxy_url
+                break
 
         return proxy
 

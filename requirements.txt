@@ -2,10 +2,10 @@ aiodns
 aiohttp
 aiosocks
 async_timeout
-beautifulsoup4
 cchardet
 humanize
 lxml
+multidict
 nose
 protobuf
 psutil

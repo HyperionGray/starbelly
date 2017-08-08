@@ -526,6 +526,8 @@ async def show_job(args, socket):
                     item.status_code, item.cost, item.content_type))
                 print('Started: {}\nCompleted: {}\nDuration: {}s '.format(
                     started_at, completed_at, item.duration))
+                for header in item.headers:
+                    print('{}: {}'.format(header.key, header.value))
                 if body is not None:
                     print('Body: {}'.format(repr(body)))
                 if item.HasField('exception'):
