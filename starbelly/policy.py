@@ -38,6 +38,8 @@ class PolicyManager:
         policy_pb.name = policy_doc['name']
         policy_pb.created_at = policy_doc['created_at'].isoformat()
         policy_pb.updated_at = policy_doc['updated_at'].isoformat()
+        policy_pb.authentication.enabled = \
+            policy_doc['authentication']['enabled']
         if policy_doc['limits'].get('max_cost') is not None:
             policy_pb.limits.max_cost = policy_doc['limits']['max_cost']
         if policy_doc['limits'].get('max_duration') is not None:
@@ -86,6 +88,7 @@ class PolicyManager:
         usage_enum = protobuf.shared_pb2.PolicyRobotsTxt.Usage
         policy_doc = {
             'name': policy_pb.name,
+            'authentication': dict(),
             'limits': dict(),
             'mime_type_rules': list(),
             'proxy_rules': list(),
@@ -95,6 +98,9 @@ class PolicyManager:
         }
         if policy_pb.HasField('policy_id'):
             policy_doc['id'] = str(UUID(bytes=policy_pb.policy_id))
+        if policy_pb.HasField('authentication'):
+            policy_doc['authentication']['enabled'] = \
+                policy_pb.authentication.enabled
         if policy_pb.HasField('limits'):
             limits = policy_pb.limits
             policy_doc['limits']['max_cost'] = limits.max_cost if \
@@ -142,6 +148,7 @@ class PolicyManager:
             if user_agent.HasField('name'):
                new_doc['name'] = user_agent.name
             policy_doc['user_agents'].append(new_doc)
+        logger.error('policy_doc=%r', policy_doc)
         return policy_doc
 
     async def delete_policy(self, policy_id):
@@ -219,6 +226,8 @@ class Policy:
         if doc['name'].strip() == '':
             _invalid('Policy name cannot be blank')
 
+        self.authentication = PolicyAuthentication(
+            doc.get('authentication', {}))
         self.limits = PolicyLimits(doc.get('limits', {}))
         self.mime_type_rules = PolicyMimeTypeRules(
             doc.get('mime_type_rules', []))
@@ -227,6 +236,17 @@ class Policy:
             robots_txt_manager, self)
         self.url_rules = PolicyUrlRules(doc.get('url_rules', []), seeds)
         self.user_agents = PolicyUserAgents(doc.get('user_agents', []), version)
+
+
+class PolicyAuthentication:
+    ''' Policy for authenticated crawling. '''
+    def __init__(self, doc):
+        ''' Initialize from ``doc``, a dict representation of limits. '''
+        self._enabled = doc.get('enabled', False)
+
+    def is_enabled(self):
+        ''' Return True if authentication is enabled. '''
+        return self._enabled
 
 
 class PolicyLimits:
@@ -362,7 +382,7 @@ class PolicyProxyRules:
                     _invalid('Pattern is not allowed', location)
                 if 'match' in proxy_rule:
                     _invalid('Pattern is not allowed', location)
-                    
+
                 pattern_re = None
                 match = None
                 proxy_type = None

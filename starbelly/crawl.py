@@ -7,17 +7,22 @@ import gzip
 import hashlib
 import logging
 import pickle
+import random
 import time
 
+from aiohttp.cookiejar import CookieJar
 from dateutil.tz import tzlocal
 import mimeparse
+from operator import itemgetter
 import rethinkdb as r
 from rethinkdb.errors import ReqlNonExistenceError
+from urllib.parse import urlparse
 import w3lib.url
 
 from . import cancel_futures, daemon_task, VERSION
 from .db import CursorContext
 from .downloader import DownloadRequest
+from .login import get_login_form
 from .policy import Policy
 from .pubsub import PubSub
 from .url_extractor import extract_urls
@@ -339,6 +344,8 @@ class _CrawlJob:
         self.seeds = seeds
         self.stopped = asyncio.Future()
 
+        self._authenticated_domains = set()
+        self._cookie_jar = None
         self._db_pool = db_pool
         self._downloader = downloader
         self._extraction_size = 0
@@ -369,8 +376,12 @@ class _CrawlJob:
         cancel_query = (
             r.table('job')
              .get(self.id)
-             .update({'run_state': 'cancelled',
-                      'completed_at': datetime.now(tzlocal())})
+             .update({
+                'authenticated_domains': None,
+                'cookie_jar': None,
+                'run_state': 'cancelled',
+                'completed_at': datetime.now(tzlocal())
+             })
         )
 
         frontier_query = (
@@ -416,6 +427,8 @@ class _CrawlJob:
             r.table('job')
              .get(self.id)
              .update({
+                'authenticated_domains': list(self._authenticated_domains),
+                'cookie_jar': pickle.dumps(self._cookie_jar._cookies),
                 'extraction_size': self._extraction_size,
                 'frontier_seen': pickle.dumps(self._frontier_seen),
                 'frontier_size': self._frontier_size,
@@ -436,6 +449,8 @@ class _CrawlJob:
     async def resume(self, job_data):
         ''' On resume, restore crawl state. '''
         self.item_count = job_data['item_count']
+        self._authenticated_domains = set(job_data['cookie_jar'])
+        self._cookie_jar = pickle.loads(job_data['cookie_jar'])
         self._insert_item_sequence = job_data['insert_item_sequence']
         self._extraction_size = job_data['extraction_size']
         self._frontier_seen = pickle.loads(job_data['frontier_seen'])
@@ -488,10 +503,9 @@ class _CrawlJob:
         This task takes items off the frontier and sends them to the rate
         limiter.
         '''
-        frontier_item = None
-
         try:
             while True:
+                frontier_item = None
                 frontier_item = await self._next_frontier_item()
                 robots_ok = await self.policy.robots_txt.is_allowed(
                     frontier_item['url']
@@ -500,15 +514,20 @@ class _CrawlJob:
                     self._pending_count -= 1
                     frontier_item = None
                     continue
+                if self.policy.authentication.is_enabled():
+                    domain = urlparse(frontier_item['url']).hostname
+                    if domain not in self._authenticated_domains:
+                        await self._try_login(domain)
+                        self._authenticated_domains.add(domain)
                 download_request = DownloadRequest(
                     job_id=self.id,
                     url=frontier_item['url'],
                     cost=frontier_item['cost'],
                     policy=self.policy,
-                    output_queue=self._save_queue
+                    output_queue=self._save_queue,
+                    cookie_jar=self._cookie_jar
                 )
                 await self._rate_limiter.push(download_request)
-                frontier_item = None
         except asyncio.CancelledError:
             # Put the frontier item back on the frontier
             if frontier_item is not None:
@@ -582,13 +601,15 @@ class _CrawlJob:
 
             if self._run_state == 'pending':
                 seeds = list()
+                self._cookie_jar = CookieJar()
                 for seed in self.seeds:
                     download_request = DownloadRequest(
                         job_id=self.id,
                         url=seed,
-                        cost=0,
+                        cost=1.0,
                         policy=self.policy,
-                        output_queue=self._save_queue
+                        output_queue=self._save_queue,
+                        cookie_jar=self._cookie_jar
                     )
                     seeds.append(download_request)
                 await self._add_frontier_items(seeds)
@@ -854,6 +875,41 @@ class _CrawlJob:
         await self._save_queue.join()
         await cancel_futures(self._save_task)
         self.stopped.set_result(True)
+
+    async def _try_login(self, domain):
+        ''' Attempt a login for the given domain. '''
+        async with self._db_pool.connection() as conn:
+            login = await (
+                r.table('domain_login')
+                 .get(domain)
+                 .run(conn)
+            )
+
+        if login is None:
+            return
+
+        user = random.choice(login['users'])
+        mask_pass = user['password'][:2] + '******'
+        logger.info('Attempting login for domain=%s with user=%s password=%s',
+            domain, user['username'], mask_pass)
+        output_queue = asyncio.Queue()
+        request = DownloadRequest(self.id, login['login_url'], 1.0, self.policy,
+            output_queue, self._cookie_jar)
+        await self._rate_limiter.push(request)
+        response = await output_queue.get()
+        try:
+            loop = asyncio.get_event_loop()
+            action, method, data = await loop.run_in_executor(None,
+                get_login_form, response, user['username'], user['password'])
+        except Exception as e:
+            logger.error("Exception during login: {}".format(str(e)))
+            return
+        logger.error('Login action=%s method=%s data=%r', action, method, data)
+        request = DownloadRequest(self.id, action, 1.0, self.policy,
+            output_queue, self._cookie_jar, method=method, form_data=data)
+        await self._rate_limiter.push(request)
+        response = await output_queue.get()
+        print('response.status_code=%d', response.status_code)
 
     async def _update_job_stats(self, response):
         '''

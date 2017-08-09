@@ -111,6 +111,9 @@ def ensure_db_fixtures(conn):
             'created_at': r.now(),
             'updated_at': r.now(),
             'name': 'Broad Crawl',
+            'authentication': {
+                'enabled': False,
+            },
             'limits': {
               'max_items': 1_000_000,
               'max_cost': 3,
@@ -119,7 +122,7 @@ def ensure_db_fixtures(conn):
               {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
               {'save': False}
             ],
-            'proxy_rules': [],
+            'proxy_rules': [{}],
             'robots_txt': {
               'usage': 'OBEY'
             },
@@ -135,6 +138,9 @@ def ensure_db_fixtures(conn):
             'created_at': r.now(),
             'updated_at': r.now(),
             'name': 'Deep Crawl',
+            'authentication': {
+                'enabled': True,
+            },
             'limits': {
               'max_cost': 10,
             },
@@ -142,7 +148,7 @@ def ensure_db_fixtures(conn):
               {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
               {'save': False}
             ],
-            'proxy_rules': [],
+            'proxy_rules': [{}],
             'robots_txt': {
               'usage': 'OBEY'
             },
@@ -185,11 +191,12 @@ def ensure_db_index(conn, table_name, index_name, index_cols=None):
             r.table(table_name).index_create(index_name, index_cols).run(conn)
 
 
-def ensure_db_table(conn, name):
+def ensure_db_table(conn, name, **options):
     ''' Create the named table, if it doesn't already exist. '''
+    options = options or dict()
     if not r.table_list().contains(name).run(conn):
         logger.info('Creating table: {}'.format(name))
-        r.table_create(name).run(conn)
+        r.table_create(name, **options).run(conn)
 
 
 def ensure_db_user(conn, db_name, user, password):
@@ -219,11 +226,12 @@ def ensure_db_user(conn, db_name, user, password):
              })
              .run(conn)
         )
-        result = (
-            r.db(db_name)
-             .grant(user, {'read': True, 'write': True})
-             .run(conn)
-        )
+
+    result = (
+        r.db(db_name)
+         .grant(user, {'read': True, 'write': True})
+         .run(conn)
+    )
 
 
 def init_config():
@@ -268,6 +276,7 @@ def init_db(db_config):
     db_name = db_config['db']
     ensure_db(conn, db_name)
     ensure_db_user(conn, db_name, db_config['user'], db_config['password'])
+    ensure_db_table(conn, 'domain_login', primary_key='domain')
     ensure_db_table(conn, 'frontier')
     ensure_db_index(conn, 'frontier', 'cost_index',
         [r.row['job_id'], r.row['cost']])

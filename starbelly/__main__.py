@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import time
+import traceback
 
 import rethinkdb as r
 from watchdog.events import FileSystemEventHandler
@@ -51,7 +52,7 @@ def async_excepthook(type_, exc, tb):
     for frame in traceback.extract_tb(tb):
         head, tail = os.path.split(frame.filename)
         if (head.endswith('asyncio') or tail == 'traceback.py') and \
-            frame.name.startswith('_'):
+           (frame.name.startswith('_') or frame.name == 'throw'):
             print('  ...')
             continue
         print('  File "{}", line {}, in {}'

@@ -3,6 +3,7 @@ aiohttp
 aiosocks
 async_timeout
 cchardet
+formasaurus[with-deps]
 humanize
 lxml
 multidict

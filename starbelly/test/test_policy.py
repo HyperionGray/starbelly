@@ -7,6 +7,16 @@ SEEDS = {'http://test1.com', 'https://test2.org'}
 VERSION = '1.0.0'
 
 
+class TestPolicyAuthentication(unittest.TestCase):
+    def test_enabled(self):
+        auth = PolicyAuthentication({'enabled': True})
+        self.assertTrue(auth.is_enabled())
+
+    def test_disabled(self):
+        auth = PolicyAuthentication({'enabled': False})
+        self.assertFalse(auth.is_enabled())
+
+
 class TestPolicyLimits(unittest.TestCase):
     def test_cost(self):
         limits = PolicyLimits({"max_cost": 10.5})

@@ -134,29 +134,39 @@ class Downloader:
         proxy_type, proxy_url = policy.proxy_rules.get_proxy_url(url)
 
         if proxy_type in SOCKS_PROXY:
-            session_args = {
-                'connector': aiosocks.connector.ProxyConnector(
-                    remote_resolve=(proxy_type != 'socks4'),
-                    verify_ssl=False),
-                'request_class': aiosocks.connector.ProxyClientRequest,
-            }
+            session_args['connector'] = aiosocks.connector.ProxyConnector(
+                remote_resolve=(proxy_type != 'socks4'),
+                verify_ssl=False
+            )
+            session_args['request_class'] = \
+                aiosocks.connector.ProxyClientRequest
         else:
-            session_args = {
-                'connector': aiohttp.TCPConnector(verify_ssl=False),
-            }
+            session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 
         user_agent = download_request.policy.user_agents.get_user_agent()
         session_args['headers'] = {'User-Agent': user_agent}
+        if download_request.cookie_jar is not None:
+            session_args['cookie_jar'] = download_request.cookie_jar
         session = aiohttp.ClientSession(**session_args)
         dl_response = DownloadResponse(download_request)
 
         try:
             with session, async_timeout.timeout(10):
-                if proxy_url is None:
-                    getter = session.get(url)
+                kwargs = dict()
+                if proxy_url is not None:
+                    kwargs['proxy'] = proxy_url
+                if download_request.method == 'GET':
+                    if download_request.form_data is not None:
+                        kwargs['params'] = download_request.form_data
+                    http_request = session.get(url, **kwargs)
+                elif download_request.method == 'POST':
+                    if download_request.form_data is not None:
+                        kwargs['data'] = download_request.form_data
+                    http_request = session.post(url, **kwargs)
                 else:
-                    getter = session.get(url, proxy=proxy_url)
-                async with getter as http_response:
+                    raise Exception('Unsupported HTTP method: {}'
+                        .format(download_request.method))
+                async with http_request as http_response:
                     mime = http_response.headers.get('content-type',
                         'application/octet-stream')
                     if not policy.mime_type_rules.should_save(mime):
@@ -189,7 +199,8 @@ class Downloader:
 class DownloadRequest:
     ''' Represents a resource that needs to be downloaded. '''
 
-    def __init__(self, job_id, url, cost, policy, output_queue):
+    def __init__(self, job_id, url, cost, policy, output_queue,
+        cookie_jar=None, method='GET', form_data=None):
         ''' Constructor. '''
         self.job_id = job_id
         self.url = url
@@ -197,6 +208,9 @@ class DownloadRequest:
         self.cost = cost
         self.policy = policy
         self.output_queue = output_queue
+        self.cookie_jar = cookie_jar
+        self.method = method
+        self.form_data = form_data
 
 
 class DownloadResponse:

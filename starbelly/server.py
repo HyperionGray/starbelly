@@ -11,9 +11,12 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import dateutil.parser
+from dateutil.tz import tzlocal
 from protobuf.client_pb2 import Request
 from protobuf.server_pb2 import Response, ServerMessage
 import protobuf.shared_pb2
+import rethinkdb as r
+from rethinkdb.errors import ReqlNonExistenceError
 import websockets
 import websockets.exceptions
 
@@ -49,16 +52,20 @@ class Server:
         self._websocket_server = None
 
         self._request_handlers = {
+            'delete_domain_login': self._delete_domain_login,
             'delete_job': self._delete_job,
             'delete_policy': self._delete_policy,
+            'get_domain_login': self._get_domain_login,
             'get_job': self._get_job,
             'get_job_items': self._get_job_items,
             'get_policy': self._get_policy,
             'get_rate_limits': self._get_rate_limits,
+            'list_domain_logins': self._list_domain_logins,
             'list_jobs': self._list_jobs,
             'list_policies': self._list_policies,
             'ping': self._ping,
             'performance_profile': self._profile,
+            'set_domain_login': self._set_domain_login,
             'set_job': self._set_job,
             'set_policy': self._set_policy,
             'set_rate_limit': self._set_rate_limit,
@@ -116,6 +123,23 @@ class Server:
             self._websocket_server.close()
             await self._websocket_server.wait_closed()
             logger.info('All websockets closed.')
+
+    async def _delete_domain_login(self, command, socket):
+        ''' Delete a domain login and all of its users. '''
+        if command.HasField('domain'):
+            domain = command.domain
+        else:
+            raise InvalidRequestException('domain is required.')
+
+        async with self._db_pool.connection() as conn:
+            await (
+                r.table('domain_login')
+                 .get(domain)
+                 .delete()
+                 .run(conn)
+            )
+
+        return Response()
 
     async def _delete_job(self, command, socket):
         ''' Delete a job. '''
@@ -183,6 +207,39 @@ class Server:
         else:
             # This could happen, e.g. if the request_id is not set.
             logger.error('Cannot send uninitialized response:\n%r', response)
+
+    async def _get_domain_login(self, command, socket):
+        ''' Get a domain login. '''
+        if not command.HasField('domain'):
+            raise InvalidRequestException('domain is required.')
+
+        domain = command.domain
+        async with self._db_pool.connection() as conn:
+            count = await r.table('domain_login').count().run(conn)
+            domain_login = await (
+                r.table('domain_login')
+                 .get(domain)
+                 .run(conn)
+            )
+
+        if domain_login is None:
+            raise InvalidRequestException('No domain credentials found for'
+                ' domain={}'.format(domain))
+
+        response = Response()
+        response.domain_login.domain = domain_login['domain']
+        response.domain_login.login_url = domain_login['login_url']
+        if domain_login['login_test'] is not None:
+            response.domain_login.login_test = domain_login['login_test']
+        response.domain_login.auth_count = len(domain_login['users'])
+
+        for user in domain_login['users']:
+            dl_user = response.domain_login.users.add()
+            dl_user.username = user['username']
+            dl_user.password = user['password']
+            dl_user.working = user['working']
+
+        return response
 
     async def _get_job(self, command, socket):
         ''' Get status for a single job. '''
@@ -282,6 +339,36 @@ class Server:
             rl.delay = rate_limit['delay']
             if rate_limit['type'] == 'domain':
                 rl.domain = rate_limit['domain']
+
+        return response
+
+    async def _list_domain_logins(self, command, socket):
+        ''' Return a list of domain logins. '''
+        limit = command.page.limit
+        skip = command.page.offset
+
+        async with self._db_pool.connection() as conn:
+            count = await r.table('domain_login').count().run(conn)
+            cursor = await (
+                r.table('domain_login')
+                 .order_by(index='domain')
+                 .skip(skip)
+                 .limit(limit)
+                 .run(conn)
+            )
+
+        response = Response()
+        response.list_domain_logins.total = count
+
+        async for domain_doc in cursor:
+            dl = response.list_domain_logins.logins.add()
+            dl.domain = domain_doc['domain']
+            dl.login_url = domain_doc['login_url']
+            if domain_doc['login_test'] is not None:
+                dl.login_test = domain_doc['login_test']
+            # Not very efficient way to count #users, but don't know a better
+            # way...
+            dl.auth_count = len(domain_doc['users'])
 
         return response
 
@@ -396,6 +483,63 @@ class Server:
             function.cumulative_time = stat['cumulative_time']
 
         return response
+
+    async def _set_domain_login(self, command, socket):
+        ''' Create or update a domain login. '''
+        domain_login = command.login
+
+        if not domain_login.HasField('domain'):
+            raise InvalidRequestException('domain is required.')
+
+        domain = domain_login.domain
+        async with self._db_pool.connection() as conn:
+            doc = await (
+                r.table('domain_login')
+                 .get(domain)
+                 .run(conn)
+            )
+
+        if doc is None:
+            if not domain_login.HasField('login_url'):
+                raise InvalidRequestException('login_url is required to'
+                    ' create a domain login.')
+            doc = {
+                'domain': domain,
+                'login_url': domain_login.login_url,
+                'login_test': None,
+            }
+
+        if domain_login.HasField('login_url'):
+            doc['login_url'] = domain_login.login_url
+
+        if domain_login.HasField('login_test'):
+            doc['login_test'] = domain_login.login_test
+
+        doc['users'] = list()
+
+        for user in domain_login.users:
+            doc['users'].append({
+                'username': user.username,
+                'password': user.password,
+                'working': user.working,
+            })
+
+        async with self._db_pool.connection() as conn:
+            # replace() is supposed to upsert, but for some reason it doesn't,
+            # so I'm calling insert() explicitly.
+            response = await (
+                r.table('domain_login')
+                 .replace(doc)
+                 .run(conn)
+            )
+            if response['replaced'] == 0:
+                await (
+                    r.table('domain_login')
+                     .insert(doc)
+                     .run(conn)
+                )
+
+        return Response()
 
     async def _set_policy(self, command, socket):
         '''

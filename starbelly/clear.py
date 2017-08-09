@@ -40,6 +40,7 @@ def main():
         user=db_config['user'],
         password=db_config['password'],
     )
+    clear(conn, 'domain_login')
     clear(conn, 'extraction_queue')
     clear(conn, 'frontier')
     clear(conn, 'job')
