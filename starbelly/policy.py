@@ -148,7 +148,6 @@ class PolicyManager:
             if user_agent.HasField('name'):
                new_doc['name'] = user_agent.name
             policy_doc['user_agents'].append(new_doc)
-        logger.error('policy_doc=%r', policy_doc)
         return policy_doc
 
     async def delete_policy(self, policy_id):

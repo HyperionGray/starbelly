@@ -151,7 +151,7 @@ class Downloader:
         dl_response = DownloadResponse(download_request)
 
         try:
-            with session, async_timeout.timeout(10):
+            with session, async_timeout.timeout(20):
                 kwargs = dict()
                 if proxy_url is not None:
                     kwargs['proxy'] = proxy_url

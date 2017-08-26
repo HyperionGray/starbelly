@@ -904,12 +904,11 @@ class _CrawlJob:
         except Exception as e:
             logger.error("Exception during login: {}".format(str(e)))
             return
-        logger.error('Login action=%s method=%s data=%r', action, method, data)
+        logger.info('Login action=%s method=%s data=%r', action, method, data)
         request = DownloadRequest(self.id, action, 1.0, self.policy,
             output_queue, self._cookie_jar, method=method, form_data=data)
         await self._rate_limiter.push(request)
         response = await output_queue.get()
-        print('response.status_code=%d', response.status_code)
 
     async def _update_job_stats(self, response):
         '''
