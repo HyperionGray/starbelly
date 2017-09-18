@@ -597,7 +597,7 @@ class Server:
             # Create new job.
             name = command.name
             policy_id = str(UUID(bytes=command.policy_id))
-            seeds = command.seeds
+            seeds = [s.strip() for s in command.seeds]
             tags = tags or []
 
             if name.strip() == '':
