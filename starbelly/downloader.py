@@ -184,16 +184,9 @@ class Downloader:
             dl_response.should_save = False
         except (aiohttp.ClientError, aiosocks.errors.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
-            if str(err) is None:
-                # This is weird, but sometimes the aiohttp.ClientError
-                # returns None instead of a str. Let's log the full stack
-                # trace for now to understand what's going on.
-                logger.exception('(None exception) Failed downloading %s', download_request.url)
-                dl_response.set_exception(traceback.format_exc())
-            else:
-                msg = '{}: {}'.format(err.__class__.__name__, err)
-                logger.warn('Failed downloading %s: %s', download_request.url, msg)
-                dl_response.set_exception(msg)
+            msg = '{}: {}'.format(err.__class__.__name__, err)
+            logger.warn('Failed downloading %s: %s', download_request.url, msg)
+            dl_response.set_exception(msg)
         except asyncio.TimeoutError as te:
             logger.warn('Timed out downloading %s', download_request.url)
             dl_response.set_exception('Timed out')
@@ -240,6 +233,10 @@ class DownloadResponse:
         self.status_code = None
         self.url = download_request.url
         self.url_can = download_request.url_can
+
+    def is_success(self):
+        ''' Return true if this a success response. '''
+        return self.status_code is not None and self.status_code == 200
 
     def set_exception(self, exception):
         ''' Update state to indicate exception occurred. '''

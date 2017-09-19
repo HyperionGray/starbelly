@@ -897,18 +897,25 @@ class _CrawlJob:
             output_queue, self._cookie_jar)
         await self._rate_limiter.push(request)
         response = await output_queue.get()
+        if not response.is_success():
+            logger.error('Login aborted: cannot fetch %s', response.url)
+            return
         try:
             loop = asyncio.get_event_loop()
             action, method, data = await loop.run_in_executor(None,
                 get_login_form, response, user['username'], user['password'])
         except Exception as e:
-            logger.error("Exception during login: {}".format(str(e)))
+            logger.error('Cannot parse login form: %s', e)
             return
         logger.info('Login action=%s method=%s data=%r', action, method, data)
         request = DownloadRequest(self.id, action, 1.0, self.policy,
             output_queue, self._cookie_jar, method=method, form_data=data)
         await self._rate_limiter.push(request)
         response = await output_queue.get()
+        if not response.is_success():
+            logger.error('Login failed action=%s (see downloader log for'
+                ' details)', action)
+            return
 
     async def _update_job_stats(self, response):
         '''
