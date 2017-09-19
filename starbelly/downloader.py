@@ -6,6 +6,7 @@ import traceback
 
 import aiohttp
 import aiosocks.connector
+import aiosocks.errors
 import async_timeout
 import cchardet as chardet
 from dateutil.tz import tzlocal
@@ -181,11 +182,18 @@ class Downloader:
             logger.info('MIME %s disallowed by policy for URL %s', mime,
                 download_request.url)
             dl_response.should_save = False
-        except aiohttp.ClientError as ce:
+        except (aiohttp.ClientError, aiosocks.errors.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
-            msg = str(ce)
-            logger.warn('Failed downloading %s: %s', download_request.url, msg)
-            dl_response.set_exception(msg)
+            if str(err) is None:
+                # This is weird, but sometimes the aiohttp.ClientError
+                # returns None instead of a str. Let's log the full stack
+                # trace for now to understand what's going on.
+                logger.exception('(None exception) Failed downloading %s', download_request.url)
+                dl_response.set_exception(traceback.format_exc())
+            else:
+                msg = '{}: {}'.format(err.__class__.__name__, err)
+                logger.warn('Failed downloading %s: %s', download_request.url, msg)
+                dl_response.set_exception(msg)
         except asyncio.TimeoutError as te:
             logger.warn('Timed out downloading %s', download_request.url)
             dl_response.set_exception('Timed out')
