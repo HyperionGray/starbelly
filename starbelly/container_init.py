@@ -126,6 +126,10 @@ def ensure_db_fixtures(conn):
             'robots_txt': {
               'usage': 'OBEY'
             },
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': ['JSESSIONID', 'PHPSESSID', 'sid'],
+            },
             'url_rules': [
               {'action':'ADD', 'amount':1}
             ],
@@ -151,6 +155,10 @@ def ensure_db_fixtures(conn):
             'proxy_rules': [{}],
             'robots_txt': {
               'usage': 'OBEY'
+            },
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': ['JSESSIONID', 'PHPSESSID', 'sid'],
             },
             'url_rules': [
               {'match': 'MATCHES', 'pattern':'^https?://({SEED_DOMAINS})/',
@@ -297,6 +305,7 @@ def init_db(db_config):
     ensure_db_table(conn, 'robots_txt')
     ensure_db_index(conn, 'robots_txt', 'url')
     ensure_db_fixtures(conn)
+    upgrade_schema(conn)
     conn.close()
 
 
@@ -315,8 +324,29 @@ def main():
 
 
 def random_password(length):
+    ''' Create a random password. '''
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for i in range(length))
+
+
+def upgrade_schema(conn):
+    ''' Make changes to the database schema. '''
+    upgrade_schema_url_normalization_policy(conn)
+
+
+def upgrade_schema_url_normalization_policy(conn):
+    ''' Add URL normalization policy to policies. '''
+    (
+        r.table('policy')
+        .filter(lambda p: ~p.has_fields('url_normalization'))
+        .update({
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': ['JSESSIONID', 'PHPSESSID', 'sid'],
+            },
+        })
+        .run(conn)
+    )
 
 
 if __name__ == '__main__':

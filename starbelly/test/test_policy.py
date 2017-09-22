@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import unittest
 
 from ..policy import *
@@ -5,7 +6,197 @@ from ..policy import *
 
 SEEDS = {'http://test1.com', 'https://test2.org'}
 VERSION = '1.0.0'
+ACTION_ENUM = protobuf.shared_pb2.PolicyUrlRule.Action
+MATCH_ENUM = protobuf.shared_pb2.PatternMatch
+USAGE_ENUM = protobuf.shared_pb2.PolicyRobotsTxt.Usage
 
+
+class TestPolicy(unittest.TestCase):
+    def test_convert_doc_to_pb(self):
+        created_at = datetime.now()
+        updated_at = datetime.now() + timedelta(minutes=1)
+        doc = {
+            'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+            'name': 'Test',
+            'created_at': created_at,
+            'updated_at': updated_at,
+            'authentication': {'enabled': True},
+            'limits': {
+                'max_cost': 10,
+            },
+            'mime_type_rules': [
+                {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+                {'save': False},
+            ],
+            'proxy_rules': [
+                {'proxy_url': 'socks5://localhost:1234'},
+            ],
+            'robots_txt': {
+                'usage': 'IGNORE',
+            },
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': ['PHPSESSID'],
+            },
+            'url_rules': [
+                {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+                 'pattern': '^https?://({SEED_DOMAINS})/'},
+                {'action': 'MULTIPLY', 'amount': 0},
+            ],
+            'user_agents': [
+                {'name': 'Test User Agent'}
+            ]
+        }
+        pb = protobuf.shared_pb2.Policy()
+        Policy.convert_doc_to_pb(doc, pb)
+        self.assertEqual(pb.policy_id,
+            b'\x01\xb6\x0e\xeb*\xc9OA\x9b\x0cG\xdc\xbc\xf67\xf7')
+        self.assertEqual(pb.name, 'Test')
+        self.assertEqual(pb.created_at, created_at.isoformat())
+        self.assertEqual(pb.updated_at, updated_at.isoformat())
+
+        # Authentication
+        self.assertTrue(pb.authentication.enabled)
+
+        # Limits
+        self.assertEqual(pb.limits.max_cost, 10)
+
+        # MIME type rules
+        self.assertEqual(len(pb.mime_type_rules), 2)
+        self.assertEqual(pb.mime_type_rules[0].match,
+            MATCH_ENUM.Value('MATCHES'))
+        self.assertEqual(pb.mime_type_rules[0].pattern, '^text/')
+        self.assertTrue(pb.mime_type_rules[0].save)
+        self.assertFalse(pb.mime_type_rules[1].save)
+
+        # Proxy rules
+        self.assertEqual(len(pb.proxy_rules), 1)
+        self.assertEqual(pb.proxy_rules[0].proxy_url,
+            'socks5://localhost:1234')
+
+        # Robots.txt
+        self.assertEqual(pb.robots_txt.usage, USAGE_ENUM.Value('IGNORE'))
+
+        # URL normalization
+        self.assertTrue(pb.url_normalization.enabled)
+        self.assertEqual(pb.url_normalization.strip_parameters,
+            ['PHPSESSID'])
+
+        # URL rules
+        self.assertEqual(len(pb.url_rules), 2)
+        self.assertEqual(pb.url_rules[0].action, ACTION_ENUM.Value('ADD'))
+        self.assertEqual(pb.url_rules[0].amount, 1)
+        self.assertEqual(pb.url_rules[0].match,
+            MATCH_ENUM.Value('MATCHES'))
+        self.assertEqual(pb.url_rules[0].pattern,
+            '^https?://({SEED_DOMAINS})/')
+        self.assertEqual(pb.url_rules[1].action,
+            ACTION_ENUM.Value('MULTIPLY'))
+        self.assertEqual(pb.url_rules[1].amount, 0)
+
+        # User agents
+        self.assertEqual(len(pb.user_agents), 1)
+        self.assertEqual(pb.user_agents[0].name, 'Test User Agent')
+
+    def test_convert_pb_to_doc(self):
+        created_at = datetime.now()
+        updated_at = datetime.now() + timedelta(minutes=1)
+        pb = protobuf.shared_pb2.Policy()
+        pb.policy_id = \
+            b'\x01\xb6\x0e\xeb*\xc9OA\x9b\x0cG\xdc\xbc\xf67\xf7'
+        pb.name = 'Test'
+        pb.created_at = created_at.isoformat()
+        pb.updated_at = updated_at.isoformat()
+
+        # Authentication
+        pb.authentication.enabled = True
+
+        # Limits
+        pb.limits.max_cost = 10
+
+        # MIME type rules
+        mime1 = pb.mime_type_rules.add()
+        mime1.match = MATCH_ENUM.Value('MATCHES')
+        mime1.pattern = '^text/'
+        mime1.save = True
+        mime2 = pb.mime_type_rules.add()
+        mime2.save = False
+
+        # Proxy rules
+        proxy1 = pb.proxy_rules.add()
+        proxy1.proxy_url = 'socks5://localhost:1234'
+
+        # Robots.txt
+        pb.robots_txt.usage = USAGE_ENUM.Value('IGNORE')
+
+        # URL normalization
+        pb.url_normalization.enabled = True
+        pb.url_normalization.strip_parameters.append('PHPSESSID')
+
+        # URL rules
+        url1 = pb.url_rules.add()
+        url1.action = ACTION_ENUM.Value('ADD')
+        url1.amount = 1
+        url1.match = MATCH_ENUM.Value('MATCHES')
+        url1.pattern = '^https?://({SEED_DOMAINS})/'
+        url2 = pb.url_rules.add()
+        url2.action = ACTION_ENUM.Value('MULTIPLY')
+        url2.amount = 0
+
+        # User agents
+        agent1 = pb.user_agents.add()
+        agent1.name = 'Test User Agent'
+
+        doc = Policy.convert_pb_to_doc(pb)
+        self.assertEqual(doc['id'],
+            '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7')
+        self.assertEqual(doc['name'], 'Test')
+        self.assertEqual(doc['created_at'], created_at)
+        self.assertEqual(doc['updated_at'], updated_at)
+
+        # Authentication
+        self.assertTrue(doc['authentication']['enabled'])
+
+        # Limits
+        self.assertEqual(doc['limits']['max_cost'], 10)
+
+        # MIME type rules
+        self.assertEqual(len(doc['mime_type_rules']), 2)
+        mime1 = doc['mime_type_rules'][0]
+        self.assertEqual(mime1['match'], 'MATCHES')
+        self.assertEqual(mime1['pattern'], '^text/')
+        self.assertTrue(mime1['save'])
+        mime2 = doc['mime_type_rules'][1]
+        self.assertFalse(mime2['save'])
+
+        # Proxy rules
+        self.assertEqual(len(doc['proxy_rules']), 1)
+        proxy1 = doc['proxy_rules'][0]
+        self.assertEqual(proxy1['proxy_url'], 'socks5://localhost:1234')
+
+        # Robots.txt
+        self.assertEqual(doc['robots_txt']['usage'], 'IGNORE')
+
+        # URL normalization
+        self.assertTrue(doc['url_normalization']['enabled'])
+        self.assertEqual(doc['url_normalization']['strip_parameters'],
+            ['PHPSESSID'])
+
+        # URL rules
+        self.assertEqual(len(doc['url_rules']), 2)
+        url1 = doc['url_rules'][0]
+        self.assertEqual(url1['action'], 'ADD')
+        self.assertEqual(url1['amount'], 1)
+        self.assertEqual(url1['match'], 'MATCHES')
+        self.assertEqual(url1['pattern'], '^https?://({SEED_DOMAINS})/')
+        url2 = doc['url_rules'][1]
+        self.assertEqual(url2['action'], 'MULTIPLY')
+        self.assertEqual(url2['amount'], 0)
+
+        # User agents
+        self.assertEqual(len(doc['user_agents']), 1)
+        agent1 = doc['user_agents'][0]
+        self.assertEqual(agent1['name'], 'Test User Agent')
 
 class TestPolicyAuthentication(unittest.TestCase):
     def test_enabled(self):
@@ -179,6 +370,43 @@ class TestPolicyRobotsTxt(unittest.TestCase):
     # PolicyRobotsTxt.is_allowed() is async, so I don't know how to write
     # tests for it. This is just a placeholder test to fill in later.
     pass
+
+
+class TestPolicyUrlNormalization(unittest.TestCase):
+    def test_normalize(self):
+        ''' Normalize a URL. '''
+        url_normalization = PolicyUrlNormalization({
+            'enabled': True,
+            'strip_parameters': list(),
+        })
+        self.assertEqual(
+            url_normalization.normalize(
+                'http://a.com/?foo=2&foo=1&bar=3&PHPSESSID=4'),
+            'http://a.com/?PHPSESSID=4&bar=3&foo=1&foo=2'
+        )
+
+    def test_no_normalize(self):
+        ''' Do not normalize a URL. '''
+        url_normalization = PolicyUrlNormalization({
+            'enabled': False,
+        })
+        self.assertEqual(
+            url_normalization.normalize(
+                'http://a.com/?foo=2&foo=1&bar=3&PHPSESSID=4'),
+            'http://a.com/?foo=2&foo=1&bar=3&PHPSESSID=4'
+        )
+
+    def test_strip(self):
+        ''' Strip a parameter from a URL. '''
+        url_normalization = PolicyUrlNormalization({
+            'enabled': True,
+            'strip_parameters': ['PHPSESSID'],
+        })
+        self.assertEqual(
+            url_normalization.normalize(
+                'http://a.com/?foo=2&foo=1&bar=3&PHPSESSID=4'),
+            'http://a.com/?bar=3&foo=1&foo=2'
+        )
 
 
 class TestPolicyUrlRules(unittest.TestCase):

@@ -17,7 +17,6 @@ from operator import itemgetter
 import rethinkdb as r
 from rethinkdb.errors import ReqlNonExistenceError
 from urllib.parse import urlparse
-import w3lib.url
 
 from . import cancel_futures, daemon_task, VERSION
 from .db import CursorContext
@@ -647,8 +646,9 @@ class _CrawlJob:
 
         for frontier_item in frontier_items:
             url = frontier_item.url
-            url_can = w3lib.url.canonicalize_url(url).encode('ascii')
-            url_hash = hashlib.blake2b(url_can, digest_size=16).digest()
+            url_can = self.policy.url_normalization.normalize(url)
+            hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
+            url_hash = hash_.digest()
 
             if url_hash not in self._frontier_seen:
                 logger.debug('Adding URL %s (cost=%0.2f)',

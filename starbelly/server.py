@@ -21,6 +21,7 @@ import websockets
 import websockets.exceptions
 
 from . import cancel_futures, daemon_task, raise_future_exception
+from .policy import Policy
 from .pubsub import PubSub
 from .subscription import CrawlSyncSubscription, JobStatusSubscription, \
     ResourceMonitorSubscription, TaskMonitorSubscription
@@ -256,7 +257,7 @@ class Server:
                 job.seeds.append(seed)
             for tag in job_doc['tags']:
                 job.tag_list.tags.append(tag)
-            self._policy_manager.convert_doc_to_pb(job_doc['policy'], job.policy)
+            Policy.convert_doc_to_pb(job_doc['policy'], job.policy)
             job.name = job_doc['name']
             job.item_count = job_doc['item_count']
             job.http_success_count = job_doc['http_success_count']
@@ -321,7 +322,7 @@ class Server:
         policy_id = str(UUID(bytes=command.policy_id))
         policy_doc = await self._policy_manager.get_policy(policy_id)
         response = Response()
-        self._policy_manager.convert_doc_to_pb(policy_doc, response.policy)
+        Policy.convert_doc_to_pb(policy_doc, response.policy)
         return response
 
     async def _get_rate_limits(self, command, socket):
@@ -548,8 +549,8 @@ class Server:
         If the policy ID is set, then update the corresponding policy.
         Otherwise, create a new policy.
         '''
-        policy = self._policy_manager.convert_pb_to_doc(command.policy)
-        policy_id = await self._policy_manager.set_policy(policy)
+        policy_doc = Policy.convert_pb_to_doc(command.policy)
+        policy_id = await self._policy_manager.set_policy(policy_doc)
         response = Response()
         if policy_id is not None:
             response.new_policy.policy_id = UUID(policy_id).bytes

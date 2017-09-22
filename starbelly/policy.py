@@ -4,13 +4,18 @@ import re
 from urllib.parse import urlparse
 from uuid import UUID
 
+import dateutil.parser
 import rethinkdb as r
+import w3lib.url
 
 from . import VERSION
 import protobuf.shared_pb2
 
 
 logger = logging.getLogger(__name__)
+ACTION_ENUM = protobuf.shared_pb2.PolicyUrlRule.Action
+MATCH_ENUM = protobuf.shared_pb2.PatternMatch
+USAGE_ENUM = protobuf.shared_pb2.PolicyRobotsTxt.Usage
 
 
 class PolicyValidationError(Exception):
@@ -31,124 +36,6 @@ class PolicyManager:
     def __init__(self, db_pool):
         ''' Constructor. '''
         self._db_pool = db_pool
-
-    def convert_doc_to_pb(self, policy_doc, policy_pb):
-        ''' Convert a policy document to a protobuf message. '''
-        policy_pb.policy_id = UUID(policy_doc['id']).bytes
-        policy_pb.name = policy_doc['name']
-        policy_pb.created_at = policy_doc['created_at'].isoformat()
-        policy_pb.updated_at = policy_doc['updated_at'].isoformat()
-        policy_pb.authentication.enabled = \
-            policy_doc['authentication']['enabled']
-        if policy_doc['limits'].get('max_cost') is not None:
-            policy_pb.limits.max_cost = policy_doc['limits']['max_cost']
-        if policy_doc['limits'].get('max_duration') is not None:
-            policy_pb.limits.max_duration = policy_doc['limits']['max_duration']
-        if policy_doc['limits'].get('max_items') is not None:
-            policy_pb.limits.max_items = policy_doc['limits']['max_items']
-        match_enum = protobuf.shared_pb2.PatternMatch
-        for mime_doc in policy_doc['mime_type_rules']:
-            mime = policy_pb.mime_type_rules.add()
-            if 'pattern' in mime_doc:
-                mime.pattern = mime_doc['pattern']
-            if 'match' in mime_doc:
-                mime.match = match_enum.Value(mime_doc['match'])
-            if 'save' in mime_doc:
-                mime.save = mime_doc['save']
-        for proxy_doc in policy_doc['proxy_rules']:
-            proxy = policy_pb.proxy_rules.add()
-            if 'pattern' in proxy_doc:
-                proxy.pattern = proxy_doc['pattern']
-            if 'match' in proxy_doc:
-                proxy.match = match_enum.Value(proxy_doc['match'])
-            if 'proxy_url' in proxy_doc:
-                proxy.proxy_url = proxy_doc['proxy_url']
-        usage_enum = protobuf.shared_pb2.PolicyRobotsTxt.Usage
-        usage = policy_doc['robots_txt']['usage']
-        policy_pb.robots_txt.usage = usage_enum.Value(usage)
-        for user_agent_doc in policy_doc['user_agents']:
-            user_agent = policy_pb.user_agents.add()
-            user_agent.name = user_agent_doc['name']
-        action_enum = protobuf.shared_pb2.PolicyUrlRule.Action
-        for url_doc in policy_doc['url_rules']:
-            url = policy_pb.url_rules.add()
-            if 'pattern' in url_doc:
-                url.pattern = url_doc['pattern']
-            if 'match' in url_doc:
-                url.match = match_enum.Value(url_doc['match'])
-            if 'action' in url_doc:
-                url.action = action_enum.Value(url_doc['action'])
-            if 'amount' in url_doc:
-                url.amount = url_doc['amount']
-
-    def convert_pb_to_doc(self, policy_pb):
-        ''' Convert protobuf policy message into a dict structure. '''
-        action_enum = protobuf.shared_pb2.PolicyUrlRule.Action
-        match_enum = protobuf.shared_pb2.PatternMatch
-        usage_enum = protobuf.shared_pb2.PolicyRobotsTxt.Usage
-        policy_doc = {
-            'name': policy_pb.name,
-            'authentication': dict(),
-            'limits': dict(),
-            'mime_type_rules': list(),
-            'proxy_rules': list(),
-            'robots_txt': dict(),
-            'url_rules': list(),
-            'user_agents': list(),
-        }
-        if policy_pb.HasField('policy_id'):
-            policy_doc['id'] = str(UUID(bytes=policy_pb.policy_id))
-        if policy_pb.HasField('authentication'):
-            policy_doc['authentication']['enabled'] = \
-                policy_pb.authentication.enabled
-        if policy_pb.HasField('limits'):
-            limits = policy_pb.limits
-            policy_doc['limits']['max_cost'] = limits.max_cost if \
-                limits.HasField('max_cost') else None
-            policy_doc['limits']['max_duration'] = limits.max_duration if \
-                limits.HasField('max_duration') else None
-            policy_doc['limits']['max_items'] = limits.max_items if \
-                limits.HasField('max_items') else None
-        for mime_type_rule in policy_pb.mime_type_rules:
-            new_doc = dict()
-            if mime_type_rule.HasField('pattern'):
-               new_doc['pattern'] = mime_type_rule.pattern
-            if mime_type_rule.HasField('match'):
-               new_doc['match'] = match_enum.Name(mime_type_rule.match)
-            if mime_type_rule.HasField('save'):
-               new_doc['save'] = mime_type_rule.save
-            policy_doc['mime_type_rules'].append(new_doc)
-        for proxy_rule in policy_pb.proxy_rules:
-            new_doc = dict()
-            if proxy_rule.HasField('pattern'):
-               new_doc['pattern'] = proxy_rule.pattern
-            if proxy_rule.HasField('match'):
-               new_doc['match'] = match_enum.Name(proxy_rule.match)
-            if proxy_rule.HasField('proxy_url'):
-               new_doc['proxy_url'] = proxy_rule.proxy_url
-            policy_doc['proxy_rules'].append(new_doc)
-        if policy_pb.HasField('robots_txt'):
-            robots_txt = policy_pb.robots_txt
-            if robots_txt.HasField('usage'):
-                policy_doc['robots_txt']['usage'] = usage_enum.Name(
-                    robots_txt.usage)
-        for url_rule in policy_pb.url_rules:
-            new_doc = dict()
-            if url_rule.HasField('pattern'):
-               new_doc['pattern'] = url_rule.pattern
-            if url_rule.HasField('match'):
-               new_doc['match'] = match_enum.Name(url_rule.match)
-            if url_rule.HasField('action'):
-               new_doc['action'] = action_enum.Name(url_rule.action)
-            if url_rule.HasField('amount'):
-               new_doc['amount'] = url_rule.amount
-            policy_doc['url_rules'].append(new_doc)
-        for user_agent in policy_pb.user_agents:
-            new_doc = dict()
-            if user_agent.HasField('name'):
-               new_doc['name'] = user_agent.name
-            policy_doc['user_agents'].append(new_doc)
-        return policy_doc
 
     async def delete_policy(self, policy_id):
         ''' Delete a policy. '''
@@ -220,25 +107,95 @@ class PolicyManager:
 class Policy:
     ''' Container for policies. '''
 
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        pb.policy_id = UUID(doc['id']).bytes
+        pb.name = doc['name']
+        pb.created_at = doc['created_at'].isoformat()
+        pb.updated_at = doc['updated_at'].isoformat()
+
+        # A copy of a policy is stored with each job, so we need to be able
+        # to gracefully handle old policies that are missing expected fields.
+        PolicyAuthentication.convert_doc_to_pb(doc.get('authentication',
+            dict()), pb.authentication)
+        PolicyLimits.convert_doc_to_pb(doc.get('limits', dict()), pb.limits)
+        PolicyMimeTypeRules.convert_doc_to_pb(doc.get('mime_type_rules',
+            list()), pb.mime_type_rules)
+        PolicyProxyRules.convert_doc_to_pb(doc.get('proxy_rules', list()),
+            pb.proxy_rules)
+        PolicyRobotsTxt.convert_doc_to_pb(doc.get('robots_txt', dict()),
+            pb.robots_txt)
+        PolicyUrlNormalization.convert_doc_to_pb(doc.get('url_normalization',
+            dict()), pb.url_normalization)
+        PolicyUrlRules.convert_doc_to_pb(doc.get('url_rules', list()),
+            pb.url_rules)
+        PolicyUserAgents.convert_doc_to_pb(doc.get('user_agents', list()),
+            pb.user_agents)
+
+    @staticmethod
+    def convert_pb_to_doc(pb):
+        ''' Convert policy from protobuf to document. '''
+        doc = {
+            'name': pb.name,
+            'authentication': dict(),
+            'limits': dict(),
+            'mime_type_rules': list(),
+            'proxy_rules': list(),
+            'robots_txt': dict(),
+            'url_normalization': dict(),
+            'url_rules': list(),
+            'user_agents': list(),
+        }
+        if pb.HasField('policy_id'):
+            doc['id'] = str(UUID(bytes=pb.policy_id))
+        if pb.HasField('created_at'):
+            doc['created_at'] = dateutil.parser.parse(pb.created_at)
+        if pb.HasField('updated_at'):
+            doc['updated_at'] = dateutil.parser.parse(pb.updated_at)
+        PolicyAuthentication.convert_pb_to_doc(pb.authentication,
+            doc['authentication'])
+        PolicyLimits.convert_pb_to_doc(pb.limits, doc['limits'])
+        PolicyMimeTypeRules.convert_pb_to_doc(pb.mime_type_rules,
+            doc['mime_type_rules'])
+        PolicyProxyRules.convert_pb_to_doc(pb.proxy_rules, doc['proxy_rules'])
+        PolicyRobotsTxt.convert_pb_to_doc(pb.robots_txt, doc['robots_txt'])
+        PolicyUrlNormalization.convert_pb_to_doc(pb.url_normalization,
+            doc['url_normalization'])
+        PolicyUrlRules.convert_pb_to_doc(pb.url_rules, doc['url_rules'])
+        PolicyUserAgents.convert_pb_to_doc(pb.user_agents, doc['user_agents'])
+        return doc
+
     def __init__(self, doc, version, seeds, robots_txt_manager):
         ''' Initialize from ``doc``, a dict representation of a policy. '''
         if doc['name'].strip() == '':
             _invalid('Policy name cannot be blank')
 
-        self.authentication = PolicyAuthentication(
-            doc.get('authentication', {}))
-        self.limits = PolicyLimits(doc.get('limits', {}))
-        self.mime_type_rules = PolicyMimeTypeRules(
-            doc.get('mime_type_rules', []))
-        self.proxy_rules = PolicyProxyRules(doc.get('proxy_rules', []))
-        self.robots_txt = PolicyRobotsTxt(doc.get('robots_txt', []),
-            robots_txt_manager, self)
-        self.url_rules = PolicyUrlRules(doc.get('url_rules', []), seeds)
-        self.user_agents = PolicyUserAgents(doc.get('user_agents', []), version)
+        self.authentication = PolicyAuthentication(doc['authentication'])
+        self.limits = PolicyLimits(doc['limits'])
+        self.mime_type_rules = PolicyMimeTypeRules(doc['mime_type_rules'])
+        self.proxy_rules = PolicyProxyRules(doc['proxy_rules'])
+        self.robots_txt = PolicyRobotsTxt(doc['robots_txt'], robots_txt_manager,
+            self)
+        self.url_normalization = PolicyUrlNormalization(
+            doc['url_normalization'])
+        self.url_rules = PolicyUrlRules(doc['url_rules'], seeds)
+        self.user_agents = PolicyUserAgents(doc['user_agents'], version)
 
 
 class PolicyAuthentication:
     ''' Policy for authenticated crawling. '''
+
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        pb.enabled = doc['enabled']
+
+    @staticmethod
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        doc['enabled'] = pb.enabled
+
     def __init__(self, doc):
         ''' Initialize from ``doc``, a dict representation of limits. '''
         self._enabled = doc.get('enabled', False)
@@ -250,6 +207,24 @@ class PolicyAuthentication:
 
 class PolicyLimits:
     ''' Limits on crawl size/duration. '''
+
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        if doc.get('max_cost') is not None:
+            pb.max_cost = doc['max_cost']
+        if doc.get('max_duration') is not None:
+            pb.max_duration = doc['max_duration']
+        if doc.get('max_items') is not None:
+            pb.max_items = doc['max_items']
+
+    @staticmethod
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        doc['max_cost'] = pb.max_cost if pb.HasField('max_cost') else None
+        doc['max_duration'] = pb.max_duration if pb.HasField('max_duration') \
+            else None
+        doc['max_items'] = pb.max_items if pb.HasField('max_items') else None
 
     def __init__(self, doc):
         ''' Initialize from ``doc``, a dict representation of limits. '''
@@ -283,6 +258,31 @@ class PolicyLimits:
 class PolicyMimeTypeRules:
     ''' Filter responses by MIME type. '''
 
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        for doc_mime in doc:
+            pb_mime = pb.add()
+            if 'pattern' in doc_mime:
+                pb_mime.pattern = doc_mime['pattern']
+            if 'match' in doc_mime:
+                pb_mime.match = MATCH_ENUM.Value(doc_mime['match'])
+            if 'save' in doc_mime:
+                pb_mime.save = doc_mime['save']
+
+    @staticmethod
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        for pb_mime in pb:
+            doc_mime = dict()
+            if pb_mime.HasField('pattern'):
+               doc_mime['pattern'] = pb_mime.pattern
+            if pb_mime.HasField('match'):
+               doc_mime['match'] = MATCH_ENUM.Name(pb_mime.match)
+            if pb_mime.HasField('save'):
+               doc_mime['save'] = pb_mime.save
+            doc.append(doc_mime)
+
     def __init__(self, docs):
         ''' Initialize from ``docs``, a dict representation of MIME rules. '''
 
@@ -292,7 +292,7 @@ class PolicyMimeTypeRules:
         # Rules are stored as list of tuples: (pattern, match, save)
         self._rules = list()
         max_index = len(docs) - 1
-        match_enum = protobuf.shared_pb2.PatternMatch
+        MATCH_ENUM = protobuf.shared_pb2.PatternMatch
 
         for index, mime_type_rule in enumerate(docs):
             if index < max_index:
@@ -346,6 +346,31 @@ class PolicyProxyRules:
 
     PROXY_SCHEMES = ('http', 'https', 'socks4', 'socks4a', 'socks5')
 
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        for doc_proxy in doc:
+            pb_proxy = pb.add()
+            if 'pattern' in doc_proxy:
+                pb_proxy.pattern = doc_proxy['pattern']
+            if 'match' in doc_proxy:
+                pb_proxy.match = MATCH_ENUM.Value(doc_proxy['match'])
+            if 'proxy_url' in doc_proxy:
+                pb_proxy.proxy_url = doc_proxy['proxy_url']
+
+    @staticmethod
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        for pb_proxy in pb:
+            doc_proxy = dict()
+            if pb_proxy.HasField('pattern'):
+               doc_proxy['pattern'] = pb_proxy.pattern
+            if pb_proxy.HasField('match'):
+               doc_proxy['match'] = MATCH_ENUM.Name(pb_proxy.match)
+            if pb_proxy.HasField('proxy_url'):
+               doc_proxy['proxy_url'] = pb_proxy.proxy_url
+            doc.append(doc_proxy)
+
     def __init__(self, docs):
         ''' Initialize from ``docs``, a dict representation of proxy rules. '''
 
@@ -353,7 +378,7 @@ class PolicyProxyRules:
         # proxy_url)
         self._rules = list()
         max_index = len(docs) - 1
-        match_enum = protobuf.shared_pb2.PatternMatch
+        MATCH_ENUM = protobuf.shared_pb2.PatternMatch
 
         for index, proxy_rule in enumerate(docs):
             if index < max_index:
@@ -432,6 +457,17 @@ class PolicyProxyRules:
 class PolicyRobotsTxt:
     ''' Designate how robots.txt affects crawl behavior. '''
 
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        pb.usage = USAGE_ENUM.Value(doc['usage'])
+
+    @staticmethod
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        if pb.HasField('usage'):
+            doc['usage'] = USAGE_ENUM.Name(pb.usage)
+
     def __init__(self, doc, robots_txt_manager, parent_policy):
         ''' Initialize from ``doc``, a dict representation of robots policy. '''
         if 'usage' not in doc:
@@ -456,8 +492,71 @@ class PolicyRobotsTxt:
         return result
 
 
+class PolicyUrlNormalization:
+    ''' Customize URL normalization. '''
+
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        if 'enabled' in doc:
+            pb.enabled = doc['enabled']
+        if 'strip_parameters' in doc:
+            pb.strip_parameters.extend(doc['strip_parameters'])
+
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        if pb.HasField('enabled'):
+            doc['enabled'] = pb.enabled
+        doc['strip_parameters'] = list(pb.strip_parameters)
+
+    def __init__(self, doc):
+        ''' Instantiate from a dictionary representation ``doc``. '''
+        self._enabled = doc.get('enabled', True)
+        self._strip_parameters = doc.get('strip_parameters', list())
+
+    def normalize(self, url):
+        ''' Normalize ``url`` according to policy. '''
+        if self._enabled:
+            if len(self._strip_parameters) > 0:
+                url = w3lib.url.url_query_cleaner(url, remove=True,
+                    unique=False, parameterlist=self._strip_parameters)
+
+            url = w3lib.url.canonicalize_url(url)
+
+        return url
+
+
 class PolicyUrlRules:
     ''' Customize link priorities based on URL. '''
+
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        for doc_url in doc:
+            pb_url = pb.add()
+            if 'pattern' in doc_url:
+                pb_url.pattern = doc_url['pattern']
+            if 'match' in doc_url:
+                pb_url.match = MATCH_ENUM.Value(doc_url['match'])
+            if 'action' in doc_url:
+                pb_url.action = ACTION_ENUM.Value(doc_url['action'])
+            if 'amount' in doc_url:
+                pb_url.amount = doc_url['amount']
+
+    @staticmethod
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        for pb_url in pb:
+            doc_url = dict()
+            if pb_url.HasField('pattern'):
+               doc_url['pattern'] = pb_url.pattern
+            if pb_url.HasField('match'):
+               doc_url['match'] = MATCH_ENUM.Name(pb_url.match)
+            if pb_url.HasField('action'):
+               doc_url['action'] = ACTION_ENUM.Name(pb_url.action)
+            if pb_url.HasField('amount'):
+               doc_url['amount'] = pb_url.amount
+            doc.append(doc_url)
 
     def __init__(self, docs, seeds):
         ''' Initialize from ``docs``, a dict representation of url rules. '''
@@ -468,8 +567,8 @@ class PolicyUrlRules:
         self._rules = list()
         max_index = len(docs) - 1
         seed_domains = {urlparse(seed).hostname for seed in seeds}
-        action_enum = protobuf.shared_pb2.PolicyUrlRule.Action
-        match_enum = protobuf.shared_pb2.PatternMatch
+        ACTION_ENUM = protobuf.shared_pb2.PolicyUrlRule.Action
+        MATCH_ENUM = protobuf.shared_pb2.PatternMatch
 
         for index, url_rule in enumerate(docs):
             if index < max_index:
@@ -531,6 +630,21 @@ class PolicyUrlRules:
 
 class PolicyUserAgents:
     ''' Specify user agent string to send in HTTP requests. '''
+
+    @staticmethod
+    def convert_doc_to_pb(doc, pb):
+        ''' Convert policy from document to protobuf. '''
+        for doc_user_agent in doc:
+            pb_user_agent = pb.add()
+            pb_user_agent.name = doc_user_agent['name']
+
+    @staticmethod
+    def convert_pb_to_doc(pb, doc):
+        ''' Convert policy from protobuf to document. '''
+        for user_agent in pb:
+            doc.append({
+                'name': user_agent.name,
+            })
 
     def __init__(self, docs, version):
         ''' Initialize from ``docs``, a dict representation of user agents. '''
