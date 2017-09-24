@@ -1,10 +1,10 @@
 import logging
-from urllib.parse import urljoin, urlparse
 
+from bs4 import BeautifulSoup
 import cchardet
-import lxml.html
 import mimeparse
 import w3lib.encoding
+import yarl
 
 
 logger = logging.getLogger(__name__)
@@ -19,17 +19,20 @@ def extract_urls(extract_item):
     using the original request URL.
     '''
 
+    extracted_url = list()
     base_url = extract_item.url
     type_, subtype, parameters = mimeparse.parse_mime_type(
         extract_item.content_type)
 
-    if type_ == 'text' and subtype == 'html':
-        extracted_urls = _extract_html(extract_item)
-    else:
-        logging.error('Unsupported MIME in extract_urls(): %s/%s (params=%r)'
-                      ' (url=%s)',
-            type_, subtype, parameters, base_url)
-        extracted_urls = list()
+    try:
+        if type_ == 'text' and subtype == 'html':
+            extracted_urls = _extract_html(extract_item)
+        else:
+            logging.error(
+                'Unsupported MIME in extract_urls(): %s (params=%r) (url=%s)',
+                extract_item.content_type, parameters, base_url)
+    except:
+        logger.exception('Cannot extract URLs from %s', base_url)
 
     return extracted_urls
 
@@ -43,21 +46,23 @@ def _extract_html(extract_item):
         auto_detect_fun=chardet
     )
 
-    base_url = extract_item.url
-    doc = lxml.html.document_fromstring(html)
+    base_url = yarl.URL(extract_item.url)
+    doc = BeautifulSoup(html, 'lxml')
     extracted_urls = list()
 
-    for anchor in doc.xpath('//a'):
+    for anchor in doc.find_all('a', href=True):
+        href = anchor.get('href')
+
         try:
-            absolute_url = urljoin(base_url, anchor.get('href'),
-                allow_fragments=False)
-            parsed = urlparse(absolute_url)
-            # Reject URLs with invalid character encoding.
-            absolute_url.encode('ascii')
+            parsed_href = yarl.URL(href)
         except:
+            logger.exception('Rejecting malformed URL base=%s url=%s',
+                str(extract_item.url), href)
             continue
 
-        if parsed.scheme == 'http' or parsed.scheme == 'https':
-            extracted_urls.append(absolute_url)
+        absolute_href = base_url.join(parsed_href)
+
+        if absolute_href.scheme in ('http', 'https'):
+            extracted_urls.append(str(absolute_href))
 
     return extracted_urls

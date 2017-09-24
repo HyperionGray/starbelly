@@ -2,6 +2,7 @@ aiodns
 aiohttp
 aiosocks
 async_timeout
+beautifulsoup4
 cchardet
 formasaurus[with-deps]
 humanize
