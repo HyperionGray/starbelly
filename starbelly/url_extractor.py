@@ -2,6 +2,7 @@ import logging
 
 from bs4 import BeautifulSoup
 import cchardet
+import feedparser
 import mimeparse
 import w3lib.encoding
 import yarl
@@ -19,22 +20,33 @@ def extract_urls(extract_item):
     using the original request URL.
     '''
 
-    extracted_url = list()
+    extracted_urls = list()
     base_url = extract_item.url
     type_, subtype, parameters = mimeparse.parse_mime_type(
         extract_item.content_type)
 
     try:
-        if type_ == 'text' and subtype == 'html':
+        if type_ == 'text' and subtype == 'html' or \
+           type_ == 'application' and subtype == 'xhtml+xml':
             extracted_urls = _extract_html(extract_item)
+        elif type_ == 'application' and subtype == 'atom+xml' or \
+             type_ == 'application' and subtype == 'rss+xml':
+            extracted_urls = _extract_feed(extract_item)
         else:
             logging.error(
-                'Unsupported MIME in extract_urls(): %s (params=%r) (url=%s)',
-                extract_item.content_type, parameters, base_url)
+                'Unsupported MIME in extract_urls(): %s (url=%s)',
+                extract_item.content_type, base_url)
     except:
         logger.exception('Cannot extract URLs from %s', base_url)
 
     return extracted_urls
+
+
+def _extract_feed(extract_item):
+    ''' Extract links from Atom or RSS feeds. '''
+
+    doc = feedparser.parse(extract_item.body)
+    return [entry.link for entry in doc.entries]
 
 
 def _extract_html(extract_item):

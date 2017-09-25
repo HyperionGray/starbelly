@@ -4,6 +4,7 @@ aiosocks
 async_timeout
 beautifulsoup4
 cchardet
+feedparser
 formasaurus[with-deps]
 humanize
 lxml
