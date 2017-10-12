@@ -136,7 +136,6 @@ class CrawlManager:
              .without('body_id')
         )
 
-
         async with self._db_pool.connection() as conn:
             total_count = await base_query.count().run(conn)
             cursor = await query.run(conn)
@@ -155,7 +154,7 @@ class CrawlManager:
 
         return stats
 
-    async def list_jobs(self, limit, offset, started_after, tag):
+    async def list_jobs(self, limit, offset, started_after, tag, schedule_id):
         '''
         List up to `limit` jobs, starting at row number `offset`, ordered by
         start date.
@@ -165,11 +164,14 @@ class CrawlManager:
         if started_after is not None:
             query = query.between(started_after, r.maxval, index='started_at')
 
-        # Have to order_by() before filter().
+        # Have to use order_by() before filter().
         query = query.order_by(index=r.desc('started_at'))
 
         if tag is not None:
             query = query.filter(r.row['tags'].contains(tag))
+
+        if schedule_id is not None:
+            query = query.filter(r.row['schedule_id'] == schedule_id)
 
         async with self._db_pool.connection() as conn:
             count = await query.count().run(conn)

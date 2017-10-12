@@ -23,6 +23,7 @@ import websockets.exceptions
 from . import cancel_futures, daemon_task, raise_future_exception
 from .policy import Policy
 from .pubsub import PubSub
+from .schedule import Scheduler
 from .subscription import CrawlSyncSubscription, JobStatusSubscription, \
     ResourceMonitorSubscription, TaskMonitorSubscription
 
@@ -38,7 +39,8 @@ class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
     def __init__(self, host, port, db_pool, crawl_manager, subscription_manager,
-                 tracker, rate_limiter, policy_manager, resource_monitor):
+                 tracker, rate_limiter, policy_manager, resource_monitor,
+                 scheduler):
         ''' Constructor. '''
         self._clients = set()
         self._crawl_manager = crawl_manager
@@ -48,6 +50,7 @@ class Server:
         self._port = port
         self._rate_limiter = rate_limiter
         self._resource_monitor = resource_monitor
+        self._scheduler = scheduler
         self._subscription_manager = subscription_manager
         self._tracker = tracker
         self._websocket_server = None
@@ -55,19 +58,23 @@ class Server:
         self._request_handlers = {
             'delete_domain_login': self._delete_domain_login,
             'delete_job': self._delete_job,
+            'delete_job_schedule': self._delete_job_schedule,
             'delete_policy': self._delete_policy,
             'get_domain_login': self._get_domain_login,
             'get_job': self._get_job,
             'get_job_items': self._get_job_items,
+            'get_job_schedule': self._get_job_schedule,
             'get_policy': self._get_policy,
             'get_rate_limits': self._get_rate_limits,
             'list_domain_logins': self._list_domain_logins,
             'list_jobs': self._list_jobs,
+            'list_job_schedules': self._list_job_schedules,
             'list_policies': self._list_policies,
             'ping': self._ping,
             'performance_profile': self._profile,
             'set_domain_login': self._set_domain_login,
             'set_job': self._set_job,
+            'set_job_schedule': self._set_job_schedule,
             'set_policy': self._set_policy,
             'set_rate_limit': self._set_rate_limit,
             'subscribe_job_sync': self._subscribe_crawl_sync,
@@ -146,6 +153,12 @@ class Server:
         ''' Delete a job. '''
         job_id = str(UUID(bytes=command.job_id))
         await self._crawl_manager.delete_job(job_id)
+        return Response()
+
+    async def _delete_job_schedule(self, command, socket):
+        ''' Delete a job schedule. '''
+        schedule_id = str(UUID(bytes=command.schedule_id))
+        await self._scheduler.delete_job_schedule(schedule_id)
         return Response()
 
     async def _delete_policy(self, command, socket):
@@ -317,6 +330,19 @@ class Server:
             item.is_success = item_doc['is_success']
         return response
 
+    async def _get_job_schedule(self, command, socket):
+        ''' Get metadata for a job schedule. '''
+        schedule_id = str(UUID(bytes=command.schedule_id))
+        doc = await self._scheduler.get_job_schedule(schedule_id)
+        response = Response()
+        if doc is None:
+            response.is_success = False
+            response.error_message = f'No schedule exists with ID={schedule_id}'
+        else:
+            pb = response.job_schedule
+            Scheduler.doc_to_pb(doc, pb)
+        return response
+
     async def _get_policy(self, command, socket):
         ''' Get a single policy. '''
         policy_id = str(UUID(bytes=command.policy_id))
@@ -382,8 +408,10 @@ class Server:
         else:
             started_after = None
         tag = command.tag if command.HasField('tag') else None
+        schedule_id = str(UUID(bytes=command.schedule_id)) if \
+            command.HasField('schedule_id') else None
         count, job_docs = await self._crawl_manager.list_jobs(limit, offset,
-            started_after, tag)
+            started_after, tag, schedule_id)
 
         response = Response()
         response.list_jobs.total = count
@@ -410,6 +438,19 @@ class Server:
             for status_code, count in http_status_counts.items():
                 job.http_status_counts[int(status_code)] = count
 
+        return response
+
+    async def _list_job_schedules(self, command, socket):
+        ''' Return a list of job schedules. '''
+        limit = command.page.limit
+        offset = command.page.offset
+        count, schedules = await self._scheduler.list_job_schedules(limit,
+            offset)
+        response = Response()
+        response.list_jobs.total = count
+        for doc in schedules:
+            pb = response.list_job_schedules.job_schedules.add()
+            Scheduler.doc_to_pb(doc, pb)
         return response
 
     async def _list_policies(self, command, socket):
@@ -542,34 +583,8 @@ class Server:
 
         return Response()
 
-    async def _set_policy(self, command, socket):
-        '''
-        Create or update a single policy.
-
-        If the policy ID is set, then update the corresponding policy.
-        Otherwise, create a new policy.
-        '''
-        policy_doc = Policy.convert_pb_to_doc(command.policy)
-        policy_id = await self._policy_manager.set_policy(policy_doc)
-        response = Response()
-        if policy_id is not None:
-            response.new_policy.policy_id = UUID(policy_id).bytes
-        return response
-
-    async def _set_rate_limit(self, command, socket):
-        ''' Set a rate limit. '''
-        rate_limit = command.rate_limit
-        delay = rate_limit.delay if rate_limit.HasField('delay') else None
-
-        if rate_limit.HasField('domain'):
-            await self._rate_limiter.set_domain_limit(rate_limit.domain, delay)
-        else:
-            await self._rate_limiter.set_global_limit(delay)
-
-        return Response()
-
     async def _set_job(self, command, socket):
-        ''' Handle the "set job" command. '''
+        ''' Create or update job metadata. '''
         if command.HasField('tag_list'):
             tags = [t.strip() for t in command.tag_list.tags]
         else:
@@ -617,6 +632,41 @@ class Server:
             response.new_job.job_id = UUID(job_id).bytes
 
         return response
+
+    async def _set_job_schedule(self, command, socket):
+        ''' Create or update job schedule metadata. '''
+        doc = Scheduler.pb_to_doc(command.job_schedule)
+        schedule_id = await self._scheduler.set_job_schedule(doc)
+        response = Response()
+        if schedule_id is not None:
+            response.new_job_schedule_id = UUID(schedule_id).bytes
+        return response
+
+    async def _set_policy(self, command, socket):
+        '''
+        Create or update a single policy.
+
+        If the policy ID is set, then update the corresponding policy.
+        Otherwise, create a new policy.
+        '''
+        policy_doc = Policy.convert_pb_to_doc(command.policy)
+        policy_id = await self._policy_manager.set_policy(policy_doc)
+        response = Response()
+        if policy_id is not None:
+            response.new_policy.policy_id = UUID(policy_id).bytes
+        return response
+
+    async def _set_rate_limit(self, command, socket):
+        ''' Set a rate limit. '''
+        rate_limit = command.rate_limit
+        delay = rate_limit.delay if rate_limit.HasField('delay') else None
+
+        if rate_limit.HasField('domain'):
+            await self._rate_limiter.set_domain_limit(rate_limit.domain, delay)
+        else:
+            await self._rate_limiter.set_global_limit(delay)
+
+        return Response()
 
     async def _subscribe_crawl_sync(self, command, socket):
         ''' Handle the subscribe crawl items command. '''

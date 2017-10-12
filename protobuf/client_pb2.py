@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/client.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/client.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xb5\n\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x42\n\x13\x64\x65lete_domain_login\x18\x02 \x01(\x0b\x32#.starbelly.RequestDeleteDomainLoginH\x00\x12\x31\n\ndelete_job\x18\x03 \x01(\x0b\x32\x1b.starbelly.RequestDeleteJobH\x00\x12\x37\n\rdelete_policy\x18\x04 \x01(\x0b\x32\x1e.starbelly.RequestDeletePolicyH\x00\x12<\n\x10get_domain_login\x18\x05 \x01(\x0b\x32 .starbelly.RequestGetDomainLoginH\x00\x12+\n\x07get_job\x18\x06 \x01(\x0b\x32\x18.starbelly.RequestGetJobH\x00\x12\x36\n\rget_job_items\x18\x07 \x01(\x0b\x32\x1d.starbelly.RequestGetJobItemsH\x00\x12\x31\n\nget_policy\x18\x08 \x01(\x0b\x32\x1b.starbelly.RequestGetPolicyH\x00\x12:\n\x0fget_rate_limits\x18\t \x01(\x0b\x32\x1f.starbelly.RequestGetRateLimitsH\x00\x12@\n\x12list_domain_logins\x18\n \x01(\x0b\x32\".starbelly.RequestListDomainLoginsH\x00\x12/\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x1a.starbelly.RequestListJobsH\x00\x12\x37\n\rlist_policies\x18\x0c \x01(\x0b\x32\x1e.starbelly.RequestListPoliciesH\x00\x12\x43\n\x13performance_profile\x18\r \x01(\x0b\x32$.starbelly.RequestPerformanceProfileH\x00\x12&\n\x04ping\x18\x0e \x01(\x0b\x32\x16.starbelly.RequestPingH\x00\x12<\n\x10set_domain_login\x18\x0f \x01(\x0b\x32 .starbelly.RequestSetDomainLoginH\x00\x12+\n\x07set_job\x18\x10 \x01(\x0b\x32\x18.starbelly.RequestSetJobH\x00\x12\x31\n\nset_policy\x18\x11 \x01(\x0b\x32\x1b.starbelly.RequestSetPolicyH\x00\x12\x38\n\x0eset_rate_limit\x18\x12 \x01(\x0b\x32\x1e.starbelly.RequestSetRateLimitH\x00\x12\x44\n\x14subscribe_job_status\x18\x13 \x01(\x0b\x32$.starbelly.RequestSubscribeJobStatusH\x00\x12@\n\x12subscribe_job_sync\x18\x14 \x01(\x0b\x32\".starbelly.RequestSubscribeJobSyncH\x00\x12P\n\x1asubscribe_resource_monitor\x18\x15 \x01(\x0b\x32*.starbelly.RequestSubscribeResourceMonitorH\x00\x12H\n\x16subscribe_task_monitor\x18\x16 \x01(\x0b\x32&.starbelly.RequestSubscribeTaskMonitorH\x00\x12\x34\n\x0bunsubscribe\x18\x17 \x01(\x0b\x32\x1d.starbelly.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"*\n\x18RequestDeleteDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\"\"\n\x10RequestDeleteJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"(\n\x13RequestDeletePolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"\'\n\x15RequestGetDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x02(\t\"\x1f\n\rRequestGetJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"\xac\x01\n\x12RequestGetJobItems\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x17\n\x0finclude_success\x18\x02 \x01(\x08\x12\x15\n\rinclude_error\x18\x03 \x01(\x08\x12\x19\n\x11include_exception\x18\x04 \x01(\x08\x12\x1c\n\x0e\x63ompression_ok\x18\x05 \x01(\x08:\x04true\x12\x1d\n\x04page\x18\x06 \x01(\x0b\x32\x0f.starbelly.Page\"%\n\x10RequestGetPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"5\n\x14RequestGetRateLimits\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"8\n\x17RequestListDomainLogins\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"T\n\x0fRequestListJobs\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\x12\x15\n\rstarted_after\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\"4\n\x13RequestListPolicies\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"V\n\x19RequestPerformanceProfile\x12\x13\n\x08\x64uration\x18\x01 \x01(\x01:\x01\x35\x12\x15\n\x07sort_by\x18\x02 \x01(\t:\x04time\x12\r\n\x05top_n\x18\x03 \x01(\x05\"\x1b\n\x0bRequestPing\x12\x0c\n\x04pong\x18\x01 \x01(\t\">\n\x15RequestSetDomainLogin\x12%\n\x05login\x18\x01 \x01(\x0b\x32\x16.starbelly.DomainLogin\"\xa0\x01\n\rRequestSetJob\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12)\n\trun_state\x18\x02 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x11\n\tpolicy_id\x18\x03 \x01(\x0c\x12\r\n\x05seeds\x18\x04 \x03(\t\x12\x0c\n\x04name\x18\x05 \x01(\t\x12$\n\x08tag_list\x18\x06 \x01(\x0b\x32\x12.starbelly.TagList\"?\n\x13RequestSetRateLimit\x12(\n\nrate_limit\x18\x01 \x02(\x0b\x32\x14.starbelly.RateLimit\"5\n\x10RequestSetPolicy\x12!\n\x06policy\x18\x01 \x02(\x0b\x32\x11.starbelly.Policy\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"[\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\x12\x1c\n\x0e\x63ompression_ok\x18\x03 \x01(\x08:\x04true\"7\n\x1fRequestSubscribeResourceMonitor\x12\x14\n\x07history\x18\x01 \x01(\x05:\x03\x33\x30\x30\"C\n\x1bRequestSubscribeTaskMonitor\x12\x11\n\x06period\x18\x01 \x01(\x01:\x01\x33\x12\x11\n\x05top_n\x18\x02 \x01(\x05:\x02\x32\x30\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05')
+  serialized_pb=_b('\n\x15protobuf/client.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xb7\x0c\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x42\n\x13\x64\x65lete_domain_login\x18\x02 \x01(\x0b\x32#.starbelly.RequestDeleteDomainLoginH\x00\x12\x31\n\ndelete_job\x18\x03 \x01(\x0b\x32\x1b.starbelly.RequestDeleteJobH\x00\x12\x42\n\x13\x64\x65lete_job_schedule\x18\x18 \x01(\x0b\x32#.starbelly.RequestDeleteJobScheduleH\x00\x12\x37\n\rdelete_policy\x18\x04 \x01(\x0b\x32\x1e.starbelly.RequestDeletePolicyH\x00\x12<\n\x10get_domain_login\x18\x05 \x01(\x0b\x32 .starbelly.RequestGetDomainLoginH\x00\x12+\n\x07get_job\x18\x06 \x01(\x0b\x32\x18.starbelly.RequestGetJobH\x00\x12<\n\x10get_job_schedule\x18\x19 \x01(\x0b\x32 .starbelly.RequestGetJobScheduleH\x00\x12\x36\n\rget_job_items\x18\x07 \x01(\x0b\x32\x1d.starbelly.RequestGetJobItemsH\x00\x12\x31\n\nget_policy\x18\x08 \x01(\x0b\x32\x1b.starbelly.RequestGetPolicyH\x00\x12:\n\x0fget_rate_limits\x18\t \x01(\x0b\x32\x1f.starbelly.RequestGetRateLimitsH\x00\x12@\n\x12list_domain_logins\x18\n \x01(\x0b\x32\".starbelly.RequestListDomainLoginsH\x00\x12/\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x1a.starbelly.RequestListJobsH\x00\x12@\n\x12list_job_schedules\x18\x1a \x01(\x0b\x32\".starbelly.RequestListJobSchedulesH\x00\x12\x37\n\rlist_policies\x18\x0c \x01(\x0b\x32\x1e.starbelly.RequestListPoliciesH\x00\x12\x43\n\x13performance_profile\x18\r \x01(\x0b\x32$.starbelly.RequestPerformanceProfileH\x00\x12&\n\x04ping\x18\x0e \x01(\x0b\x32\x16.starbelly.RequestPingH\x00\x12<\n\x10set_domain_login\x18\x0f \x01(\x0b\x32 .starbelly.RequestSetDomainLoginH\x00\x12+\n\x07set_job\x18\x10 \x01(\x0b\x32\x18.starbelly.RequestSetJobH\x00\x12<\n\x10set_job_schedule\x18\x1b \x01(\x0b\x32 .starbelly.RequestSetJobScheduleH\x00\x12\x31\n\nset_policy\x18\x11 \x01(\x0b\x32\x1b.starbelly.RequestSetPolicyH\x00\x12\x38\n\x0eset_rate_limit\x18\x12 \x01(\x0b\x32\x1e.starbelly.RequestSetRateLimitH\x00\x12\x44\n\x14subscribe_job_status\x18\x13 \x01(\x0b\x32$.starbelly.RequestSubscribeJobStatusH\x00\x12@\n\x12subscribe_job_sync\x18\x14 \x01(\x0b\x32\".starbelly.RequestSubscribeJobSyncH\x00\x12P\n\x1asubscribe_resource_monitor\x18\x15 \x01(\x0b\x32*.starbelly.RequestSubscribeResourceMonitorH\x00\x12H\n\x16subscribe_task_monitor\x18\x16 \x01(\x0b\x32&.starbelly.RequestSubscribeTaskMonitorH\x00\x12\x34\n\x0bunsubscribe\x18\x17 \x01(\x0b\x32\x1d.starbelly.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"*\n\x18RequestDeleteDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\"\"\n\x10RequestDeleteJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"/\n\x18RequestDeleteJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"(\n\x13RequestDeletePolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"\'\n\x15RequestGetDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x02(\t\"\x1f\n\rRequestGetJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\",\n\x15RequestGetJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"\xac\x01\n\x12RequestGetJobItems\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x17\n\x0finclude_success\x18\x02 \x01(\x08\x12\x15\n\rinclude_error\x18\x03 \x01(\x08\x12\x19\n\x11include_exception\x18\x04 \x01(\x08\x12\x1c\n\x0e\x63ompression_ok\x18\x05 \x01(\x08:\x04true\x12\x1d\n\x04page\x18\x06 \x01(\x0b\x32\x0f.starbelly.Page\"%\n\x10RequestGetPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"5\n\x14RequestGetRateLimits\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"8\n\x17RequestListDomainLogins\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"i\n\x0fRequestListJobs\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\x12\x15\n\rstarted_after\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\x12\x13\n\x0bschedule_id\x18\x04 \x01(\x0c\"8\n\x17RequestListJobSchedules\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"4\n\x13RequestListPolicies\x12\x1d\n\x04page\x18\x01 \x01(\x0b\x32\x0f.starbelly.Page\"V\n\x19RequestPerformanceProfile\x12\x13\n\x08\x64uration\x18\x01 \x01(\x01:\x01\x35\x12\x15\n\x07sort_by\x18\x02 \x01(\t:\x04time\x12\r\n\x05top_n\x18\x03 \x01(\x05\"\x1b\n\x0bRequestPing\x12\x0c\n\x04pong\x18\x01 \x01(\t\">\n\x15RequestSetDomainLogin\x12%\n\x05login\x18\x01 \x01(\x0b\x32\x16.starbelly.DomainLogin\"\xa0\x01\n\rRequestSetJob\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12)\n\trun_state\x18\x02 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x11\n\tpolicy_id\x18\x03 \x01(\x0c\x12\r\n\x05seeds\x18\x04 \x03(\t\x12\x0c\n\x04name\x18\x05 \x01(\t\x12$\n\x08tag_list\x18\x06 \x01(\x0b\x32\x12.starbelly.TagList\"E\n\x15RequestSetJobSchedule\x12,\n\x0cjob_schedule\x18\x01 \x01(\x0b\x32\x16.starbelly.JobSchedule\"?\n\x13RequestSetRateLimit\x12(\n\nrate_limit\x18\x01 \x02(\x0b\x32\x14.starbelly.RateLimit\"5\n\x10RequestSetPolicy\x12!\n\x06policy\x18\x01 \x02(\x0b\x32\x11.starbelly.Policy\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"[\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\x12\x1c\n\x0e\x63ompression_ok\x18\x03 \x01(\x08:\x04true\"7\n\x1fRequestSubscribeResourceMonitor\x12\x14\n\x07history\x18\x01 \x01(\x05:\x03\x33\x30\x30\"C\n\x1bRequestSubscribeTaskMonitor\x12\x11\n\x06period\x18\x01 \x01(\x01:\x01\x33\x12\x11\n\x05top_n\x18\x02 \x01(\x05:\x02\x32\x30\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05')
   ,
   dependencies=[protobuf_dot_shared__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -57,140 +57,168 @@ _REQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='delete_policy', full_name='starbelly.Request.delete_policy', index=3,
+      name='delete_job_schedule', full_name='starbelly.Request.delete_job_schedule', index=3,
+      number=24, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='delete_policy', full_name='starbelly.Request.delete_policy', index=4,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='get_domain_login', full_name='starbelly.Request.get_domain_login', index=4,
+      name='get_domain_login', full_name='starbelly.Request.get_domain_login', index=5,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='get_job', full_name='starbelly.Request.get_job', index=5,
+      name='get_job', full_name='starbelly.Request.get_job', index=6,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='get_job_items', full_name='starbelly.Request.get_job_items', index=6,
+      name='get_job_schedule', full_name='starbelly.Request.get_job_schedule', index=7,
+      number=25, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='get_job_items', full_name='starbelly.Request.get_job_items', index=8,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='get_policy', full_name='starbelly.Request.get_policy', index=7,
+      name='get_policy', full_name='starbelly.Request.get_policy', index=9,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='get_rate_limits', full_name='starbelly.Request.get_rate_limits', index=8,
+      name='get_rate_limits', full_name='starbelly.Request.get_rate_limits', index=10,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_domain_logins', full_name='starbelly.Request.list_domain_logins', index=9,
+      name='list_domain_logins', full_name='starbelly.Request.list_domain_logins', index=11,
       number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_jobs', full_name='starbelly.Request.list_jobs', index=10,
+      name='list_jobs', full_name='starbelly.Request.list_jobs', index=12,
       number=11, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_policies', full_name='starbelly.Request.list_policies', index=11,
+      name='list_job_schedules', full_name='starbelly.Request.list_job_schedules', index=13,
+      number=26, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='list_policies', full_name='starbelly.Request.list_policies', index=14,
       number=12, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='performance_profile', full_name='starbelly.Request.performance_profile', index=12,
+      name='performance_profile', full_name='starbelly.Request.performance_profile', index=15,
       number=13, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='ping', full_name='starbelly.Request.ping', index=13,
+      name='ping', full_name='starbelly.Request.ping', index=16,
       number=14, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='set_domain_login', full_name='starbelly.Request.set_domain_login', index=14,
+      name='set_domain_login', full_name='starbelly.Request.set_domain_login', index=17,
       number=15, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='set_job', full_name='starbelly.Request.set_job', index=15,
+      name='set_job', full_name='starbelly.Request.set_job', index=18,
       number=16, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='set_policy', full_name='starbelly.Request.set_policy', index=16,
+      name='set_job_schedule', full_name='starbelly.Request.set_job_schedule', index=19,
+      number=27, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='set_policy', full_name='starbelly.Request.set_policy', index=20,
       number=17, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='set_rate_limit', full_name='starbelly.Request.set_rate_limit', index=17,
+      name='set_rate_limit', full_name='starbelly.Request.set_rate_limit', index=21,
       number=18, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_job_status', full_name='starbelly.Request.subscribe_job_status', index=18,
+      name='subscribe_job_status', full_name='starbelly.Request.subscribe_job_status', index=22,
       number=19, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_job_sync', full_name='starbelly.Request.subscribe_job_sync', index=19,
+      name='subscribe_job_sync', full_name='starbelly.Request.subscribe_job_sync', index=23,
       number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_resource_monitor', full_name='starbelly.Request.subscribe_resource_monitor', index=20,
+      name='subscribe_resource_monitor', full_name='starbelly.Request.subscribe_resource_monitor', index=24,
       number=21, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subscribe_task_monitor', full_name='starbelly.Request.subscribe_task_monitor', index=21,
+      name='subscribe_task_monitor', full_name='starbelly.Request.subscribe_task_monitor', index=25,
       number=22, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='unsubscribe', full_name='starbelly.Request.unsubscribe', index=22,
+      name='unsubscribe', full_name='starbelly.Request.unsubscribe', index=26,
       number=23, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -212,7 +240,7 @@ _REQUEST = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=60,
-  serialized_end=1393,
+  serialized_end=1651,
 )
 
 
@@ -242,8 +270,8 @@ _REQUESTDELETEDOMAINLOGIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1395,
-  serialized_end=1437,
+  serialized_start=1653,
+  serialized_end=1695,
 )
 
 
@@ -273,8 +301,39 @@ _REQUESTDELETEJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1439,
-  serialized_end=1473,
+  serialized_start=1697,
+  serialized_end=1731,
+)
+
+
+_REQUESTDELETEJOBSCHEDULE = _descriptor.Descriptor(
+  name='RequestDeleteJobSchedule',
+  full_name='starbelly.RequestDeleteJobSchedule',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='schedule_id', full_name='starbelly.RequestDeleteJobSchedule.schedule_id', index=0,
+      number=1, type=12, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1733,
+  serialized_end=1780,
 )
 
 
@@ -304,8 +363,8 @@ _REQUESTDELETEPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1475,
-  serialized_end=1515,
+  serialized_start=1782,
+  serialized_end=1822,
 )
 
 
@@ -335,8 +394,8 @@ _REQUESTGETDOMAINLOGIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1517,
-  serialized_end=1556,
+  serialized_start=1824,
+  serialized_end=1863,
 )
 
 
@@ -366,8 +425,39 @@ _REQUESTGETJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1558,
-  serialized_end=1589,
+  serialized_start=1865,
+  serialized_end=1896,
+)
+
+
+_REQUESTGETJOBSCHEDULE = _descriptor.Descriptor(
+  name='RequestGetJobSchedule',
+  full_name='starbelly.RequestGetJobSchedule',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='schedule_id', full_name='starbelly.RequestGetJobSchedule.schedule_id', index=0,
+      number=1, type=12, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1898,
+  serialized_end=1942,
 )
 
 
@@ -432,8 +522,8 @@ _REQUESTGETJOBITEMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1592,
-  serialized_end=1764,
+  serialized_start=1945,
+  serialized_end=2117,
 )
 
 
@@ -463,8 +553,8 @@ _REQUESTGETPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1766,
-  serialized_end=1803,
+  serialized_start=2119,
+  serialized_end=2156,
 )
 
 
@@ -494,8 +584,8 @@ _REQUESTGETRATELIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1805,
-  serialized_end=1858,
+  serialized_start=2158,
+  serialized_end=2211,
 )
 
 
@@ -525,8 +615,8 @@ _REQUESTLISTDOMAINLOGINS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1860,
-  serialized_end=1916,
+  serialized_start=2213,
+  serialized_end=2269,
 )
 
 
@@ -558,6 +648,13 @@ _REQUESTLISTJOBS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='schedule_id', full_name='starbelly.RequestListJobs.schedule_id', index=3,
+      number=4, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -570,8 +667,39 @@ _REQUESTLISTJOBS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1918,
-  serialized_end=2002,
+  serialized_start=2271,
+  serialized_end=2376,
+)
+
+
+_REQUESTLISTJOBSCHEDULES = _descriptor.Descriptor(
+  name='RequestListJobSchedules',
+  full_name='starbelly.RequestListJobSchedules',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='page', full_name='starbelly.RequestListJobSchedules.page', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2378,
+  serialized_end=2434,
 )
 
 
@@ -601,8 +729,8 @@ _REQUESTLISTPOLICIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2004,
-  serialized_end=2056,
+  serialized_start=2436,
+  serialized_end=2488,
 )
 
 
@@ -646,8 +774,8 @@ _REQUESTPERFORMANCEPROFILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2058,
-  serialized_end=2144,
+  serialized_start=2490,
+  serialized_end=2576,
 )
 
 
@@ -677,8 +805,8 @@ _REQUESTPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2146,
-  serialized_end=2173,
+  serialized_start=2578,
+  serialized_end=2605,
 )
 
 
@@ -708,8 +836,8 @@ _REQUESTSETDOMAINLOGIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2175,
-  serialized_end=2237,
+  serialized_start=2607,
+  serialized_end=2669,
 )
 
 
@@ -774,8 +902,39 @@ _REQUESTSETJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2240,
-  serialized_end=2400,
+  serialized_start=2672,
+  serialized_end=2832,
+)
+
+
+_REQUESTSETJOBSCHEDULE = _descriptor.Descriptor(
+  name='RequestSetJobSchedule',
+  full_name='starbelly.RequestSetJobSchedule',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='job_schedule', full_name='starbelly.RequestSetJobSchedule.job_schedule', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2834,
+  serialized_end=2903,
 )
 
 
@@ -805,8 +964,8 @@ _REQUESTSETRATELIMIT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2402,
-  serialized_end=2465,
+  serialized_start=2905,
+  serialized_end=2968,
 )
 
 
@@ -836,8 +995,8 @@ _REQUESTSETPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2467,
-  serialized_end=2520,
+  serialized_start=2970,
+  serialized_end=3023,
 )
 
 
@@ -867,8 +1026,8 @@ _REQUESTSUBSCRIBEJOBSTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2522,
-  serialized_end=2574,
+  serialized_start=3025,
+  serialized_end=3077,
 )
 
 
@@ -912,8 +1071,8 @@ _REQUESTSUBSCRIBEJOBSYNC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2576,
-  serialized_end=2667,
+  serialized_start=3079,
+  serialized_end=3170,
 )
 
 
@@ -943,8 +1102,8 @@ _REQUESTSUBSCRIBERESOURCEMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2669,
-  serialized_end=2724,
+  serialized_start=3172,
+  serialized_end=3227,
 )
 
 
@@ -981,8 +1140,8 @@ _REQUESTSUBSCRIBETASKMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2726,
-  serialized_end=2793,
+  serialized_start=3229,
+  serialized_end=3296,
 )
 
 
@@ -1012,25 +1171,29 @@ _REQUESTUNSUBSCRIBE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2795,
-  serialized_end=2840,
+  serialized_start=3298,
+  serialized_end=3343,
 )
 
 _REQUEST.fields_by_name['delete_domain_login'].message_type = _REQUESTDELETEDOMAINLOGIN
 _REQUEST.fields_by_name['delete_job'].message_type = _REQUESTDELETEJOB
+_REQUEST.fields_by_name['delete_job_schedule'].message_type = _REQUESTDELETEJOBSCHEDULE
 _REQUEST.fields_by_name['delete_policy'].message_type = _REQUESTDELETEPOLICY
 _REQUEST.fields_by_name['get_domain_login'].message_type = _REQUESTGETDOMAINLOGIN
 _REQUEST.fields_by_name['get_job'].message_type = _REQUESTGETJOB
+_REQUEST.fields_by_name['get_job_schedule'].message_type = _REQUESTGETJOBSCHEDULE
 _REQUEST.fields_by_name['get_job_items'].message_type = _REQUESTGETJOBITEMS
 _REQUEST.fields_by_name['get_policy'].message_type = _REQUESTGETPOLICY
 _REQUEST.fields_by_name['get_rate_limits'].message_type = _REQUESTGETRATELIMITS
 _REQUEST.fields_by_name['list_domain_logins'].message_type = _REQUESTLISTDOMAINLOGINS
 _REQUEST.fields_by_name['list_jobs'].message_type = _REQUESTLISTJOBS
+_REQUEST.fields_by_name['list_job_schedules'].message_type = _REQUESTLISTJOBSCHEDULES
 _REQUEST.fields_by_name['list_policies'].message_type = _REQUESTLISTPOLICIES
 _REQUEST.fields_by_name['performance_profile'].message_type = _REQUESTPERFORMANCEPROFILE
 _REQUEST.fields_by_name['ping'].message_type = _REQUESTPING
 _REQUEST.fields_by_name['set_domain_login'].message_type = _REQUESTSETDOMAINLOGIN
 _REQUEST.fields_by_name['set_job'].message_type = _REQUESTSETJOB
+_REQUEST.fields_by_name['set_job_schedule'].message_type = _REQUESTSETJOBSCHEDULE
 _REQUEST.fields_by_name['set_policy'].message_type = _REQUESTSETPOLICY
 _REQUEST.fields_by_name['set_rate_limit'].message_type = _REQUESTSETRATELIMIT
 _REQUEST.fields_by_name['subscribe_job_status'].message_type = _REQUESTSUBSCRIBEJOBSTATUS
@@ -1045,6 +1208,9 @@ _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['delete_job'])
 _REQUEST.fields_by_name['delete_job'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
+  _REQUEST.fields_by_name['delete_job_schedule'])
+_REQUEST.fields_by_name['delete_job_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+_REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['delete_policy'])
 _REQUEST.fields_by_name['delete_policy'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
@@ -1053,6 +1219,9 @@ _REQUEST.fields_by_name['get_domain_login'].containing_oneof = _REQUEST.oneofs_b
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['get_job'])
 _REQUEST.fields_by_name['get_job'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+_REQUEST.oneofs_by_name['Command'].fields.append(
+  _REQUEST.fields_by_name['get_job_schedule'])
+_REQUEST.fields_by_name['get_job_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['get_job_items'])
 _REQUEST.fields_by_name['get_job_items'].containing_oneof = _REQUEST.oneofs_by_name['Command']
@@ -1069,6 +1238,9 @@ _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['list_jobs'])
 _REQUEST.fields_by_name['list_jobs'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
+  _REQUEST.fields_by_name['list_job_schedules'])
+_REQUEST.fields_by_name['list_job_schedules'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+_REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['list_policies'])
 _REQUEST.fields_by_name['list_policies'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
@@ -1083,6 +1255,9 @@ _REQUEST.fields_by_name['set_domain_login'].containing_oneof = _REQUEST.oneofs_b
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['set_job'])
 _REQUEST.fields_by_name['set_job'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+_REQUEST.oneofs_by_name['Command'].fields.append(
+  _REQUEST.fields_by_name['set_job_schedule'])
+_REQUEST.fields_by_name['set_job_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['set_policy'])
 _REQUEST.fields_by_name['set_policy'].containing_oneof = _REQUEST.oneofs_by_name['Command']
@@ -1108,28 +1283,34 @@ _REQUESTGETJOBITEMS.fields_by_name['page'].message_type = protobuf_dot_shared__p
 _REQUESTGETRATELIMITS.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
 _REQUESTLISTDOMAINLOGINS.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
 _REQUESTLISTJOBS.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
+_REQUESTLISTJOBSCHEDULES.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
 _REQUESTLISTPOLICIES.fields_by_name['page'].message_type = protobuf_dot_shared__pb2._PAGE
 _REQUESTSETDOMAINLOGIN.fields_by_name['login'].message_type = protobuf_dot_shared__pb2._DOMAINLOGIN
 _REQUESTSETJOB.fields_by_name['run_state'].enum_type = protobuf_dot_shared__pb2._JOBRUNSTATE
 _REQUESTSETJOB.fields_by_name['tag_list'].message_type = protobuf_dot_shared__pb2._TAGLIST
+_REQUESTSETJOBSCHEDULE.fields_by_name['job_schedule'].message_type = protobuf_dot_shared__pb2._JOBSCHEDULE
 _REQUESTSETRATELIMIT.fields_by_name['rate_limit'].message_type = protobuf_dot_shared__pb2._RATELIMIT
 _REQUESTSETPOLICY.fields_by_name['policy'].message_type = protobuf_dot_shared__pb2._POLICY
 DESCRIPTOR.message_types_by_name['Request'] = _REQUEST
 DESCRIPTOR.message_types_by_name['RequestDeleteDomainLogin'] = _REQUESTDELETEDOMAINLOGIN
 DESCRIPTOR.message_types_by_name['RequestDeleteJob'] = _REQUESTDELETEJOB
+DESCRIPTOR.message_types_by_name['RequestDeleteJobSchedule'] = _REQUESTDELETEJOBSCHEDULE
 DESCRIPTOR.message_types_by_name['RequestDeletePolicy'] = _REQUESTDELETEPOLICY
 DESCRIPTOR.message_types_by_name['RequestGetDomainLogin'] = _REQUESTGETDOMAINLOGIN
 DESCRIPTOR.message_types_by_name['RequestGetJob'] = _REQUESTGETJOB
+DESCRIPTOR.message_types_by_name['RequestGetJobSchedule'] = _REQUESTGETJOBSCHEDULE
 DESCRIPTOR.message_types_by_name['RequestGetJobItems'] = _REQUESTGETJOBITEMS
 DESCRIPTOR.message_types_by_name['RequestGetPolicy'] = _REQUESTGETPOLICY
 DESCRIPTOR.message_types_by_name['RequestGetRateLimits'] = _REQUESTGETRATELIMITS
 DESCRIPTOR.message_types_by_name['RequestListDomainLogins'] = _REQUESTLISTDOMAINLOGINS
 DESCRIPTOR.message_types_by_name['RequestListJobs'] = _REQUESTLISTJOBS
+DESCRIPTOR.message_types_by_name['RequestListJobSchedules'] = _REQUESTLISTJOBSCHEDULES
 DESCRIPTOR.message_types_by_name['RequestListPolicies'] = _REQUESTLISTPOLICIES
 DESCRIPTOR.message_types_by_name['RequestPerformanceProfile'] = _REQUESTPERFORMANCEPROFILE
 DESCRIPTOR.message_types_by_name['RequestPing'] = _REQUESTPING
 DESCRIPTOR.message_types_by_name['RequestSetDomainLogin'] = _REQUESTSETDOMAINLOGIN
 DESCRIPTOR.message_types_by_name['RequestSetJob'] = _REQUESTSETJOB
+DESCRIPTOR.message_types_by_name['RequestSetJobSchedule'] = _REQUESTSETJOBSCHEDULE
 DESCRIPTOR.message_types_by_name['RequestSetRateLimit'] = _REQUESTSETRATELIMIT
 DESCRIPTOR.message_types_by_name['RequestSetPolicy'] = _REQUESTSETPOLICY
 DESCRIPTOR.message_types_by_name['RequestSubscribeJobStatus'] = _REQUESTSUBSCRIBEJOBSTATUS
@@ -1159,6 +1340,13 @@ RequestDeleteJob = _reflection.GeneratedProtocolMessageType('RequestDeleteJob', 
   ))
 _sym_db.RegisterMessage(RequestDeleteJob)
 
+RequestDeleteJobSchedule = _reflection.GeneratedProtocolMessageType('RequestDeleteJobSchedule', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTDELETEJOBSCHEDULE,
+  __module__ = 'protobuf.client_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.RequestDeleteJobSchedule)
+  ))
+_sym_db.RegisterMessage(RequestDeleteJobSchedule)
+
 RequestDeletePolicy = _reflection.GeneratedProtocolMessageType('RequestDeletePolicy', (_message.Message,), dict(
   DESCRIPTOR = _REQUESTDELETEPOLICY,
   __module__ = 'protobuf.client_pb2'
@@ -1179,6 +1367,13 @@ RequestGetJob = _reflection.GeneratedProtocolMessageType('RequestGetJob', (_mess
   # @@protoc_insertion_point(class_scope:starbelly.RequestGetJob)
   ))
 _sym_db.RegisterMessage(RequestGetJob)
+
+RequestGetJobSchedule = _reflection.GeneratedProtocolMessageType('RequestGetJobSchedule', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTGETJOBSCHEDULE,
+  __module__ = 'protobuf.client_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.RequestGetJobSchedule)
+  ))
+_sym_db.RegisterMessage(RequestGetJobSchedule)
 
 RequestGetJobItems = _reflection.GeneratedProtocolMessageType('RequestGetJobItems', (_message.Message,), dict(
   DESCRIPTOR = _REQUESTGETJOBITEMS,
@@ -1215,6 +1410,13 @@ RequestListJobs = _reflection.GeneratedProtocolMessageType('RequestListJobs', (_
   ))
 _sym_db.RegisterMessage(RequestListJobs)
 
+RequestListJobSchedules = _reflection.GeneratedProtocolMessageType('RequestListJobSchedules', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTLISTJOBSCHEDULES,
+  __module__ = 'protobuf.client_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.RequestListJobSchedules)
+  ))
+_sym_db.RegisterMessage(RequestListJobSchedules)
+
 RequestListPolicies = _reflection.GeneratedProtocolMessageType('RequestListPolicies', (_message.Message,), dict(
   DESCRIPTOR = _REQUESTLISTPOLICIES,
   __module__ = 'protobuf.client_pb2'
@@ -1249,6 +1451,13 @@ RequestSetJob = _reflection.GeneratedProtocolMessageType('RequestSetJob', (_mess
   # @@protoc_insertion_point(class_scope:starbelly.RequestSetJob)
   ))
 _sym_db.RegisterMessage(RequestSetJob)
+
+RequestSetJobSchedule = _reflection.GeneratedProtocolMessageType('RequestSetJobSchedule', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTSETJOBSCHEDULE,
+  __module__ = 'protobuf.client_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.RequestSetJobSchedule)
+  ))
+_sym_db.RegisterMessage(RequestSetJobSchedule)
 
 RequestSetRateLimit = _reflection.GeneratedProtocolMessageType('RequestSetRateLimit', (_message.Message,), dict(
   DESCRIPTOR = _REQUESTSETRATELIMIT,

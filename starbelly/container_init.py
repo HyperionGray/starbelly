@@ -293,6 +293,8 @@ def init_db(db_config):
         [r.row['job_id'], r.row['cost']])
     ensure_db_table(conn, 'job')
     ensure_db_index(conn, 'job', 'started_at')
+    ensure_db_table(conn, 'job_schedule')
+    ensure_db_index(conn, 'job_schedule', 'schedule_name')
     ensure_db_table(conn, 'policy')
     ensure_db_index(conn, 'policy', 'name')
     ensure_db_table(conn, 'rate_limit')

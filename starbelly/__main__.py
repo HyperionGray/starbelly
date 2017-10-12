@@ -21,6 +21,7 @@ from .policy import PolicyManager
 from .rate_limiter import RateLimiter
 from .resource_monitor import ResourceMonitor
 from .robots import RobotsTxtManager
+from .schedule import Scheduler
 from .server import Server
 from .subscription import SubscriptionManager
 from .tracker import Tracker
@@ -164,6 +165,7 @@ class Starbelly:
         policy_manager = PolicyManager(db_pool)
         rate_limiter = RateLimiter(db_pool)
         downloader = Downloader(rate_limiter)
+        scheduler = Scheduler(db_pool)
         robots_txt_manager = RobotsTxtManager(db_pool, rate_limiter)
         crawl_manager = CrawlManager(db_pool, rate_limiter, downloader,
             robots_txt_manager)
@@ -182,13 +184,15 @@ class Starbelly:
             tracker,
             rate_limiter,
             policy_manager,
-            resource_monitor
+            resource_monitor,
+            scheduler
         )
 
         try:
             await crawl_manager.startup_check()
             await rate_limiter.initialize()
             downloader.start()
+            scheduler_task = daemon_task(scheduler.run())
             tracker_task = daemon_task(tracker.run())
             server_task = daemon_task(server.run())
             resource_monitor_task = daemon_task(resource_monitor.run())
@@ -202,6 +206,7 @@ class Starbelly:
             await subscription_manager.close_all()
             await cancel_futures(resource_monitor_task, server_task)
             await crawl_manager.pause_all_jobs()
+            await cancel_futures(scheduler_task)
             await downloader.stop()
             await cancel_futures(tracker_task)
             await db_pool.close()
