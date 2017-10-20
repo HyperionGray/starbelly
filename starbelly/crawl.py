@@ -171,7 +171,7 @@ class CrawlManager:
             query = query.filter(r.row['tags'].contains(tag))
 
         if schedule_id is not None:
-            query = query.filter(r.row['schedule_id'] == schedule_id)
+            query = query.filter({'schedule_id': schedule_id})
 
         async with self._db_pool.connection() as conn:
             count = await query.count().run(conn)
@@ -220,7 +220,7 @@ class CrawlManager:
         self._running_jobs[job.id] = job
         job.stopped.add_done_callback(functools.partial(self._cleanup_job, job))
 
-    async def start_job(self, seeds, policy_id, name, tags):
+    async def start_job(self, seeds, policy_id, name, tags, schedule_id=None):
         '''
         Create a new job with a given seeds, policy, name, and tags.
 
@@ -239,8 +239,11 @@ class CrawlManager:
             'http_success_count': 0,
             'http_error_count': 0,
             'exception_count': 0,
-            'http_status_counts': {}
+            'http_status_counts': {},
         }
+
+        if schedule_id is not None:
+            job_data['schedule_id'] = schedule_id
 
         async with self._db_pool.connection() as conn:
             policy = await r.table('policy').get(policy_id).run(conn)

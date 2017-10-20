@@ -52,7 +52,7 @@ def async_excepthook(type_, exc, tb):
     print('Async Traceback (most recent call last):')
     for frame in traceback.extract_tb(tb):
         head, tail = os.path.split(frame.filename)
-        if (head.endswith('asyncio') or tail == 'traceback.py') and \
+        if (head.endswith('asyncio') or tail == 'traceback.py' or tail == 'coroutines.py') and \
            (frame.name.startswith('_') or frame.name == 'throw'):
             print('  ...')
             continue
@@ -165,10 +165,10 @@ class Starbelly:
         policy_manager = PolicyManager(db_pool)
         rate_limiter = RateLimiter(db_pool)
         downloader = Downloader(rate_limiter)
-        scheduler = Scheduler(db_pool)
         robots_txt_manager = RobotsTxtManager(db_pool, rate_limiter)
         crawl_manager = CrawlManager(db_pool, rate_limiter, downloader,
             robots_txt_manager)
+        scheduler = Scheduler(crawl_manager, db_pool)
         subscription_manager = SubscriptionManager()
         resource_monitor = ResourceMonitor(
             crawl_manager,

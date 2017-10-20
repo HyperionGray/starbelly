@@ -73,10 +73,19 @@ async def wait_first(*futures):
 
     Returns the future that finished first.
     '''
-    done, pending = await asyncio.wait(
-        futures,
-        return_when=asyncio.FIRST_COMPLETED
-    )
+    try:
+        done, pending = await asyncio.wait(
+            futures,
+            return_when=asyncio.FIRST_COMPLETED
+        )
+    except asyncio.CancelledError:
+        await cancel_futures(*futures)
+        raise
 
-    await cancel_futures(*pending)
+    try:
+        await cancel_futures(*pending)
+    except asyncio.CancelledError:
+        await cancel_futures(*pending)
+        raise
+
     return done.pop()

@@ -639,7 +639,7 @@ class Server:
         schedule_id = await self._scheduler.set_job_schedule(doc)
         response = Response()
         if schedule_id is not None:
-            response.new_job_schedule_id = UUID(schedule_id).bytes
+            response.new_job_schedule.schedule_id = UUID(schedule_id).bytes
         return response
 
     async def _set_policy(self, command, socket):
