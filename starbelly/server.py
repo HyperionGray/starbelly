@@ -21,6 +21,7 @@ import websockets
 import websockets.exceptions
 
 from . import cancel_futures, daemon_task, raise_future_exception
+from .captcha import captcha_doc_to_pb, captcha_pb_to_doc
 from .policy import Policy
 from .pubsub import PubSub
 from .schedule import Scheduler
@@ -56,16 +57,19 @@ class Server:
         self._websocket_server = None
 
         self._request_handlers = {
+            'delete_captcha_solver': self._delete_captcha_solver,
             'delete_domain_login': self._delete_domain_login,
             'delete_job': self._delete_job,
             'delete_job_schedule': self._delete_job_schedule,
             'delete_policy': self._delete_policy,
+            'get_captcha_solver': self._get_captcha_solver,
             'get_domain_login': self._get_domain_login,
             'get_job': self._get_job,
             'get_job_items': self._get_job_items,
             'get_job_schedule': self._get_job_schedule,
             'get_policy': self._get_policy,
             'get_rate_limits': self._get_rate_limits,
+            'list_captcha_solvers': self._list_captcha_solvers,
             'list_domain_logins': self._list_domain_logins,
             'list_jobs': self._list_jobs,
             'list_job_schedules': self._list_job_schedules,
@@ -73,6 +77,7 @@ class Server:
             'ping': self._ping,
             'performance_profile': self._profile,
             'set_domain_login': self._set_domain_login,
+            'set_captcha_solver': self._set_captcha_solver,
             'set_job': self._set_job,
             'set_job_schedule': self._set_job_schedule,
             'set_policy': self._set_policy,
@@ -131,6 +136,33 @@ class Server:
             self._websocket_server.close()
             await self._websocket_server.wait_closed()
             logger.info('All websockets closed.')
+
+    async def _delete_captcha_solver(self, command, socket):
+        ''' Delete a a CAPTCHA solver. '''
+        if command.HasField('solver_id'):
+            solver_id = str(UUID(bytes=command.solver_id))
+        else:
+            raise InvalidRequestException('solver_id is required.')
+
+        response = Response()
+        async with self._db_pool.connection() as conn:
+            use_count = await (
+                r.table('policy')
+                 .filter({'captcha_solver_id': solver_id})
+                 .count()
+                 .run(conn)
+            )
+            if use_count > 0:
+                raise InvalidRequestException('Cannot delete CAPTCHA solver'
+                    ' because it is being used by a policy.')
+            await (
+                r.table('captcha_solver')
+                 .get(solver_id)
+                 .delete()
+                 .run(conn)
+            )
+
+        return response
 
     async def _delete_domain_login(self, command, socket):
         ''' Delete a domain login and all of its users. '''
@@ -221,6 +253,22 @@ class Server:
         else:
             # This could happen, e.g. if the request_id is not set.
             logger.error('Cannot send uninitialized response:\n%r', response)
+
+    async def _get_captcha_solver(self, command, socket):
+        ''' Get a CAPTCHA solver. '''
+        if not command.HasField('solver_id'):
+            raise InvalidRequestException('solver_id is required.')
+
+        solver_id = str(UUID(bytes=command.solver_id))
+        async with self._db_pool.connection() as conn:
+            doc = await r.table('captcha_solver').get(solver_id).run(conn)
+
+        if doc is None:
+            raise InvalidRequestException('No CAPTCHA solver found for that ID')
+
+        response = Response()
+        response.solver.CopyFrom(captcha_doc_to_pb(doc))
+        return response
 
     async def _get_domain_login(self, command, socket):
         ''' Get a domain login. '''
@@ -369,6 +417,30 @@ class Server:
 
         return response
 
+    async def _list_captcha_solvers(self, command, socket):
+        ''' Return a list of CAPTCHA solvers. '''
+        limit = command.page.limit
+        offset = command.page.offset
+        response = Response()
+        solvers = list()
+
+        async with self._db_pool.connection() as conn:
+            count = await r.table('captcha_solver').count().run(conn)
+            docs = await (
+                r.table('captcha_solver')
+                 .order_by('name')
+                 .skip(offset)
+                 .limit(limit)
+                 .run(conn)
+            )
+
+        for doc in docs:
+            solver = response.list_captcha_solvers.solvers.add()
+            solver.CopyFrom(captcha_doc_to_pb(doc))
+
+        response.list_captcha_solvers.total = count
+        return response
+
     async def _list_domain_logins(self, command, socket):
         ''' Return a list of domain logins. '''
         limit = command.page.limit
@@ -393,7 +465,7 @@ class Server:
             dl.login_url = domain_doc['login_url']
             if domain_doc['login_test'] is not None:
                 dl.login_test = domain_doc['login_test']
-            # Not very efficient way to count #users, but don't know a better
+            # Not very efficient way to count users, but don't know a better
             # way...
             dl.auth_count = len(domain_doc['users'])
 
@@ -523,6 +595,23 @@ class Server:
             function.non_recursive_calls = stat['non_recursive_calls']
             function.total_time = stat['total_time']
             function.cumulative_time = stat['cumulative_time']
+
+        return response
+
+    async def _set_captcha_solver(self, command, socket):
+        ''' Create or update CAPTCHA solver. '''
+        now = datetime.now(tzlocal())
+        doc = captcha_pb_to_doc(command.solver)
+        doc['updated_at'] = now
+        response = Response()
+        async with self._db_pool.connection() as conn:
+            if command.solver.HasField('solver_id'):
+                await r.table('captcha_solver').update(doc).run(conn)
+            else:
+                doc['created_at'] = now
+                result = await r.table('captcha_solver').insert(doc).run(conn)
+                solver_id = result['generated_keys'][0]
+                response.new_solver.solver_id = UUID(solver_id).bytes
 
         return response
 

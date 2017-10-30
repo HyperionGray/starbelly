@@ -7,7 +7,7 @@ cchardet
 feedparser
 formasaurus[with-deps]
 humanize
-lxml
+lxml==3.8.0
 multidict
 nose
 protobuf

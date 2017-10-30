@@ -284,6 +284,7 @@ def init_db(db_config):
     db_name = db_config['db']
     ensure_db(conn, db_name)
     ensure_db_user(conn, db_name, db_config['user'], db_config['password'])
+    ensure_db_table(conn, 'captcha_solver')
     ensure_db_table(conn, 'domain_login', primary_key='domain')
     ensure_db_table(conn, 'frontier')
     ensure_db_index(conn, 'frontier', 'cost_index',

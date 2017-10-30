@@ -175,14 +175,17 @@ class RobotsTxtManager:
 
         logger.info('Fetching robots.txt: %s', robots_url)
         # Bit of a hack here to work with rate DownloadRequest API: create a
-        # queue that we only use one time. This should really be one queue that
-        # all tasks access through this instance.
+        # queue that we only use one time.
+        robots_policy = policy.replace_mime_type_rules([
+            {'match': 'MATCHES', 'pattern': '^text/plain$', 'save': True},
+            {'save': False},
+        ])
         output_queue = asyncio.Queue()
         download_request = DownloadRequest(
             job_id='robots_txt',
             url=robots_url,
             cost=0,
-            policy=policy,
+            policy=robots_policy,
             output_queue=output_queue
         )
         await self._rate_limiter.push(download_request)

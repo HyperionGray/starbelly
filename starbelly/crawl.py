@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 from . import cancel_futures, daemon_task, VERSION
 from .db import CursorContext
 from .downloader import DownloadRequest
-from .login import get_login_form
+from .login import LoginManager
 from .policy import Policy
 from .pubsub import PubSub
 from .url_extractor import extract_urls
@@ -358,6 +358,7 @@ class _CrawlJob:
         self._frontier_size = 0
         self._frontier_task = None
         self._limits_task = None
+        self._login_manager = LoginManager(policy, rate_limiter)
         self._insert_item_sequence = 0
         self._pending_count = 0
         self._rate_limiter = rate_limiter
@@ -906,11 +907,11 @@ class _CrawlJob:
             logger.error('Login aborted: cannot fetch %s', response.url)
             return
         try:
-            loop = asyncio.get_event_loop()
-            action, method, data = await loop.run_in_executor(None,
-                get_login_form, response, user['username'], user['password'])
+            action, method, data = await self._login_manager.get_login_form(
+                response, user['username'], user['password'])
         except Exception as e:
-            logger.error('Cannot parse login form: %s', e)
+            logger.exception('Cannot parse login form: %s', e)
+            raise
             return
         logger.info('Login action=%s method=%s data=%r', action, method, data)
         request = DownloadRequest(self.id, action, 1.0, self.policy,

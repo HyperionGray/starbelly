@@ -1,3 +1,4 @@
+import base64
 import logging
 import random
 import re
@@ -172,6 +173,7 @@ class Policy:
             _invalid('Policy name cannot be blank')
 
         self.authentication = PolicyAuthentication(doc['authentication'])
+        self.captcha_solver = PolicyCaptchaSolver() #TODO
         self.limits = PolicyLimits(doc['limits'])
         self.mime_type_rules = PolicyMimeTypeRules(doc['mime_type_rules'])
         self.proxy_rules = PolicyProxyRules(doc['proxy_rules'])
@@ -181,6 +183,23 @@ class Policy:
             doc['url_normalization'])
         self.url_rules = PolicyUrlRules(doc['url_rules'], seeds)
         self.user_agents = PolicyUserAgents(doc['user_agents'], version)
+
+    def replace_mime_type_rules(self, doc):
+        '''
+        Return a shallow copy of this policy with new MIME type rules from
+        ``doc``.
+        '''
+        policy = Policy.__new__(Policy)
+        policy.authentication = self.authentication
+        policy.captcha_solver = self.captcha_solver
+        policy.limits = self.limits
+        policy.mime_type_rules = PolicyMimeTypeRules(doc)
+        policy.proxy_rules = self.proxy_rules
+        policy.robots_txt = self.robots_txt
+        policy.url_normalization = self.url_normalization
+        policy.url_rules = self.url_rules
+        policy.user_agents = self.user_agents
+        return policy
 
 
 class PolicyAuthentication:
@@ -203,6 +222,37 @@ class PolicyAuthentication:
     def is_enabled(self):
         ''' Return True if authentication is enabled. '''
         return self._enabled
+
+
+class PolicyCaptchaSolver:
+    ''' Encapsulates a CAPTCHA solving service. '''
+    def __init__(self):
+        ''' Constructor. '''
+        self.service_url = 'https://api.anti-captcha.com/'
+        self.client_key = '--------------------------------'
+        self.phrase = False
+        self.case = False
+        self.numeric = 0
+        self.math = False
+        self.min_length = None
+        self.max_length = None
+
+    def get_command(self, img_data):
+        ''' Return a JSON command suitable for posting to CAPTCHA API. '''
+        img_b64 = base64.b64encode(img_data).decode('ascii')
+        return {
+            'clientKey': self.client_key,
+            'task': {
+                'type': 'ImageToTextTask',
+                'body': img_b64,
+                'phrase': self.phrase,
+                'case': self.case,
+                'numeric': self.numeric,
+                'math': self.math,
+                'minLength': self.min_length or 0,
+                'maxLength': self.max_length or 0,
+            }
+        }
 
 
 class PolicyLimits:

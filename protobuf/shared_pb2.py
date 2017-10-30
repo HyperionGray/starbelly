@@ -20,10 +20,37 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/shared.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/shared.proto\x12\tstarbelly\"\x83\x01\n\x0b\x44omainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\x12\x11\n\tlogin_url\x18\x02 \x01(\t\x12\x12\n\nlogin_test\x18\x03 \x01(\t\x12\x12\n\nauth_count\x18\x04 \x01(\x05\x12)\n\x05users\x18\x05 \x03(\x0b\x32\x1a.starbelly.DomainLoginUser\"F\n\x0f\x44omainLoginUser\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x0f\n\x07working\x18\x03 \x01(\x08\"\xa7\x02\n\rCrawlResponse\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ompleted_at\x18\x02 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x03 \x01(\t\x12\x0c\n\x04\x63ost\x18\x04 \x01(\x01\x12\x10\n\x08\x64uration\x18\x05 \x01(\x01\x12\x11\n\texception\x18\x06 \x01(\t\x12\"\n\x07headers\x18\x07 \x03(\x0b\x32\x11.starbelly.Header\x12\x1a\n\x12is_body_compressed\x18\x08 \x01(\x08\x12\x12\n\nis_success\x18\t \x01(\x08\x12\x0e\n\x06job_id\x18\n \x01(\x0c\x12\x12\n\nstarted_at\x18\x0b \x01(\t\x12\x13\n\x0bstatus_code\x18\x0c \x01(\x05\x12\x0b\n\x03url\x18\r \x01(\t\x12\x0f\n\x07url_can\x18\x0e \x01(\t\"$\n\x06Header\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\xbe\x03\n\x03Job\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\r\n\x05seeds\x18\x02 \x03(\t\x12!\n\x06policy\x18\x03 \x01(\x0b\x32\x11.starbelly.Policy\x12\x0c\n\x04name\x18\x04 \x01(\t\x12$\n\x08tag_list\x18\x05 \x01(\x0b\x32\x12.starbelly.TagList\x12)\n\trun_state\x18\x06 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x12\n\nstarted_at\x18\x07 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x08 \x01(\t\x12\x16\n\nitem_count\x18\t \x01(\x05:\x02-1\x12\x1e\n\x12http_success_count\x18\n \x01(\x05:\x02-1\x12\x1c\n\x10http_error_count\x18\x0b \x01(\x05:\x02-1\x12\x1b\n\x0f\x65xception_count\x18\x0c \x01(\x05:\x02-1\x12@\n\x12http_status_counts\x18\r \x03(\x0b\x32$.starbelly.Job.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\'\n\x07JobList\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\"\xea\x02\n\x0bJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\x12\x12\n\ncreated_at\x18\x02 \x01(\t\x12\x12\n\nupdated_at\x18\x03 \x01(\t\x12\x0f\n\x07\x65nabled\x18\x04 \x01(\x08\x12\x31\n\ttime_unit\x18\x05 \x01(\x0e\x32\x1e.starbelly.JobScheduleTimeUnit\x12\x11\n\tnum_units\x18\x06 \x01(\x05\x12,\n\x06timing\x18\x07 \x01(\x0e\x32\x1c.starbelly.JobScheduleTiming\x12\x15\n\rschedule_name\x18\x08 \x01(\t\x12\x10\n\x08job_name\x18\t \x01(\t\x12\r\n\x05seeds\x18\n \x03(\t\x12\x11\n\tpolicy_id\x18\x0b \x01(\x0c\x12$\n\x08tag_list\x18\x0c \x01(\x0b\x32\x12.starbelly.TagList\x12\x15\n\rlatest_job_id\x18\r \x01(\x0c\x12\x11\n\tjob_count\x18\x0e \x01(\x05\"@\n\x0fJobScheduleList\x12-\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x16.starbelly.JobSchedule\")\n\x04Page\x12\x11\n\x05limit\x18\x01 \x01(\x05:\x02\x31\x30\x12\x0e\n\x06offset\x18\x02 \x01(\x05\"\xe8\x03\n\x06Policy\x12\x11\n\tpolicy_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12\x37\n\x0e\x61uthentication\x18\x06 \x01(\x0b\x32\x1f.starbelly.PolicyAuthentication\x12\'\n\x06limits\x18\x07 \x01(\x0b\x32\x17.starbelly.PolicyLimits\x12/\n\x0bproxy_rules\x18\x08 \x03(\x0b\x32\x1a.starbelly.PolicyProxyRule\x12\x36\n\x0fmime_type_rules\x18\t \x03(\x0b\x32\x1d.starbelly.PolicyMimeTypeRule\x12.\n\nrobots_txt\x18\n \x01(\x0b\x32\x1a.starbelly.PolicyRobotsTxt\x12<\n\x11url_normalization\x18\r \x01(\x0b\x32!.starbelly.PolicyUrlNormalization\x12+\n\turl_rules\x18\x0b \x03(\x0b\x32\x18.starbelly.PolicyUrlRule\x12/\n\x0buser_agents\x18\x0c \x03(\x0b\x32\x1a.starbelly.PolicyUserAgent\"\'\n\x14PolicyAuthentication\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\"I\n\x0cPolicyLimits\x12\x10\n\x08max_cost\x18\x01 \x01(\x01\x12\x14\n\x0cmax_duration\x18\x02 \x01(\x01\x12\x11\n\tmax_items\x18\x03 \x01(\x05\"[\n\x12PolicyMimeTypeRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x0c\n\x04save\x18\x03 \x01(\x08\"]\n\x0fPolicyProxyRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x11\n\tproxy_url\x18\x03 \x01(\t\"m\n\x0fPolicyRobotsTxt\x12/\n\x05usage\x18\x01 \x02(\x0e\x32 .starbelly.PolicyRobotsTxt.Usage\")\n\x05Usage\x12\x08\n\x04OBEY\x10\x01\x12\n\n\x06INVERT\x10\x02\x12\n\n\x06IGNORE\x10\x03\"C\n\x16PolicyUrlNormalization\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x12\x18\n\x10strip_parameters\x18\x02 \x03(\t\"\xaa\x01\n\rPolicyUrlRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12/\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32\x1f.starbelly.PolicyUrlRule.Action\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\"\x1f\n\x06\x41\x63tion\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08MULTIPLY\x10\x02\"\x1f\n\x0fPolicyUserAgent\x12\x0c\n\x04name\x18\x01 \x02(\t\"8\n\tRateLimit\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x64\x65lay\x18\x02 \x01(\x02\x12\x0e\n\x06\x64omain\x18\x03 \x01(\t\"\x17\n\x07TagList\x12\x0c\n\x04tags\x18\x01 \x03(\t*^\n\x0bJobRunState\x12\r\n\tCANCELLED\x10\x01\x12\r\n\tCOMPLETED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\x0b\n\x07PENDING\x10\x04\x12\x0b\n\x07RUNNING\x10\x05\x12\x0b\n\x07\x44\x45LETED\x10\x06*Y\n\x13JobScheduleTimeUnit\x12\x0b\n\x07MINUTES\x10\x01\x12\t\n\x05HOURS\x10\x02\x12\x08\n\x04\x44\x41YS\x10\x03\x12\t\n\x05WEEKS\x10\x04\x12\n\n\x06MONTHS\x10\x05\x12\t\n\x05YEARS\x10\x06*J\n\x11JobScheduleTiming\x12\x1f\n\x1b\x41\x46TER_PREVIOUS_JOB_FINISHED\x10\x01\x12\x14\n\x10REGULAR_INTERVAL\x10\x02*/\n\x0cPatternMatch\x12\x0b\n\x07MATCHES\x10\x01\x12\x12\n\x0e\x44OES_NOT_MATCH\x10\x02')
+  serialized_pb=_b('\n\x15protobuf/shared.proto\x12\tstarbelly\"\x9c\x01\n\rCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12\x34\n\x08\x61ntigate\x18\x05 \x01(\x0b\x32 .starbelly.CaptchaSolverAntigateH\x00\x42\x0c\n\nSolverType\"\xeb\x01\n\x15\x43\x61ptchaSolverAntigate\x12\x13\n\x0bservice_url\x18\x01 \x01(\t\x12\x0f\n\x07\x61pi_key\x18\x02 \x01(\t\x12\x16\n\x0erequire_phrase\x18\x03 \x01(\x08\x12\x16\n\x0e\x63\x61se_sensitive\x18\x04 \x01(\x08\x12>\n\ncharacters\x18\x05 \x01(\x0e\x32*.starbelly.CaptchaSolverAntigateCharacters\x12\x14\n\x0crequire_math\x18\x06 \x01(\x08\x12\x12\n\nmin_length\x18\x07 \x01(\x05\x12\x12\n\nmax_length\x18\x08 \x01(\x05\"\x83\x01\n\x0b\x44omainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\x12\x11\n\tlogin_url\x18\x02 \x01(\t\x12\x12\n\nlogin_test\x18\x03 \x01(\t\x12\x12\n\nauth_count\x18\x04 \x01(\x05\x12)\n\x05users\x18\x05 \x03(\x0b\x32\x1a.starbelly.DomainLoginUser\"F\n\x0f\x44omainLoginUser\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x0f\n\x07working\x18\x03 \x01(\x08\"\xa7\x02\n\rCrawlResponse\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ompleted_at\x18\x02 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x03 \x01(\t\x12\x0c\n\x04\x63ost\x18\x04 \x01(\x01\x12\x10\n\x08\x64uration\x18\x05 \x01(\x01\x12\x11\n\texception\x18\x06 \x01(\t\x12\"\n\x07headers\x18\x07 \x03(\x0b\x32\x11.starbelly.Header\x12\x1a\n\x12is_body_compressed\x18\x08 \x01(\x08\x12\x12\n\nis_success\x18\t \x01(\x08\x12\x0e\n\x06job_id\x18\n \x01(\x0c\x12\x12\n\nstarted_at\x18\x0b \x01(\t\x12\x13\n\x0bstatus_code\x18\x0c \x01(\x05\x12\x0b\n\x03url\x18\r \x01(\t\x12\x0f\n\x07url_can\x18\x0e \x01(\t\"$\n\x06Header\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\xbe\x03\n\x03Job\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\r\n\x05seeds\x18\x02 \x03(\t\x12!\n\x06policy\x18\x03 \x01(\x0b\x32\x11.starbelly.Policy\x12\x0c\n\x04name\x18\x04 \x01(\t\x12$\n\x08tag_list\x18\x05 \x01(\x0b\x32\x12.starbelly.TagList\x12)\n\trun_state\x18\x06 \x01(\x0e\x32\x16.starbelly.JobRunState\x12\x12\n\nstarted_at\x18\x07 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x08 \x01(\t\x12\x16\n\nitem_count\x18\t \x01(\x05:\x02-1\x12\x1e\n\x12http_success_count\x18\n \x01(\x05:\x02-1\x12\x1c\n\x10http_error_count\x18\x0b \x01(\x05:\x02-1\x12\x1b\n\x0f\x65xception_count\x18\x0c \x01(\x05:\x02-1\x12@\n\x12http_status_counts\x18\r \x03(\x0b\x32$.starbelly.Job.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\'\n\x07JobList\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\"\xea\x02\n\x0bJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\x12\x12\n\ncreated_at\x18\x02 \x01(\t\x12\x12\n\nupdated_at\x18\x03 \x01(\t\x12\x0f\n\x07\x65nabled\x18\x04 \x01(\x08\x12\x31\n\ttime_unit\x18\x05 \x01(\x0e\x32\x1e.starbelly.JobScheduleTimeUnit\x12\x11\n\tnum_units\x18\x06 \x01(\x05\x12,\n\x06timing\x18\x07 \x01(\x0e\x32\x1c.starbelly.JobScheduleTiming\x12\x15\n\rschedule_name\x18\x08 \x01(\t\x12\x10\n\x08job_name\x18\t \x01(\t\x12\r\n\x05seeds\x18\n \x03(\t\x12\x11\n\tpolicy_id\x18\x0b \x01(\x0c\x12$\n\x08tag_list\x18\x0c \x01(\x0b\x32\x12.starbelly.TagList\x12\x15\n\rlatest_job_id\x18\r \x01(\x0c\x12\x11\n\tjob_count\x18\x0e \x01(\x05\"@\n\x0fJobScheduleList\x12-\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x16.starbelly.JobSchedule\")\n\x04Page\x12\x11\n\x05limit\x18\x01 \x01(\x05:\x02\x31\x30\x12\x0e\n\x06offset\x18\x02 \x01(\x05\"\xe8\x03\n\x06Policy\x12\x11\n\tpolicy_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12\x37\n\x0e\x61uthentication\x18\x06 \x01(\x0b\x32\x1f.starbelly.PolicyAuthentication\x12\'\n\x06limits\x18\x07 \x01(\x0b\x32\x17.starbelly.PolicyLimits\x12/\n\x0bproxy_rules\x18\x08 \x03(\x0b\x32\x1a.starbelly.PolicyProxyRule\x12\x36\n\x0fmime_type_rules\x18\t \x03(\x0b\x32\x1d.starbelly.PolicyMimeTypeRule\x12.\n\nrobots_txt\x18\n \x01(\x0b\x32\x1a.starbelly.PolicyRobotsTxt\x12<\n\x11url_normalization\x18\r \x01(\x0b\x32!.starbelly.PolicyUrlNormalization\x12+\n\turl_rules\x18\x0b \x03(\x0b\x32\x18.starbelly.PolicyUrlRule\x12/\n\x0buser_agents\x18\x0c \x03(\x0b\x32\x1a.starbelly.PolicyUserAgent\"\'\n\x14PolicyAuthentication\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\"I\n\x0cPolicyLimits\x12\x10\n\x08max_cost\x18\x01 \x01(\x01\x12\x14\n\x0cmax_duration\x18\x02 \x01(\x01\x12\x11\n\tmax_items\x18\x03 \x01(\x05\"[\n\x12PolicyMimeTypeRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x0c\n\x04save\x18\x03 \x01(\x08\"]\n\x0fPolicyProxyRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12\x11\n\tproxy_url\x18\x03 \x01(\t\"m\n\x0fPolicyRobotsTxt\x12/\n\x05usage\x18\x01 \x02(\x0e\x32 .starbelly.PolicyRobotsTxt.Usage\")\n\x05Usage\x12\x08\n\x04OBEY\x10\x01\x12\n\n\x06INVERT\x10\x02\x12\n\n\x06IGNORE\x10\x03\"C\n\x16PolicyUrlNormalization\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x12\x18\n\x10strip_parameters\x18\x02 \x03(\t\"\xaa\x01\n\rPolicyUrlRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12&\n\x05match\x18\x02 \x01(\x0e\x32\x17.starbelly.PatternMatch\x12/\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32\x1f.starbelly.PolicyUrlRule.Action\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\"\x1f\n\x06\x41\x63tion\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08MULTIPLY\x10\x02\"\x1f\n\x0fPolicyUserAgent\x12\x0c\n\x04name\x18\x01 \x02(\t\"8\n\tRateLimit\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x64\x65lay\x18\x02 \x01(\x02\x12\x0e\n\x06\x64omain\x18\x03 \x01(\t\"\x17\n\x07TagList\x12\x0c\n\x04tags\x18\x01 \x03(\t*U\n\x1f\x43\x61ptchaSolverAntigateCharacters\x12\x10\n\x0c\x41LPHANUMERIC\x10\x01\x12\x10\n\x0cNUMBERS_ONLY\x10\x02\x12\x0e\n\nALPHA_ONLY\x10\x03*^\n\x0bJobRunState\x12\r\n\tCANCELLED\x10\x01\x12\r\n\tCOMPLETED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\x0b\n\x07PENDING\x10\x04\x12\x0b\n\x07RUNNING\x10\x05\x12\x0b\n\x07\x44\x45LETED\x10\x06*Y\n\x13JobScheduleTimeUnit\x12\x0b\n\x07MINUTES\x10\x01\x12\t\n\x05HOURS\x10\x02\x12\x08\n\x04\x44\x41YS\x10\x03\x12\t\n\x05WEEKS\x10\x04\x12\n\n\x06MONTHS\x10\x05\x12\t\n\x05YEARS\x10\x06*J\n\x11JobScheduleTiming\x12\x1f\n\x1b\x41\x46TER_PREVIOUS_JOB_FINISHED\x10\x01\x12\x14\n\x10REGULAR_INTERVAL\x10\x02*/\n\x0cPatternMatch\x12\x0b\n\x07MATCHES\x10\x01\x12\x12\n\x0e\x44OES_NOT_MATCH\x10\x02')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
+_CAPTCHASOLVERANTIGATECHARACTERS = _descriptor.EnumDescriptor(
+  name='CaptchaSolverAntigateCharacters',
+  full_name='starbelly.CaptchaSolverAntigateCharacters',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='ALPHANUMERIC', index=0, number=1,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='NUMBERS_ONLY', index=1, number=2,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='ALPHA_ONLY', index=2, number=3,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=3203,
+  serialized_end=3288,
+)
+_sym_db.RegisterEnumDescriptor(_CAPTCHASOLVERANTIGATECHARACTERS)
+
+CaptchaSolverAntigateCharacters = enum_type_wrapper.EnumTypeWrapper(_CAPTCHASOLVERANTIGATECHARACTERS)
 _JOBRUNSTATE = _descriptor.EnumDescriptor(
   name='JobRunState',
   full_name='starbelly.JobRunState',
@@ -57,8 +84,8 @@ _JOBRUNSTATE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2806,
-  serialized_end=2900,
+  serialized_start=3290,
+  serialized_end=3384,
 )
 _sym_db.RegisterEnumDescriptor(_JOBRUNSTATE)
 
@@ -96,8 +123,8 @@ _JOBSCHEDULETIMEUNIT = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2902,
-  serialized_end=2991,
+  serialized_start=3386,
+  serialized_end=3475,
 )
 _sym_db.RegisterEnumDescriptor(_JOBSCHEDULETIMEUNIT)
 
@@ -119,8 +146,8 @@ _JOBSCHEDULETIMING = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2993,
-  serialized_end=3067,
+  serialized_start=3477,
+  serialized_end=3551,
 )
 _sym_db.RegisterEnumDescriptor(_JOBSCHEDULETIMING)
 
@@ -142,12 +169,15 @@ _PATTERNMATCH = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3069,
-  serialized_end=3116,
+  serialized_start=3553,
+  serialized_end=3600,
 )
 _sym_db.RegisterEnumDescriptor(_PATTERNMATCH)
 
 PatternMatch = enum_type_wrapper.EnumTypeWrapper(_PATTERNMATCH)
+ALPHANUMERIC = 1
+NUMBERS_ONLY = 2
+ALPHA_ONLY = 3
 CANCELLED = 1
 COMPLETED = 2
 PAUSED = 3
@@ -187,8 +217,8 @@ _POLICYROBOTSTXT_USAGE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2405,
-  serialized_end=2446,
+  serialized_start=2802,
+  serialized_end=2843,
 )
 _sym_db.RegisterEnumDescriptor(_POLICYROBOTSTXT_USAGE)
 
@@ -209,10 +239,152 @@ _POLICYURLRULE_ACTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2657,
-  serialized_end=2688,
+  serialized_start=3054,
+  serialized_end=3085,
 )
 _sym_db.RegisterEnumDescriptor(_POLICYURLRULE_ACTION)
+
+
+_CAPTCHASOLVER = _descriptor.Descriptor(
+  name='CaptchaSolver',
+  full_name='starbelly.CaptchaSolver',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='solver_id', full_name='starbelly.CaptchaSolver.solver_id', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='starbelly.CaptchaSolver.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='created_at', full_name='starbelly.CaptchaSolver.created_at', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='updated_at', full_name='starbelly.CaptchaSolver.updated_at', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='antigate', full_name='starbelly.CaptchaSolver.antigate', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='SolverType', full_name='starbelly.CaptchaSolver.SolverType',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=37,
+  serialized_end=193,
+)
+
+
+_CAPTCHASOLVERANTIGATE = _descriptor.Descriptor(
+  name='CaptchaSolverAntigate',
+  full_name='starbelly.CaptchaSolverAntigate',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='service_url', full_name='starbelly.CaptchaSolverAntigate.service_url', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='api_key', full_name='starbelly.CaptchaSolverAntigate.api_key', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='require_phrase', full_name='starbelly.CaptchaSolverAntigate.require_phrase', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='case_sensitive', full_name='starbelly.CaptchaSolverAntigate.case_sensitive', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='characters', full_name='starbelly.CaptchaSolverAntigate.characters', index=4,
+      number=5, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=1,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='require_math', full_name='starbelly.CaptchaSolverAntigate.require_math', index=5,
+      number=6, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='min_length', full_name='starbelly.CaptchaSolverAntigate.min_length', index=6,
+      number=7, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='max_length', full_name='starbelly.CaptchaSolverAntigate.max_length', index=7,
+      number=8, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=196,
+  serialized_end=431,
+)
 
 
 _DOMAINLOGIN = _descriptor.Descriptor(
@@ -269,8 +441,8 @@ _DOMAINLOGIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=37,
-  serialized_end=168,
+  serialized_start=434,
+  serialized_end=565,
 )
 
 
@@ -314,8 +486,8 @@ _DOMAINLOGINUSER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=170,
-  serialized_end=240,
+  serialized_start=567,
+  serialized_end=637,
 )
 
 
@@ -436,8 +608,8 @@ _CRAWLRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=243,
-  serialized_end=538,
+  serialized_start=640,
+  serialized_end=935,
 )
 
 
@@ -474,8 +646,8 @@ _HEADER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=540,
-  serialized_end=576,
+  serialized_start=937,
+  serialized_end=973,
 )
 
 
@@ -512,8 +684,8 @@ _JOB_HTTPSTATUSCOUNTSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=970,
-  serialized_end=1025,
+  serialized_start=1367,
+  serialized_end=1422,
 )
 
 _JOB = _descriptor.Descriptor(
@@ -626,8 +798,8 @@ _JOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=579,
-  serialized_end=1025,
+  serialized_start=976,
+  serialized_end=1422,
 )
 
 
@@ -657,8 +829,8 @@ _JOBLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1027,
-  serialized_end=1066,
+  serialized_start=1424,
+  serialized_end=1463,
 )
 
 
@@ -779,8 +951,8 @@ _JOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1069,
-  serialized_end=1431,
+  serialized_start=1466,
+  serialized_end=1828,
 )
 
 
@@ -810,8 +982,8 @@ _JOBSCHEDULELIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1433,
-  serialized_end=1497,
+  serialized_start=1830,
+  serialized_end=1894,
 )
 
 
@@ -848,8 +1020,8 @@ _PAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1499,
-  serialized_end=1540,
+  serialized_start=1896,
+  serialized_end=1937,
 )
 
 
@@ -956,8 +1128,8 @@ _POLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1543,
-  serialized_end=2031,
+  serialized_start=1940,
+  serialized_end=2428,
 )
 
 
@@ -987,8 +1159,8 @@ _POLICYAUTHENTICATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2033,
-  serialized_end=2072,
+  serialized_start=2430,
+  serialized_end=2469,
 )
 
 
@@ -1032,8 +1204,8 @@ _POLICYLIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2074,
-  serialized_end=2147,
+  serialized_start=2471,
+  serialized_end=2544,
 )
 
 
@@ -1077,8 +1249,8 @@ _POLICYMIMETYPERULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2149,
-  serialized_end=2240,
+  serialized_start=2546,
+  serialized_end=2637,
 )
 
 
@@ -1122,8 +1294,8 @@ _POLICYPROXYRULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2242,
-  serialized_end=2335,
+  serialized_start=2639,
+  serialized_end=2732,
 )
 
 
@@ -1154,8 +1326,8 @@ _POLICYROBOTSTXT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2337,
-  serialized_end=2446,
+  serialized_start=2734,
+  serialized_end=2843,
 )
 
 
@@ -1192,8 +1364,8 @@ _POLICYURLNORMALIZATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2448,
-  serialized_end=2515,
+  serialized_start=2845,
+  serialized_end=2912,
 )
 
 
@@ -1245,8 +1417,8 @@ _POLICYURLRULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2518,
-  serialized_end=2688,
+  serialized_start=2915,
+  serialized_end=3085,
 )
 
 
@@ -1276,8 +1448,8 @@ _POLICYUSERAGENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2690,
-  serialized_end=2721,
+  serialized_start=3087,
+  serialized_end=3118,
 )
 
 
@@ -1321,8 +1493,8 @@ _RATELIMIT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2723,
-  serialized_end=2779,
+  serialized_start=3120,
+  serialized_end=3176,
 )
 
 
@@ -1352,10 +1524,15 @@ _TAGLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2781,
-  serialized_end=2804,
+  serialized_start=3178,
+  serialized_end=3201,
 )
 
+_CAPTCHASOLVER.fields_by_name['antigate'].message_type = _CAPTCHASOLVERANTIGATE
+_CAPTCHASOLVER.oneofs_by_name['SolverType'].fields.append(
+  _CAPTCHASOLVER.fields_by_name['antigate'])
+_CAPTCHASOLVER.fields_by_name['antigate'].containing_oneof = _CAPTCHASOLVER.oneofs_by_name['SolverType']
+_CAPTCHASOLVERANTIGATE.fields_by_name['characters'].enum_type = _CAPTCHASOLVERANTIGATECHARACTERS
 _DOMAINLOGIN.fields_by_name['users'].message_type = _DOMAINLOGINUSER
 _CRAWLRESPONSE.fields_by_name['headers'].message_type = _HEADER
 _JOB_HTTPSTATUSCOUNTSENTRY.containing_type = _JOB
@@ -1383,6 +1560,8 @@ _POLICYROBOTSTXT_USAGE.containing_type = _POLICYROBOTSTXT
 _POLICYURLRULE.fields_by_name['match'].enum_type = _PATTERNMATCH
 _POLICYURLRULE.fields_by_name['action'].enum_type = _POLICYURLRULE_ACTION
 _POLICYURLRULE_ACTION.containing_type = _POLICYURLRULE
+DESCRIPTOR.message_types_by_name['CaptchaSolver'] = _CAPTCHASOLVER
+DESCRIPTOR.message_types_by_name['CaptchaSolverAntigate'] = _CAPTCHASOLVERANTIGATE
 DESCRIPTOR.message_types_by_name['DomainLogin'] = _DOMAINLOGIN
 DESCRIPTOR.message_types_by_name['DomainLoginUser'] = _DOMAINLOGINUSER
 DESCRIPTOR.message_types_by_name['CrawlResponse'] = _CRAWLRESPONSE
@@ -1403,10 +1582,25 @@ DESCRIPTOR.message_types_by_name['PolicyUrlRule'] = _POLICYURLRULE
 DESCRIPTOR.message_types_by_name['PolicyUserAgent'] = _POLICYUSERAGENT
 DESCRIPTOR.message_types_by_name['RateLimit'] = _RATELIMIT
 DESCRIPTOR.message_types_by_name['TagList'] = _TAGLIST
+DESCRIPTOR.enum_types_by_name['CaptchaSolverAntigateCharacters'] = _CAPTCHASOLVERANTIGATECHARACTERS
 DESCRIPTOR.enum_types_by_name['JobRunState'] = _JOBRUNSTATE
 DESCRIPTOR.enum_types_by_name['JobScheduleTimeUnit'] = _JOBSCHEDULETIMEUNIT
 DESCRIPTOR.enum_types_by_name['JobScheduleTiming'] = _JOBSCHEDULETIMING
 DESCRIPTOR.enum_types_by_name['PatternMatch'] = _PATTERNMATCH
+
+CaptchaSolver = _reflection.GeneratedProtocolMessageType('CaptchaSolver', (_message.Message,), dict(
+  DESCRIPTOR = _CAPTCHASOLVER,
+  __module__ = 'protobuf.shared_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.CaptchaSolver)
+  ))
+_sym_db.RegisterMessage(CaptchaSolver)
+
+CaptchaSolverAntigate = _reflection.GeneratedProtocolMessageType('CaptchaSolverAntigate', (_message.Message,), dict(
+  DESCRIPTOR = _CAPTCHASOLVERANTIGATE,
+  __module__ = 'protobuf.shared_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.CaptchaSolverAntigate)
+  ))
+_sym_db.RegisterMessage(CaptchaSolverAntigate)
 
 DomainLogin = _reflection.GeneratedProtocolMessageType('DomainLogin', (_message.Message,), dict(
   DESCRIPTOR = _DOMAINLOGIN,

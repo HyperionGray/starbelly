@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/server.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xd5\x02\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12&\n\x08job_list\x18\x02 \x01(\x0b\x32\x12.starbelly.JobListH\x00\x12\x37\n\x11job_schedule_list\x18\x07 \x01(\x0b\x32\x1a.starbelly.JobScheduleListH\x00\x12\x32\n\x0eresource_frame\x18\x03 \x01(\x0b\x32\x18.starbelly.ResourceFrameH\x00\x12<\n\x13subscription_closed\x18\x04 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x12(\n\tsync_item\x18\x05 \x01(\x0b\x32\x13.starbelly.SyncItemH\x00\x12.\n\x0ctask_monitor\x18\x06 \x01(\x0b\x32\x16.starbelly.TaskMonitorH\x00\x42\x06\n\x04\x42ody\"\xaa\x01\n\x1aPerformanceProfileFunction\x12\x0c\n\x04\x66ile\x18\x01 \x01(\t\x12\x13\n\x0bline_number\x18\x02 \x01(\x05\x12\x10\n\x08\x66unction\x18\x03 \x01(\t\x12\r\n\x05\x63\x61lls\x18\x04 \x01(\x05\x12\x1b\n\x13non_recursive_calls\x18\x05 \x01(\x05\x12\x12\n\ntotal_time\x18\x06 \x01(\x01\x12\x17\n\x0f\x63umulative_time\x18\x07 \x01(\x01\"\xff\x02\n\rResourceFrame\x12\x11\n\ttimestamp\x18\x01 \x01(\t\x12)\n\x04\x63pus\x18\x02 \x03(\x0b\x32\x1b.starbelly.ResourceFrameCpu\x12.\n\x06memory\x18\x03 \x01(\x0b\x32\x1e.starbelly.ResourceFrameMemory\x12+\n\x05\x64isks\x18\x04 \x03(\x0b\x32\x1c.starbelly.ResourceFrameDisk\x12\x31\n\x08networks\x18\x05 \x03(\x0b\x32\x1f.starbelly.ResourceFrameNetwork\x12-\n\x06\x63rawls\x18\x06 \x03(\x0b\x32\x1d.starbelly.ResourceFrameCrawl\x12\x39\n\x0crate_limiter\x18\x07 \x01(\x0b\x32#.starbelly.ResourceFrameRateLimiter\x12\x36\n\ndownloader\x18\x08 \x01(\x0b\x32\".starbelly.ResourceFrameDownloader\"!\n\x10ResourceFrameCpu\x12\r\n\x05usage\x18\x01 \x01(\x01\"[\n\x12ResourceFrameCrawl\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x10\n\x08\x66rontier\x18\x02 \x01(\x05\x12\x0f\n\x07pending\x18\x03 \x01(\x05\x12\x12\n\nextraction\x18\x04 \x01(\x05\"?\n\x11ResourceFrameDisk\x12\r\n\x05mount\x18\x01 \x01(\t\x12\x0c\n\x04used\x18\x02 \x01(\x03\x12\r\n\x05total\x18\x03 \x01(\x03\"(\n\x17ResourceFrameDownloader\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\"2\n\x13ResourceFrameMemory\x12\x0c\n\x04used\x18\x01 \x01(\x03\x12\r\n\x05total\x18\x02 \x01(\x03\"D\n\x14ResourceFrameNetwork\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04sent\x18\x02 \x01(\x03\x12\x10\n\x08received\x18\x03 \x01(\x03\")\n\x18ResourceFrameRateLimiter\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\"\xe3\x07\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12.\n\x0c\x64omain_login\x18\x05 \x01(\x0b\x32\x16.starbelly.DomainLoginH\x00\x12\x37\n\x11\x64omain_login_user\x18\x06 \x01(\x0b\x32\x1a.starbelly.DomainLoginUserH\x00\x12\x1d\n\x03job\x18\x07 \x01(\x0b\x32\x0e.starbelly.JobH\x00\x12.\n\x0cjob_schedule\x18\x13 \x01(\x0b\x32\x16.starbelly.JobScheduleH\x00\x12#\n\x06policy\x18\x08 \x01(\x0b\x32\x11.starbelly.PolicyH\x00\x12\x41\n\x12list_domain_logins\x18\t \x01(\x0b\x32#.starbelly.ResponseListDomainLoginsH\x00\x12\x32\n\nlist_items\x18\n \x01(\x0b\x32\x1c.starbelly.ResponseListItemsH\x00\x12\x30\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12\x41\n\x12list_job_schedules\x18\x14 \x01(\x0b\x32#.starbelly.ResponseListJobSchedulesH\x00\x12\x38\n\rlist_policies\x18\x0c \x01(\x0b\x32\x1f.starbelly.ResponseListPoliciesH\x00\x12=\n\x10list_rate_limits\x18\r \x01(\x0b\x32!.starbelly.ResponseListRateLimitsH\x00\x12,\n\x07new_job\x18\x0e \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12=\n\x10new_job_schedule\x18\x15 \x01(\x0b\x32!.starbelly.ResponseNewJobScheduleH\x00\x12\x32\n\nnew_policy\x18\x0f \x01(\x0b\x32\x1c.starbelly.ResponseNewPolicyH\x00\x12>\n\x10new_subscription\x18\x10 \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\x44\n\x13performance_profile\x18\x11 \x01(\x0b\x32%.starbelly.ResponsePerformanceProfileH\x00\x12\'\n\x04ping\x18\x12 \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"Q\n\x18ResponseListDomainLogins\x12&\n\x06logins\x18\x01 \x03(\x0b\x32\x16.starbelly.DomainLogin\x12\r\n\x05total\x18\x02 \x01(\x05\"K\n\x11ResponseListItems\x12\'\n\x05items\x18\x01 \x03(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"?\n\x10ResponseListJobs\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"X\n\x18ResponseListJobSchedules\x12-\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x16.starbelly.JobSchedule\x12\r\n\x05total\x18\x02 \x01(\x05\"J\n\x14ResponseListPolicies\x12#\n\x08policies\x18\x01 \x03(\x0b\x32\x11.starbelly.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"R\n\x16ResponseListRateLimits\x12)\n\x0brate_limits\x18\x01 \x03(\x0b\x32\x14.starbelly.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"-\n\x16ResponseNewJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x7f\n\x1aResponsePerformanceProfile\x12\x13\n\x0btotal_calls\x18\x01 \x01(\x05\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12\x38\n\tfunctions\x18\x03 \x03(\x0b\x32%.starbelly.PerformanceProfileFunction\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"A\n\x08SyncItem\x12&\n\x04item\x18\x01 \x02(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05token\x18\x02 \x02(\x0c\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"~\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\"!\n\x06Reason\x12\x0c\n\x08\x43OMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\"#\n\x04Task\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\"<\n\x0bTaskMonitor\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\x12\x1e\n\x05tasks\x18\x02 \x03(\x0b\x32\x0f.starbelly.Task')
+  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xd5\x02\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12&\n\x08job_list\x18\x02 \x01(\x0b\x32\x12.starbelly.JobListH\x00\x12\x37\n\x11job_schedule_list\x18\x07 \x01(\x0b\x32\x1a.starbelly.JobScheduleListH\x00\x12\x32\n\x0eresource_frame\x18\x03 \x01(\x0b\x32\x18.starbelly.ResourceFrameH\x00\x12<\n\x13subscription_closed\x18\x04 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x12(\n\tsync_item\x18\x05 \x01(\x0b\x32\x13.starbelly.SyncItemH\x00\x12.\n\x0ctask_monitor\x18\x06 \x01(\x0b\x32\x16.starbelly.TaskMonitorH\x00\x42\x06\n\x04\x42ody\"\xaa\x01\n\x1aPerformanceProfileFunction\x12\x0c\n\x04\x66ile\x18\x01 \x01(\t\x12\x13\n\x0bline_number\x18\x02 \x01(\x05\x12\x10\n\x08\x66unction\x18\x03 \x01(\t\x12\r\n\x05\x63\x61lls\x18\x04 \x01(\x05\x12\x1b\n\x13non_recursive_calls\x18\x05 \x01(\x05\x12\x12\n\ntotal_time\x18\x06 \x01(\x01\x12\x17\n\x0f\x63umulative_time\x18\x07 \x01(\x01\"\xff\x02\n\rResourceFrame\x12\x11\n\ttimestamp\x18\x01 \x01(\t\x12)\n\x04\x63pus\x18\x02 \x03(\x0b\x32\x1b.starbelly.ResourceFrameCpu\x12.\n\x06memory\x18\x03 \x01(\x0b\x32\x1e.starbelly.ResourceFrameMemory\x12+\n\x05\x64isks\x18\x04 \x03(\x0b\x32\x1c.starbelly.ResourceFrameDisk\x12\x31\n\x08networks\x18\x05 \x03(\x0b\x32\x1f.starbelly.ResourceFrameNetwork\x12-\n\x06\x63rawls\x18\x06 \x03(\x0b\x32\x1d.starbelly.ResourceFrameCrawl\x12\x39\n\x0crate_limiter\x18\x07 \x01(\x0b\x32#.starbelly.ResourceFrameRateLimiter\x12\x36\n\ndownloader\x18\x08 \x01(\x0b\x32\".starbelly.ResourceFrameDownloader\"!\n\x10ResourceFrameCpu\x12\r\n\x05usage\x18\x01 \x01(\x01\"[\n\x12ResourceFrameCrawl\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x10\n\x08\x66rontier\x18\x02 \x01(\x05\x12\x0f\n\x07pending\x18\x03 \x01(\x05\x12\x12\n\nextraction\x18\x04 \x01(\x05\"?\n\x11ResourceFrameDisk\x12\r\n\x05mount\x18\x01 \x01(\t\x12\x0c\n\x04used\x18\x02 \x01(\x03\x12\r\n\x05total\x18\x03 \x01(\x03\"(\n\x17ResourceFrameDownloader\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\"2\n\x13ResourceFrameMemory\x12\x0c\n\x04used\x18\x01 \x01(\x03\x12\r\n\x05total\x18\x02 \x01(\x03\"D\n\x14ResourceFrameNetwork\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04sent\x18\x02 \x01(\x03\x12\x10\n\x08received\x18\x03 \x01(\x03\")\n\x18ResourceFrameRateLimiter\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\"\x91\t\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12*\n\x06solver\x18\x16 \x01(\x0b\x32\x18.starbelly.CaptchaSolverH\x00\x12.\n\x0c\x64omain_login\x18\x05 \x01(\x0b\x32\x16.starbelly.DomainLoginH\x00\x12\x37\n\x11\x64omain_login_user\x18\x06 \x01(\x0b\x32\x1a.starbelly.DomainLoginUserH\x00\x12\x1d\n\x03job\x18\x07 \x01(\x0b\x32\x0e.starbelly.JobH\x00\x12.\n\x0cjob_schedule\x18\x13 \x01(\x0b\x32\x16.starbelly.JobScheduleH\x00\x12#\n\x06policy\x18\x08 \x01(\x0b\x32\x11.starbelly.PolicyH\x00\x12\x45\n\x14list_captcha_solvers\x18\x17 \x01(\x0b\x32%.starbelly.ResponseListCaptchaSolversH\x00\x12\x41\n\x12list_domain_logins\x18\t \x01(\x0b\x32#.starbelly.ResponseListDomainLoginsH\x00\x12\x32\n\nlist_items\x18\n \x01(\x0b\x32\x1c.starbelly.ResponseListItemsH\x00\x12\x30\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12\x41\n\x12list_job_schedules\x18\x14 \x01(\x0b\x32#.starbelly.ResponseListJobSchedulesH\x00\x12\x38\n\rlist_policies\x18\x0c \x01(\x0b\x32\x1f.starbelly.ResponseListPoliciesH\x00\x12=\n\x10list_rate_limits\x18\r \x01(\x0b\x32!.starbelly.ResponseListRateLimitsH\x00\x12\x39\n\nnew_solver\x18\x18 \x01(\x0b\x32#.starbelly.ResponseNewCaptchaSolverH\x00\x12,\n\x07new_job\x18\x0e \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12=\n\x10new_job_schedule\x18\x15 \x01(\x0b\x32!.starbelly.ResponseNewJobScheduleH\x00\x12\x32\n\nnew_policy\x18\x0f \x01(\x0b\x32\x1c.starbelly.ResponseNewPolicyH\x00\x12>\n\x10new_subscription\x18\x10 \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\x44\n\x13performance_profile\x18\x11 \x01(\x0b\x32%.starbelly.ResponsePerformanceProfileH\x00\x12\'\n\x04ping\x18\x12 \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"V\n\x1aResponseListCaptchaSolvers\x12)\n\x07solvers\x18\x01 \x03(\x0b\x32\x18.starbelly.CaptchaSolver\x12\r\n\x05total\x18\x02 \x01(\x05\"Q\n\x18ResponseListDomainLogins\x12&\n\x06logins\x18\x01 \x03(\x0b\x32\x16.starbelly.DomainLogin\x12\r\n\x05total\x18\x02 \x01(\x05\"K\n\x11ResponseListItems\x12\'\n\x05items\x18\x01 \x03(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"?\n\x10ResponseListJobs\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"X\n\x18ResponseListJobSchedules\x12-\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x16.starbelly.JobSchedule\x12\r\n\x05total\x18\x02 \x01(\x05\"J\n\x14ResponseListPolicies\x12#\n\x08policies\x18\x01 \x03(\x0b\x32\x11.starbelly.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"R\n\x16ResponseListRateLimits\x12)\n\x0brate_limits\x18\x01 \x03(\x0b\x32\x14.starbelly.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\"-\n\x18ResponseNewCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x02(\x0c\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"-\n\x16ResponseNewJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x7f\n\x1aResponsePerformanceProfile\x12\x13\n\x0btotal_calls\x18\x01 \x01(\x05\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12\x38\n\tfunctions\x18\x03 \x03(\x0b\x32%.starbelly.PerformanceProfileFunction\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"A\n\x08SyncItem\x12&\n\x04item\x18\x01 \x02(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05token\x18\x02 \x02(\x0c\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"~\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\"!\n\x06Reason\x12\x0c\n\x08\x43OMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\"#\n\x04Task\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\"<\n\x0bTaskMonitor\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\x12\x1e\n\x05tasks\x18\x02 \x03(\x0b\x32\x0f.starbelly.Task')
   ,
   dependencies=[protobuf_dot_shared__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -44,8 +44,8 @@ _SUBSCRIPTIONCLOSED_REASON = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3435,
-  serialized_end=3468,
+  serialized_start=3744,
+  serialized_end=3777,
 )
 _sym_db.RegisterEnumDescriptor(_SUBSCRIPTIONCLOSED_REASON)
 
@@ -581,119 +581,140 @@ _RESPONSE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='domain_login', full_name='starbelly.Response.domain_login', index=3,
+      name='solver', full_name='starbelly.Response.solver', index=3,
+      number=22, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='domain_login', full_name='starbelly.Response.domain_login', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='domain_login_user', full_name='starbelly.Response.domain_login_user', index=4,
+      name='domain_login_user', full_name='starbelly.Response.domain_login_user', index=5,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='job', full_name='starbelly.Response.job', index=5,
+      name='job', full_name='starbelly.Response.job', index=6,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='job_schedule', full_name='starbelly.Response.job_schedule', index=6,
+      name='job_schedule', full_name='starbelly.Response.job_schedule', index=7,
       number=19, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='policy', full_name='starbelly.Response.policy', index=7,
+      name='policy', full_name='starbelly.Response.policy', index=8,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_domain_logins', full_name='starbelly.Response.list_domain_logins', index=8,
+      name='list_captcha_solvers', full_name='starbelly.Response.list_captcha_solvers', index=9,
+      number=23, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='list_domain_logins', full_name='starbelly.Response.list_domain_logins', index=10,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_items', full_name='starbelly.Response.list_items', index=9,
+      name='list_items', full_name='starbelly.Response.list_items', index=11,
       number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_jobs', full_name='starbelly.Response.list_jobs', index=10,
+      name='list_jobs', full_name='starbelly.Response.list_jobs', index=12,
       number=11, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_job_schedules', full_name='starbelly.Response.list_job_schedules', index=11,
+      name='list_job_schedules', full_name='starbelly.Response.list_job_schedules', index=13,
       number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_policies', full_name='starbelly.Response.list_policies', index=12,
+      name='list_policies', full_name='starbelly.Response.list_policies', index=14,
       number=12, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_rate_limits', full_name='starbelly.Response.list_rate_limits', index=13,
+      name='list_rate_limits', full_name='starbelly.Response.list_rate_limits', index=15,
       number=13, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='new_job', full_name='starbelly.Response.new_job', index=14,
+      name='new_solver', full_name='starbelly.Response.new_solver', index=16,
+      number=24, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='new_job', full_name='starbelly.Response.new_job', index=17,
       number=14, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='new_job_schedule', full_name='starbelly.Response.new_job_schedule', index=15,
+      name='new_job_schedule', full_name='starbelly.Response.new_job_schedule', index=18,
       number=21, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='new_policy', full_name='starbelly.Response.new_policy', index=16,
+      name='new_policy', full_name='starbelly.Response.new_policy', index=19,
       number=15, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='new_subscription', full_name='starbelly.Response.new_subscription', index=17,
+      name='new_subscription', full_name='starbelly.Response.new_subscription', index=20,
       number=16, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='performance_profile', full_name='starbelly.Response.performance_profile', index=18,
+      name='performance_profile', full_name='starbelly.Response.performance_profile', index=21,
       number=17, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='ping', full_name='starbelly.Response.ping', index=19,
+      name='ping', full_name='starbelly.Response.ping', index=22,
       number=18, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -715,7 +736,45 @@ _RESPONSE = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=1363,
-  serialized_end=2358,
+  serialized_end=2532,
+)
+
+
+_RESPONSELISTCAPTCHASOLVERS = _descriptor.Descriptor(
+  name='ResponseListCaptchaSolvers',
+  full_name='starbelly.ResponseListCaptchaSolvers',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='solvers', full_name='starbelly.ResponseListCaptchaSolvers.solvers', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='total', full_name='starbelly.ResponseListCaptchaSolvers.total', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2534,
+  serialized_end=2620,
 )
 
 
@@ -752,8 +811,8 @@ _RESPONSELISTDOMAINLOGINS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2360,
-  serialized_end=2441,
+  serialized_start=2622,
+  serialized_end=2703,
 )
 
 
@@ -790,8 +849,8 @@ _RESPONSELISTITEMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2443,
-  serialized_end=2518,
+  serialized_start=2705,
+  serialized_end=2780,
 )
 
 
@@ -828,8 +887,8 @@ _RESPONSELISTJOBS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2520,
-  serialized_end=2583,
+  serialized_start=2782,
+  serialized_end=2845,
 )
 
 
@@ -866,8 +925,8 @@ _RESPONSELISTJOBSCHEDULES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2585,
-  serialized_end=2673,
+  serialized_start=2847,
+  serialized_end=2935,
 )
 
 
@@ -904,8 +963,8 @@ _RESPONSELISTPOLICIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2675,
-  serialized_end=2749,
+  serialized_start=2937,
+  serialized_end=3011,
 )
 
 
@@ -942,8 +1001,39 @@ _RESPONSELISTRATELIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2751,
-  serialized_end=2833,
+  serialized_start=3013,
+  serialized_end=3095,
+)
+
+
+_RESPONSENEWCAPTCHASOLVER = _descriptor.Descriptor(
+  name='ResponseNewCaptchaSolver',
+  full_name='starbelly.ResponseNewCaptchaSolver',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='solver_id', full_name='starbelly.ResponseNewCaptchaSolver.solver_id', index=0,
+      number=1, type=12, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3097,
+  serialized_end=3142,
 )
 
 
@@ -973,8 +1063,8 @@ _RESPONSENEWJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2835,
-  serialized_end=2867,
+  serialized_start=3144,
+  serialized_end=3176,
 )
 
 
@@ -1004,8 +1094,8 @@ _RESPONSENEWJOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2869,
-  serialized_end=2914,
+  serialized_start=3178,
+  serialized_end=3223,
 )
 
 
@@ -1035,8 +1125,8 @@ _RESPONSENEWPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2916,
-  serialized_end=2954,
+  serialized_start=3225,
+  serialized_end=3263,
 )
 
 
@@ -1066,8 +1156,8 @@ _RESPONSENEWSUBSCRIPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2956,
-  serialized_end=3006,
+  serialized_start=3265,
+  serialized_end=3315,
 )
 
 
@@ -1111,8 +1201,8 @@ _RESPONSEPERFORMANCEPROFILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3008,
-  serialized_end=3135,
+  serialized_start=3317,
+  serialized_end=3444,
 )
 
 
@@ -1142,8 +1232,8 @@ _RESPONSEPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3137,
-  serialized_end=3165,
+  serialized_start=3446,
+  serialized_end=3474,
 )
 
 
@@ -1180,8 +1270,8 @@ _SYNCITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3167,
-  serialized_end=3232,
+  serialized_start=3476,
+  serialized_end=3541,
 )
 
 
@@ -1221,8 +1311,8 @@ _SERVERMESSAGE = _descriptor.Descriptor(
       name='MessageType', full_name='starbelly.ServerMessage.MessageType',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3234,
-  serialized_end=3340,
+  serialized_start=3543,
+  serialized_end=3649,
 )
 
 
@@ -1260,8 +1350,8 @@ _SUBSCRIPTIONCLOSED = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3342,
-  serialized_end=3468,
+  serialized_start=3651,
+  serialized_end=3777,
 )
 
 
@@ -1298,8 +1388,8 @@ _TASK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3470,
-  serialized_end=3505,
+  serialized_start=3779,
+  serialized_end=3814,
 )
 
 
@@ -1336,8 +1426,8 @@ _TASKMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3507,
-  serialized_end=3567,
+  serialized_start=3816,
+  serialized_end=3876,
 )
 
 _EVENT.fields_by_name['job_list'].message_type = protobuf_dot_shared__pb2._JOBLIST
@@ -1371,23 +1461,29 @@ _RESOURCEFRAME.fields_by_name['networks'].message_type = _RESOURCEFRAMENETWORK
 _RESOURCEFRAME.fields_by_name['crawls'].message_type = _RESOURCEFRAMECRAWL
 _RESOURCEFRAME.fields_by_name['rate_limiter'].message_type = _RESOURCEFRAMERATELIMITER
 _RESOURCEFRAME.fields_by_name['downloader'].message_type = _RESOURCEFRAMEDOWNLOADER
+_RESPONSE.fields_by_name['solver'].message_type = protobuf_dot_shared__pb2._CAPTCHASOLVER
 _RESPONSE.fields_by_name['domain_login'].message_type = protobuf_dot_shared__pb2._DOMAINLOGIN
 _RESPONSE.fields_by_name['domain_login_user'].message_type = protobuf_dot_shared__pb2._DOMAINLOGINUSER
 _RESPONSE.fields_by_name['job'].message_type = protobuf_dot_shared__pb2._JOB
 _RESPONSE.fields_by_name['job_schedule'].message_type = protobuf_dot_shared__pb2._JOBSCHEDULE
 _RESPONSE.fields_by_name['policy'].message_type = protobuf_dot_shared__pb2._POLICY
+_RESPONSE.fields_by_name['list_captcha_solvers'].message_type = _RESPONSELISTCAPTCHASOLVERS
 _RESPONSE.fields_by_name['list_domain_logins'].message_type = _RESPONSELISTDOMAINLOGINS
 _RESPONSE.fields_by_name['list_items'].message_type = _RESPONSELISTITEMS
 _RESPONSE.fields_by_name['list_jobs'].message_type = _RESPONSELISTJOBS
 _RESPONSE.fields_by_name['list_job_schedules'].message_type = _RESPONSELISTJOBSCHEDULES
 _RESPONSE.fields_by_name['list_policies'].message_type = _RESPONSELISTPOLICIES
 _RESPONSE.fields_by_name['list_rate_limits'].message_type = _RESPONSELISTRATELIMITS
+_RESPONSE.fields_by_name['new_solver'].message_type = _RESPONSENEWCAPTCHASOLVER
 _RESPONSE.fields_by_name['new_job'].message_type = _RESPONSENEWJOB
 _RESPONSE.fields_by_name['new_job_schedule'].message_type = _RESPONSENEWJOBSCHEDULE
 _RESPONSE.fields_by_name['new_policy'].message_type = _RESPONSENEWPOLICY
 _RESPONSE.fields_by_name['new_subscription'].message_type = _RESPONSENEWSUBSCRIPTION
 _RESPONSE.fields_by_name['performance_profile'].message_type = _RESPONSEPERFORMANCEPROFILE
 _RESPONSE.fields_by_name['ping'].message_type = _RESPONSEPING
+_RESPONSE.oneofs_by_name['Body'].fields.append(
+  _RESPONSE.fields_by_name['solver'])
+_RESPONSE.fields_by_name['solver'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['domain_login'])
 _RESPONSE.fields_by_name['domain_login'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
@@ -1403,6 +1499,9 @@ _RESPONSE.fields_by_name['job_schedule'].containing_oneof = _RESPONSE.oneofs_by_
 _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['policy'])
 _RESPONSE.fields_by_name['policy'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
+_RESPONSE.oneofs_by_name['Body'].fields.append(
+  _RESPONSE.fields_by_name['list_captcha_solvers'])
+_RESPONSE.fields_by_name['list_captcha_solvers'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['list_domain_logins'])
 _RESPONSE.fields_by_name['list_domain_logins'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
@@ -1422,6 +1521,9 @@ _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['list_rate_limits'])
 _RESPONSE.fields_by_name['list_rate_limits'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
+  _RESPONSE.fields_by_name['new_solver'])
+_RESPONSE.fields_by_name['new_solver'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
+_RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['new_job'])
 _RESPONSE.fields_by_name['new_job'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
@@ -1439,6 +1541,7 @@ _RESPONSE.fields_by_name['performance_profile'].containing_oneof = _RESPONSE.one
 _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['ping'])
 _RESPONSE.fields_by_name['ping'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
+_RESPONSELISTCAPTCHASOLVERS.fields_by_name['solvers'].message_type = protobuf_dot_shared__pb2._CAPTCHASOLVER
 _RESPONSELISTDOMAINLOGINS.fields_by_name['logins'].message_type = protobuf_dot_shared__pb2._DOMAINLOGIN
 _RESPONSELISTITEMS.fields_by_name['items'].message_type = protobuf_dot_shared__pb2._CRAWLRESPONSE
 _RESPONSELISTJOBS.fields_by_name['jobs'].message_type = protobuf_dot_shared__pb2._JOB
@@ -1469,12 +1572,14 @@ DESCRIPTOR.message_types_by_name['ResourceFrameMemory'] = _RESOURCEFRAMEMEMORY
 DESCRIPTOR.message_types_by_name['ResourceFrameNetwork'] = _RESOURCEFRAMENETWORK
 DESCRIPTOR.message_types_by_name['ResourceFrameRateLimiter'] = _RESOURCEFRAMERATELIMITER
 DESCRIPTOR.message_types_by_name['Response'] = _RESPONSE
+DESCRIPTOR.message_types_by_name['ResponseListCaptchaSolvers'] = _RESPONSELISTCAPTCHASOLVERS
 DESCRIPTOR.message_types_by_name['ResponseListDomainLogins'] = _RESPONSELISTDOMAINLOGINS
 DESCRIPTOR.message_types_by_name['ResponseListItems'] = _RESPONSELISTITEMS
 DESCRIPTOR.message_types_by_name['ResponseListJobs'] = _RESPONSELISTJOBS
 DESCRIPTOR.message_types_by_name['ResponseListJobSchedules'] = _RESPONSELISTJOBSCHEDULES
 DESCRIPTOR.message_types_by_name['ResponseListPolicies'] = _RESPONSELISTPOLICIES
 DESCRIPTOR.message_types_by_name['ResponseListRateLimits'] = _RESPONSELISTRATELIMITS
+DESCRIPTOR.message_types_by_name['ResponseNewCaptchaSolver'] = _RESPONSENEWCAPTCHASOLVER
 DESCRIPTOR.message_types_by_name['ResponseNewJob'] = _RESPONSENEWJOB
 DESCRIPTOR.message_types_by_name['ResponseNewJobSchedule'] = _RESPONSENEWJOBSCHEDULE
 DESCRIPTOR.message_types_by_name['ResponseNewPolicy'] = _RESPONSENEWPOLICY
@@ -1564,6 +1669,13 @@ Response = _reflection.GeneratedProtocolMessageType('Response', (_message.Messag
   ))
 _sym_db.RegisterMessage(Response)
 
+ResponseListCaptchaSolvers = _reflection.GeneratedProtocolMessageType('ResponseListCaptchaSolvers', (_message.Message,), dict(
+  DESCRIPTOR = _RESPONSELISTCAPTCHASOLVERS,
+  __module__ = 'protobuf.server_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.ResponseListCaptchaSolvers)
+  ))
+_sym_db.RegisterMessage(ResponseListCaptchaSolvers)
+
 ResponseListDomainLogins = _reflection.GeneratedProtocolMessageType('ResponseListDomainLogins', (_message.Message,), dict(
   DESCRIPTOR = _RESPONSELISTDOMAINLOGINS,
   __module__ = 'protobuf.server_pb2'
@@ -1605,6 +1717,13 @@ ResponseListRateLimits = _reflection.GeneratedProtocolMessageType('ResponseListR
   # @@protoc_insertion_point(class_scope:starbelly.ResponseListRateLimits)
   ))
 _sym_db.RegisterMessage(ResponseListRateLimits)
+
+ResponseNewCaptchaSolver = _reflection.GeneratedProtocolMessageType('ResponseNewCaptchaSolver', (_message.Message,), dict(
+  DESCRIPTOR = _RESPONSENEWCAPTCHASOLVER,
+  __module__ = 'protobuf.server_pb2'
+  # @@protoc_insertion_point(class_scope:starbelly.ResponseNewCaptchaSolver)
+  ))
+_sym_db.RegisterMessage(ResponseNewCaptchaSolver)
 
 ResponseNewJob = _reflection.GeneratedProtocolMessageType('ResponseNewJob', (_message.Message,), dict(
   DESCRIPTOR = _RESPONSENEWJOB,
