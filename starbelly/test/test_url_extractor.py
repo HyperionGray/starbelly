@@ -43,6 +43,25 @@ HTML_SRC = '''<!DOCTYPE html>
 </html>'''.encode('utf8')
 
 
+HTML_BASE_SRC = '''<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Test</title>
+        <base href="http://basecomputer.com/foo/">
+    </head>
+    <body>
+        <p>
+            <a href='./netbooks/'>Netbooks</a>
+            <a href="../desktops/">Desktops</a>
+        </p>
+        <p>
+            <a href='http://partner.computer.com'>Partners</a>
+        </p>
+    </body>
+</html>'''.encode('utf8')
+
+
 RSS_SRC = '''<rss version="2.0">
     <channel>
         <title>Test Channel</title>
@@ -100,6 +119,18 @@ class TestUrlExtractor(unittest.TestCase):
         expected_links = set([
             'http://computer.com/laptops/netbooks/',
             'http://computer.com/desktops/',
+            'http://partner.computer.com',
+        ])
+        actual_links = set(extract_urls(item))
+        self.assertEqual(actual_links, expected_links)
+
+    def test_html_base(self):
+        ''' Parse links from HTML which contains a <base> tag. '''
+        base_href = 'http://computer.com/laptops/'
+        item = ExtractItem(base_href, 1.0, 'text/html', HTML_BASE_SRC)
+        expected_links = set([
+            'http://basecomputer.com/foo/netbooks/',
+            'http://basecomputer.com/desktops/',
             'http://partner.computer.com',
         ])
         actual_links = set(extract_urls(item))

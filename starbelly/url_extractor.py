@@ -58,8 +58,18 @@ def _extract_html(extract_item):
         auto_detect_fun=chardet
     )
 
-    base_url = yarl.URL(extract_item.url)
     doc = BeautifulSoup(html, 'lxml')
+    base_tag = doc.head.base
+    base_url = None
+
+    if base_tag is not None:
+        base_href = base_tag.get('href')
+        if base_href is not None:
+            base_url = yarl.URL(base_href)
+
+    if base_url is None:
+        base_url = yarl.URL(extract_item.url)
+
     extracted_urls = list()
 
     for anchor in doc.find_all('a', href=True):
