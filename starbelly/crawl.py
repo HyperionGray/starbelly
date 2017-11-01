@@ -468,8 +468,9 @@ class _CrawlJob:
     async def resume(self, job_data):
         ''' On resume, restore crawl state. '''
         self.item_count = job_data['item_count']
-        self._authenticated_domains = set(job_data['cookie_jar'])
-        self._cookie_jar = pickle.loads(job_data['cookie_jar'])
+        self._authenticated_domains = set(job_data['authenticated_domains'])
+        self._cookie_jar = CookieJar()
+        self._cookie_jar._cookies = pickle.loads(job_data['cookie_jar'])
         self._insert_item_sequence = job_data['insert_item_sequence']
         self._extraction_size = job_data['extraction_size']
         self._frontier_seen = pickle.loads(job_data['frontier_seen'])
