@@ -212,7 +212,7 @@ class CrawlManager:
         ''' Resume a single job. '''
         async with self._db_pool.connection() as conn:
             job_data = await r.table('job').get(job_id).run(conn)
-            if 'captcha_solver_id' in job_data['policy']:
+            if job_data['policy'].get('captcha_solver_id') is not None:
                 job_data['policy']['captcha_solver'] = await (
                     r.table('captcha_solver')
                      .get(job_data['policy']['captcha_solver_id'])
@@ -256,7 +256,7 @@ class CrawlManager:
             policy = await r.table('policy').get(policy_id).run(conn)
             job_data['policy'] = policy
             result = await r.table('job').insert(job_data).run(conn)
-            if 'captcha_solver_id' in policy:
+            if policy.get('captcha_solver_id') is not None:
                 policy['captcha_solver'] = await (
                     r.table('captcha_solver')
                      .get(policy['captcha_solver_id'])
