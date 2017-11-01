@@ -29,7 +29,7 @@ class LoginManager:
         ])
         self._rate_limiter = rate_limiter
 
-    async def get_login_form(self, response, username, password):
+    async def get_login_form(self, cookie_jar, response, username, password):
         '''
         Attempt to extract login form action and form data from a response,
         substituting the provided ``username`` and ``password`` into the
@@ -57,15 +57,19 @@ class LoginManager:
         form.fields[password_field] = password
 
         if captcha_field is not None:
+            if self._policy.captcha_solver is None:
+                raise Exception('CAPTCHA required for login url={} but there is'
+                    ' no CAPTCHA solver available'.format(response.url))
+
             img_el = self._get_captcha_image_element(form)
             img_src = urljoin(response.url, img_el.get('src'))
-            captcha_text = await self._solve_captcha(img_src)
+            captcha_text = await self._solve_captcha(cookie_jar, img_src)
             form.fields[captcha_field] = captcha_text
 
         form_action = urljoin(response.url, form.action)
         return form_action, form.method, dict(form.fields)
 
-    async def _download_captcha_image(self, img_src):
+    async def _download_captcha_image(self, cookie_jar, img_src):
         ''' Download a CAPTCHA image and return bytes. '''
         logger.info('Downloading CAPTCHA image src=%s', img_src)
 
@@ -77,7 +81,8 @@ class LoginManager:
             url=img_src,
             cost=0,
             policy=self._policy,
-            output_queue=output_queue
+            output_queue=output_queue,
+            cookie_jar=cookie_jar
         )
         await self._rate_limiter.push(download_request)
         response = await output_queue.get()
@@ -98,10 +103,10 @@ class LoginManager:
         figure out which image is closer to the CAPTCHA input? Or crawl through
         the element tree to find the image?
         '''
-        try:
-            return form.xpath('//img')[0]
-        except:
+        img_el = form.find('img')
+        if img_el is None:
             raise Exception('Cannot locate CAPTCHA image')
+        return img_el
 
     def _select_login_fields(self, fields):
         ''' Select field having highest probability for class ``field``. '''
@@ -142,17 +147,9 @@ class LoginManager:
 
         return login_form, login_meta
 
-    async def _solve_captcha(self, img_src):
+    async def _solve_captcha(self, cookie_jar, img_src):
         ''' Send an image CAPTCHA to an external solver. '''
-        #TODO
-        # if policy['captcha_solver'] is None:
-        #     raise Exception('CAPTCHA required for login url={} but there is no'
-        #         ' CAPTCHA solver available'.format(response.url))
-
-        img_data = await self._download_captcha_image(img_src)
-        with open('test.png', 'wb') as out: #TODO
-            out.write(img_data)
-
+        img_data = await self._download_captcha_image(cookie_jar, img_src)
         solver = self._policy.captcha_solver
         solution = None
 
@@ -174,7 +171,7 @@ class LoginManager:
             for attempt in range(6):
                 await asyncio.sleep(5)
                 command = {
-                    'clientKey': solver.client_key,
+                    'clientKey': solver.api_key,
                     'taskId': task_id,
                 }
                 logger.info('Polling for CAPTCHA solution task_id=%d,'

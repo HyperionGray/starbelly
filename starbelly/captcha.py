@@ -1,14 +1,56 @@
+import base64
 from uuid import UUID
 
-import dateutil
+import protobuf.shared_pb2
 
-from protobuf.shared_pb2 import CaptchaSolver, CaptchaSolverAntigate, \
-    CaptchaSolverAntigateCharacters
+
+class CaptchaSolver:
+    ''' An interface for a CAPTCHA solving service. '''
+    def __init__(self, doc):
+        ''' Constructor. '''
+        self.id = doc['id']
+        self.name = doc['name']
+        self.service_url = doc['service_url']
+        self.api_key = doc['api_key']
+        self.require_phrase = doc['require_phrase']
+        self.case_sensitive = doc['case_sensitive']
+        self.characters = doc['characters']
+        self.require_math = doc['require_math']
+        self.min_length = doc.get('min_length', 0)
+        self.max_length = doc.get('max_length', 0)
+
+    def get_command(self, img_data):
+        ''' Override in subclasses to return JSON API command. '''
+        img_b64 = base64.b64encode(img_data).decode('ascii')
+
+        if self.characters == 'ALPHANUMERIC':
+            numeric = 0
+        elif self.characters == 'NUMERIC_ONLY':
+            numeric = 1
+        elif self.characters == 'ALPHA_ONLY':
+            numeric = 2
+        else:
+            raise Exception('Invalid characters setting: {}'.format(
+                self.characters))
+
+        return {
+            'clientKey': self.api_key,
+            'task': {
+                'type': 'ImageToTextTask',
+                'body': img_b64,
+                'phrase': self.require_phrase,
+                'case': self.case_sensitive,
+                'numeric': numeric,
+                'math': self.require_math,
+                'minLength': self.min_length,
+                'maxLength': self.max_length,
+            }
+        }
 
 
 def captcha_doc_to_pb(doc):
     ''' Convert CAPTCHA solver from database document to protobuf. '''
-    pb = CaptchaSolver()
+    pb = protobuf.shared_pb2.CaptchaSolver()
     pb.name = doc['name']
     pb.solver_id = UUID(doc['id']).bytes
     pb.created_at = doc['created_at'].isoformat()
@@ -23,12 +65,13 @@ def captcha_doc_to_pb(doc):
 
 def _antigate_doc_to_pb(doc):
     ''' Convert Antigate CAPTCHA solver from database doc to protobuf. '''
-    pb = CaptchaSolverAntigate()
+    pb = protobuf.shared_pb2.CaptchaSolverAntigate()
     pb.service_url = doc['service_url']
     pb.api_key = doc['api_key']
     pb.require_phrase = doc['require_phrase']
     pb.case_sensitive = doc['case_sensitive']
-    pb.characters = CaptchaSolverAntigateCharacters.Value(doc['characters'])
+    pb.characters = protobuf.shared_pb2.CaptchaSolverAntigateCharacters \
+        .Value(doc['characters'])
     pb.require_math = doc['require_math']
     if 'min_length' in doc:
         pb.min_length = doc['min_length']
@@ -60,7 +103,8 @@ def _antigate_pb_to_doc(pb):
         'api_key': antigate.api_key,
         'require_phrase': antigate.require_phrase,
         'case_sensitive': antigate.case_sensitive,
-        'characters': CaptchaSolverAntigateCharacters.Name(antigate.characters),
+        'characters': protobuf.shared_pb2.CaptchaSolverAntigateCharacters \
+            .Name(antigate.characters),
         'require_math': antigate.require_math,
         'type': 'antigate',
     }

@@ -212,6 +212,13 @@ class CrawlManager:
         ''' Resume a single job. '''
         async with self._db_pool.connection() as conn:
             job_data = await r.table('job').get(job_id).run(conn)
+            if 'captcha_solver_id' in job_data['policy']:
+                job_data['policy']['captcha_solver'] = await (
+                    r.table('captcha_solver')
+                     .get(job_data['policy']['captcha_solver_id'])
+                     .run(conn)
+                )
+                del job_data['policy']['captcha_solver_id']
         policy = Policy(job_data['policy'], VERSION, job_data['seeds'],
             self._robots_txt_manager)
         job = _CrawlJob(self._db_pool, self._rate_limiter, self._downloader,
@@ -249,6 +256,13 @@ class CrawlManager:
             policy = await r.table('policy').get(policy_id).run(conn)
             job_data['policy'] = policy
             result = await r.table('job').insert(job_data).run(conn)
+            if 'captcha_solver_id' in policy:
+                policy['captcha_solver'] = await (
+                    r.table('captcha_solver')
+                     .get(policy['captcha_solver_id'])
+                     .run(conn)
+                )
+                del policy['captcha_solver_id']
 
         policy = Policy(policy, VERSION, seeds, self._robots_txt_manager)
         job_id = result['generated_keys'][0]
@@ -908,7 +922,7 @@ class _CrawlJob:
             return
         try:
             action, method, data = await self._login_manager.get_login_form(
-                response, user['username'], user['password'])
+                self._cookie_jar, response, user['username'], user['password'])
         except Exception as e:
             logger.exception('Cannot parse login form: %s', e)
             raise
@@ -921,7 +935,6 @@ class _CrawlJob:
         if not response.is_success():
             logger.error('Login failed action=%s (see downloader log for'
                 ' details)', action)
-            return
 
     async def _update_job_stats(self, response):
         '''

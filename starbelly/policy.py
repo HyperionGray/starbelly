@@ -10,6 +10,7 @@ import rethinkdb as r
 import w3lib.url
 
 from . import VERSION
+from .captcha import CaptchaSolver
 import protobuf.shared_pb2
 
 
@@ -120,6 +121,8 @@ class Policy:
         # to gracefully handle old policies that are missing expected fields.
         PolicyAuthentication.convert_doc_to_pb(doc.get('authentication',
             dict()), pb.authentication)
+        if doc.get('captcha_solver_id') is not None:
+            pb.captcha_solver_id = UUID(doc['captcha_solver_id']).bytes
         PolicyLimits.convert_doc_to_pb(doc.get('limits', dict()), pb.limits)
         PolicyMimeTypeRules.convert_doc_to_pb(doc.get('mime_type_rules',
             list()), pb.mime_type_rules)
@@ -156,6 +159,10 @@ class Policy:
             doc['updated_at'] = dateutil.parser.parse(pb.updated_at)
         PolicyAuthentication.convert_pb_to_doc(pb.authentication,
             doc['authentication'])
+        if pb.HasField('captcha_solver_id'):
+            doc['captcha_solver_id'] = str(UUID(bytes=pb.captcha_solver_id))
+        else:
+            doc['captcha_solver_id'] = None
         PolicyLimits.convert_pb_to_doc(pb.limits, doc['limits'])
         PolicyMimeTypeRules.convert_pb_to_doc(pb.mime_type_rules,
             doc['mime_type_rules'])
@@ -173,7 +180,10 @@ class Policy:
             _invalid('Policy name cannot be blank')
 
         self.authentication = PolicyAuthentication(doc['authentication'])
-        self.captcha_solver = PolicyCaptchaSolver() #TODO
+        if 'captcha_solver' in doc:
+            self.captcha_solver = CaptchaSolver(doc['captcha_solver'])
+        else:
+            self.captcha_solver = None
         self.limits = PolicyLimits(doc['limits'])
         self.mime_type_rules = PolicyMimeTypeRules(doc['mime_type_rules'])
         self.proxy_rules = PolicyProxyRules(doc['proxy_rules'])
@@ -222,37 +232,6 @@ class PolicyAuthentication:
     def is_enabled(self):
         ''' Return True if authentication is enabled. '''
         return self._enabled
-
-
-class PolicyCaptchaSolver:
-    ''' Encapsulates a CAPTCHA solving service. '''
-    def __init__(self):
-        ''' Constructor. '''
-        self.service_url = 'https://api.anti-captcha.com/'
-        self.client_key = '--------------------------------'
-        self.phrase = False
-        self.case = False
-        self.numeric = 0
-        self.math = False
-        self.min_length = None
-        self.max_length = None
-
-    def get_command(self, img_data):
-        ''' Return a JSON command suitable for posting to CAPTCHA API. '''
-        img_b64 = base64.b64encode(img_data).decode('ascii')
-        return {
-            'clientKey': self.client_key,
-            'task': {
-                'type': 'ImageToTextTask',
-                'body': img_b64,
-                'phrase': self.phrase,
-                'case': self.case,
-                'numeric': self.numeric,
-                'math': self.math,
-                'minLength': self.min_length or 0,
-                'maxLength': self.max_length or 0,
-            }
-        }
 
 
 class PolicyLimits:
