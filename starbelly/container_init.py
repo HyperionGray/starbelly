@@ -256,7 +256,7 @@ def init_config():
         config.optionxform = str
         config.read([local_ini_path])
 
-        config['database']['host'] = 'starbelly-dev-db'
+        config['database']['host'] = 'db'
         config['database']['db'] = 'starbelly'
         config['database']['user'] = 'starbelly-app'
         config['database']['password'] = random_password(length=20)

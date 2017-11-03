@@ -1,0 +1,442 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>API Documentation &mdash; Starbelly 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Starbelly 1.0.0 documentation" href="index.html"/>
+        <link rel="next" title="Changelog" href="changelog.html"/>
+        <link rel="prev" title="Policy" href="policy.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Starbelly
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_crawl.html">Your First Crawl</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="policy.html">Policy</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#connecting-to-api">Connecting to API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#messages">Messages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-session">Example Session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#web-client">Web Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#python-client">Python Client</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Starbelly</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>API Documentation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="api-documentation">
+<h1><a class="toc-backref" href="#id1">API Documentation</a><a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#api-documentation" id="id1">API Documentation</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>The crawler is controlled completely by an API. Clients connect to the crawler
+using <a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API">websockets</a> and
+exchange messages with the crawler using <a class="reference external" href="https://developers.google.com/protocol-buffers/">protobuf messages</a>. The built-in GUI relies
+solely on this API, so everything that can be done in the GUI can also be done
+with the API – and more!</p>
+<p>One of the central goals for the API is to enable clients to synchronize crawl
+results in real time. Most crawling systems are batch-oriented: you run the
+crawler for a period of time and then collect the results when the crawl is
+finished. Starbelly is streaming-oriented: it can send crawl results to a client
+as soon as it downloads them.</p>
+<p>Let’s imagine that a crawl has started running and already has 1,000 results. A
+client can connect to Starbelly and quickly fetch the first 1,000 results.
+Because the crawler is still running, new results will continue to stream in as
+the crawler downloads them. If either the server or the client needs to
+disconnect for some reason, the client is able to reconnect later and pick up
+the stream exactly where it left off.</p>
+</div>
+<div class="section" id="connecting-to-api">
+<h2>Connecting to API<a class="headerlink" href="#connecting-to-api" title="Permalink to this headline">¶</a></h2>
+<p>The API is exposed as a websocket service on port 443 at the path <code class="docutils literal"><span class="pre">/ws/</span></code>. For
+example, if starbelly is running on the host <code class="docutils literal"><span class="pre">starbelly.example.com</span></code>, then you
+should connect to the web socket using the URL
+<code class="docutils literal"><span class="pre">wss://starbelly.example.com/ws/</span></code>. By default, Starbelly uses HTTP basic
+authentication, so you need to include those credentials when you connect to the
+API.</p>
+</div>
+<div class="section" id="messages">
+<h2>Messages<a class="headerlink" href="#messages" title="Permalink to this headline">¶</a></h2>
+<p>Starbelly uses <code class="docutils literal"><span class="pre">protobuf</span></code> to encode messages sent between the client and the
+server. There are three types of message used in the API:</p>
+<ol class="arabic simple">
+<li>Request</li>
+<li>Response</li>
+<li>Event</li>
+</ol>
+<p>The <em>request</em> and <em>response</em> messages are created in pairs: the client sends a
+<em>request</em> to the server and the server sends back exactly one <em>response</em> per
+request. The response indicates whether the request was successful and may
+include other data related to the request.</p>
+<p>Although each request generates a response, the responses are not necessarily
+sent back in the same order that the requests are received. If the client sends
+two commands very quickly (call them A and B), it may get the responses back in
+either order, e.g. A→B or B→A. For this reason, the client should include a
+unique <code class="docutils literal"><span class="pre">request_id</span></code> with each request; the server will include the same
+<code class="docutils literal"><span class="pre">request_id</span></code> in its response so that the client can track which response goes
+with which request. The client can assign request IDs in any manner that it
+chooses, but one sensible approach would be to assign an incrementing sequence
+of integers.</p>
+<p>The third type of message is an <em>event</em>, which is pushed from the server to the
+client. For example, the client can send a request to subscribe to job status.
+The server will send a response containing a subscription ID. Now, whenever a
+job has a status event, such as downloading a new resource, the server will send
+an event to the client containing the job status data and the corresponding
+subscription ID. The client can close the subscription by sending another
+request. The server will stop sending event messages and will send a response
+indicating that the subscription has been cancelled.</p>
+<p>Protobuf is a binary serialization format that supports common data types like
+integers, strings, lists, and maps. It is similar in purpose to JSON, but
+protobuf is more efficient in terms of encoding overhead and serialization
+speed.</p>
+</div>
+<div class="section" id="example-session">
+<h2>Example Session<a class="headerlink" href="#example-session" title="Permalink to this headline">¶</a></h2>
+<p>This section shows a complete interaction where a client starts a crawl and
+synchronizes crawl results. To begin, the client sends a <code class="docutils literal"><span class="pre">RequestSetJob</span></code>
+request to the server that includes the seed URL, a policy identifier, and a
+crawl name.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="n">Request</span> <span class="p">{</span>
+    <span class="n">request_id</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="n">Command</span><span class="p">:</span> <span class="n">RequestSetJob</span> <span class="p">{</span>
+        <span class="n">run_state</span><span class="p">:</span> <span class="n">RUNNING</span>
+        <span class="n">policy_id</span><span class="p">:</span> <span class="n">d28b379ff3668322bfd5d56e11d4e34e</span>
+        <span class="n">seeds</span><span class="p">:</span> <span class="s2">&quot;https://cnn.com&quot;</span>
+        <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;My Crawl&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The server will kick off a crawling job and will send a response telling the
+client that the job has started successfully and including an identifier for the
+new job.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="n">Response</span> <span class="p">{</span>
+    <span class="n">request_id</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="n">is_success</span><span class="p">:</span> <span class="n">true</span>
+    <span class="n">Body</span><span class="p">:</span> <span class="n">ResponseNewJob</span> <span class="p">{</span>
+        <span class="n">job_id</span><span class="p">:</span> <span class="mi">0514478</span><span class="n">baffd401546b755bf460b5997</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Notice that the response includes the request ID sent by the client, so
+we know that this is a response to the above request.</p>
+<p>This response tells us that the crawl is starting, but we would like to keep
+track of the crawl’s progress and know when it finishes. The next step is to
+send a subscription request for job status events.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="n">Request</span> <span class="p">{</span>
+    <span class="n">request_id</span><span class="p">:</span> <span class="mi">2</span>
+    <span class="n">Command</span><span class="p">:</span> <span class="n">RequestSubscribeJobStatus</span> <span class="p">{</span>
+        <span class="n">min_interval</span><span class="p">:</span> <span class="mf">3.0</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This subscription provides high-level job status for <em>all</em> crawl jobs, including
+data like how many items have been downloaded, how many pages had errors, how
+many pages results in exceptions, etc. Job status can change rapidly when the
+crawler is busy, because each item downloaded counts as a change in job status.
+The <code class="docutils literal"><span class="pre">min_interval</span></code> parameter specifies the minimum amount of time in between
+job status events sent by the server. In this example, if there are multiple job
+status events, the server will batch them together and send at most 1 event
+every 3 seconds for this subscription. On the other hand, if the crawl is very
+slow, then it may send events even less frequently than that.</p>
+<p>The server will create the subscription and respond with a subscription
+identifier.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="n">Response</span> <span class="p">{</span>
+    <span class="n">request_id</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="n">is_success</span><span class="p">:</span> <span class="n">true</span>
+    <span class="n">Body</span><span class="p">:</span> <span class="n">ResponseNewSubscription</span> <span class="p">{</span>
+        <span class="n">subscription_id</span><span class="p">:</span> <span class="mi">300</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>When the client first subscribes to job status, the crawler will send the
+complete status of each currently running job. For example, if the crawler has
+already downloaded one item, the job status may look like this:</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="n">Event</span> <span class="p">{</span>
+    <span class="n">subscription_id</span><span class="p">:</span> <span class="mi">300</span>
+    <span class="n">Body</span><span class="p">:</span> <span class="n">JobList</span> <span class="p">{</span>
+        <span class="n">jobs</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">job_id</span><span class="p">:</span> <span class="mi">0514478</span><span class="n">baffd401546b755bf460b5997</span>
+            <span class="n">seeds</span><span class="p">:</span> <span class="s2">&quot;https://cnn.com&quot;</span>
+            <span class="n">policy</span><span class="p">:</span> <span class="n">d28b379ff3668322bfd5d56e11d4e34e</span>
+            <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;My Crawl&quot;</span>
+            <span class="n">run_state</span><span class="p">:</span> <span class="n">RUNNING</span>
+            <span class="n">started_at</span><span class="p">:</span> <span class="s2">&quot;2017-11-03T10:14:42.194744&quot;</span>
+            <span class="n">item_count</span><span class="p">:</span> <span class="mi">1</span>
+            <span class="n">http_success_count</span><span class="p">:</span> <span class="mi">1</span>
+            <span class="n">http_error_count</span><span class="p">:</span> <span class="mi">0</span>
+            <span class="n">exception_count</span><span class="p">:</span> <span class="mi">0</span>
+            <span class="n">http_status_counts</span><span class="p">:</span> <span class="p">{</span>
+                <span class="mi">200</span><span class="p">:</span> <span class="mi">1</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>After sending complete job status, the crawler will send small updates as the
+job status changes. For example, after the crawler downloads a second item, it
+will send an event like this:</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="n">Event</span> <span class="p">{</span>
+    <span class="n">subscription_id</span><span class="p">:</span> <span class="mi">300</span>
+    <span class="n">Body</span><span class="p">:</span> <span class="n">JobList</span> <span class="p">{</span>
+        <span class="n">jobs</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">job_id</span><span class="p">:</span> <span class="mi">0514478</span><span class="n">baffd401546b755bf460b5997</span>
+            <span class="n">item_count</span><span class="p">:</span> <span class="mi">2</span>
+            <span class="n">http_success_count</span><span class="p">:</span> <span class="mi">2</span>
+            <span class="n">http_status_counts</span><span class="p">:</span> <span class="p">{</span>
+                <span class="mi">200</span><span class="p">:</span> <span class="mi">2</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Notice how the second message is much smaller: it only contains the fields that
+have changed since the previous event. This is how the job status subscription
+allows clients to efficiently keep track of the status of all jobs. This API is
+used in the GUI to power the Dashboard and Results screens.</p>
+<p>For a complete list of API messages, look at the <a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly-protobuf">starbelly-protobuf</a> repository.</p>
+</div>
+<div class="section" id="web-client">
+<h2>Web Client<a class="headerlink" href="#web-client" title="Permalink to this headline">¶</a></h2>
+<p>The crawler GUI is implemented as a stand-alone application written in Dart, and
+it interacts with the Starbelly server solely through the public API. Therefore,
+anything that you can do in the GUI can also be done through the API.</p>
+<p><a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly-web-client">https://gitlab.com/hyperion-gray/starbelly-web-client</a></p>
+</div>
+<div class="section" id="python-client">
+<h2>Python Client<a class="headerlink" href="#python-client" title="Permalink to this headline">¶</a></h2>
+<p>A very basic and incomplete Python client library implementation is available:</p>
+<p><a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly-python-client">https://gitlab.com/hyperion-gray/starbelly-python-client</a></p>
+<p>This client library will be improved over time and made more stable, but for
+now it may be used as a reference implementation.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="changelog.html" class="btn btn-neutral float-right" title="Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="policy.html" class="btn btn-neutral" title="Policy" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Mark E. Haase.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

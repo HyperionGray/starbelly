@@ -1,0 +1,397 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Policy &mdash; Starbelly 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Starbelly 1.0.0 documentation" href="index.html"/>
+        <link rel="next" title="API Documentation" href="api.html"/>
+        <link rel="prev" title="Configuration Guide" href="configuration.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Starbelly
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_crawl.html">Your First Crawl</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Policy</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#robots-txt">Robots.txt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#url-normalization">URL Normalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#url-rules">URL Rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#user-agents">User Agents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#proxy-rules">Proxy Rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mime-type-rules">MIME Type Rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#limits">Limits</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Starbelly</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Policy</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/policy.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="policy">
+<h1><a class="toc-backref" href="#id1">Policy</a><a class="headerlink" href="#policy" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#policy" id="id1">Policy</a><ul>
+<li><a class="reference internal" href="#overview" id="id2">Overview</a></li>
+<li><a class="reference internal" href="#authentication" id="id3">Authentication</a></li>
+<li><a class="reference internal" href="#robots-txt" id="id4">Robots.txt</a></li>
+<li><a class="reference internal" href="#url-normalization" id="id5">URL Normalization</a></li>
+<li><a class="reference internal" href="#url-rules" id="id6">URL Rules</a></li>
+<li><a class="reference internal" href="#user-agents" id="id7">User Agents</a></li>
+<li><a class="reference internal" href="#proxy-rules" id="id8">Proxy Rules</a></li>
+<li><a class="reference internal" href="#mime-type-rules" id="id9">MIME Type Rules</a></li>
+<li><a class="reference internal" href="#limits" id="id10">Limits</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id2">Overview</a><a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>The <em>crawl policy</em> is one of the most important and powerful concepts in
+Starbelly. A policy controls the crawler’s behavior and decision making, guiding
+which links the crawler follows, what kinds of resources it downloads, and how
+long or how far it runs. When you start a crawl job, you must specify which
+policy that job should use.</p>
+<p>In this part of the documentation, we take a look at the features of the crawl
+policy. To begin, click <em>Policy</em> in the Starbelly menu, then click on an
+existing policy to view it, or click <em>New Policy</em> to create a new policy.</p>
+</div>
+<div class="section" id="authentication">
+<h2><a class="toc-backref" href="#id3">Authentication</a><a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h2>
+<p>The authentication policy determines how a crawler can authenticate itself to a
+web site. When the crawler sees a domain in a crawl for the first time, it
+checks to see if it has any credentials for that domain. (See the configuration
+of Credentials for more information.) If it does, it picks one
+of the appropriate credentials at random and tries to login with it. Some login
+forms may require a CAPTCHA. In those cases, you may configure a CAPTCHA solver
+and specify that solver in the policy.</p>
+</div>
+<div class="section" id="robots-txt">
+<h2><a class="toc-backref" href="#id4">Robots.txt</a><a class="headerlink" href="#robots-txt" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://www.robotstxt.org/">Robots.txt</a> is a standard for specifying how
+crawlers should interact with websites. By default, Starbelly will attempt to
+download a <code class="docutils literal"><span class="pre">robots.txt</span></code> from each domain that it visits, and it will obey the
+directives of any such files that it finds. In some circumstances, however,
+such as crawling some old sites, it may be useful to ignore or even invert the
+directives in a site’s robots.txt, which you can configure using the policy.</p>
+</div>
+<div class="section" id="url-normalization">
+<h2><a class="toc-backref" href="#id5">URL Normalization</a><a class="headerlink" href="#url-normalization" title="Permalink to this headline">¶</a></h2>
+<p>The crawler attempts to avoid crawling the same URL multiple times. If two links
+contain exactly identical URLs, then the crawler will only download that
+resource once. On some sites, especially dynamically generated sites, multiple
+URLs may refer to the same resource and differ only in the order of URL query
+parameters or the values of semantically meaningless query parameters like
+session IDs.</p>
+<p>The URL normalization policy allows you to control this behavior. When enabled,
+the crawler normalizes URLS using a number of techniques, including:</p>
+<ul class="simple">
+<li>sorting query parameters alphabetically</li>
+<li>upper case percent encodings</li>
+<li>remove query fragments</li>
+<li>etc.</li>
+</ul>
+<p>You may specify URL query parameters that should be discarded during
+normalization. By default, the crawler discards several common session ID
+parameters. Alternatively, you can disable URL normalization completely,
+although this may result in lots of duplicated downloads.</p>
+</div>
+<div class="section" id="url-rules">
+<h2><a class="toc-backref" href="#id6">URL Rules</a><a class="headerlink" href="#url-rules" title="Permalink to this headline">¶</a></h2>
+<p>The URL rules policy controls how a crawler selects links to follow. For each
+page that is downloaded, the crawler extracts candidate links. For each candidate
+link, the crawler checks the rules one-by-one until a rule matches, then the crawler
+applies the matching rule.</p>
+<p>For example, the default <em>Deep Crawl</em> policy contains two URL rules:</p>
+<ol class="arabic simple">
+<li>If the URL <em>matches</em> the regex <code class="docutils literal"><span class="pre">^https?://({SEED_DOMAINS})/</span></code> then <em>add</em> <code class="docutils literal"><span class="pre">1.0</span></code>.</li>
+<li>Else <em>multiply by</em> <code class="docutils literal"><span class="pre">0.0</span></code>.</li>
+</ol>
+<p>Let’s say the URL is seeded with <code class="docutils literal"><span class="pre">http://foo.com/bar</span></code>. It downloads this
+document and assigns it a cost of 1.0. Cost is roughly similar to the concept of
+<em>crawl depth</em> in other crawlers, but it is a bit more sophisticated. Each link
+is assigned a cost based on the cost of the document where it was found and the
+URL rule that it matches. If a link cost evaluates to zero, then the link is
+thrown away. If the link is greater than zero but less than the “Max Cost”
+specified in the crawl policy, then the crawler schedules the link to be
+fetched. Links are fetched roughly in order of cost, so lower-cost items are
+typically fetched before higher-cost items.</p>
+<p>After the crawler downloads the document at <code class="docutils literal"><span class="pre">http://foo.com/bar</span></code>, it checks
+each link in that document against the URL rules in the policy. For example, if
+the link matches the regex in rule #1, then the link will be given a score of
+2.0: the rule says to add 1.0 to the cost of its parent (which was 1.0).</p>
+<p>If the link matches rule #2, then that rule says to multiply the parent’s cost
+by zero. This results in the new cost being set to zero, and the crawler
+discards links where the cost is zero, so the link will not be followed.</p>
+<p>Although the URL rules are a bit complicated at first, they turn out to be a
+very powerful way to guide the crawler. For example, if we step back a bit and
+consider the effect of the two rules above, we see that it follows links inside
+the seed domain and does not follow links outside the seed domain. In other
+words, this is a <em>deep crawl</em>!</p>
+<p>If we replace the two rules here with just a single rule that says “Always add
+1.0” , then that would result in a <em>broad crawl</em> policy! In fact, you can go
+look at the default <em>Broad Crawl</em> policy included in Starbelly to confirm that
+this is how it works.</p>
+</div>
+<div class="section" id="user-agents">
+<h2><a class="toc-backref" href="#id7">User Agents</a><a class="headerlink" href="#user-agents" title="Permalink to this headline">¶</a></h2>
+<p>When the crawler downloads a resource, it sends a <em>User Agent</em> string in the
+headers. By default, Starbelly sends a user agent that identifies itself with a
+version number and includes a URL to its source code repository. You may
+customize what user agent is sent using the policy. If you include multiple user
+agent strings, one will be chosen at random for each request.</p>
+</div>
+<div class="section" id="proxy-rules">
+<h2><a class="toc-backref" href="#id8">Proxy Rules</a><a class="headerlink" href="#proxy-rules" title="Permalink to this headline">¶</a></h2>
+<p>By default, the crawler downloads resources directly from their hosts. In some
+cases, you may want to proxy requests through an intermediary. The <em>Proxy Rules</em>
+specify which proxy server should be used for which request, similar to the <em>URL
+Rules</em> above.</p>
+</div>
+<div class="section" id="mime-type-rules">
+<h2><a class="toc-backref" href="#id9">MIME Type Rules</a><a class="headerlink" href="#mime-type-rules" title="Permalink to this headline">¶</a></h2>
+<p>While <em>URL Rules</em> determine which links to follow, <em>MIME Type Rules</em>  determine
+what types of resources to download. By default, the crawler only downloads
+resources that have a MIME type matching the regex <code class="docutils literal"><span class="pre">^text/</span></code>, which matches
+plain text and HTML resources. If you want the crawler to download images, for
+example, then you would add a new rule like <code class="docutils literal"><span class="pre">^image/*</span></code> that would match GIF,
+JPEG, and PNG resources.</p>
+<p>The MIME type of a resource is determined by inspecting the <code class="docutils literal"><span class="pre">Content-Type</span></code>
+header, which  means that <em>MIME Type Rules</em> are not applied until <em>after the
+crawler downloads headers</em> for a resource. If the crawler determines that a
+resource should not be downloaded, then the crawler closes the connection and
+discards any data that has already been downloaded.</p>
+</div>
+<div class="section" id="limits">
+<h2><a class="toc-backref" href="#id10">Limits</a><a class="headerlink" href="#limits" title="Permalink to this headline">¶</a></h2>
+<p>The <em>Limits</em> policy specifies limits on how far and how long the crawl should
+run. If a limit is left blank, then that limit will not be applied to the crawl.</p>
+<ul class="simple">
+<li>Max cost: the crawler will not follow links that have a cost greater than the
+one specified here.</li>
+<li>Max duration: the maximum amount of time the crawler should run, in seconds.</li>
+<li>Max items: the maximum number of items that the crawler should download. This
+number includes successes, errors, and exceptions.</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api.html" class="btn btn-neutral float-right" title="API Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="configuration.html" class="btn btn-neutral" title="Configuration Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Mark E. Haase.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

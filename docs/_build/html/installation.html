@@ -1,0 +1,484 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installation Guide &mdash; Starbelly 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Starbelly 1.0.0 documentation" href="index.html"/>
+        <link rel="next" title="Your First Crawl" href="first_crawl.html"/>
+        <link rel="prev" title="Introduction" href="intro.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Starbelly
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#production-installation">Production Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#docker-compose">Docker Compose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#security">Security</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#developer-installation">Developer Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#docker-images">Docker Images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Docker Compose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dartium">Dartium</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="first_crawl.html">Your First Crawl</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="policy.html">Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Starbelly</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Installation Guide</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/installation.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="installation-guide">
+<h1><a class="toc-backref" href="#id3">Installation Guide</a><a class="headerlink" href="#installation-guide" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#installation-guide" id="id3">Installation Guide</a><ul>
+<li><a class="reference internal" href="#production-installation" id="id4">Production Installation</a></li>
+<li><a class="reference internal" href="#developer-installation" id="id5">Developer Installation</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="production-installation">
+<h2><a class="toc-backref" href="#id4">Production Installation</a><a class="headerlink" href="#production-installation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="prerequisites">
+<h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h3>
+<p>Starbelly is offered as a collection of Docker images and Docker-compose
+configurations. If you’re not familiar with Docker, it is a system for deploying
+multiple software components into individual containers and orchestrating the
+entire system.</p>
+<p>First, install <a class="reference external" href="https://docs.docker.com/engine/installation/">Docker</a> using
+the instructions for your platform.</p>
+<p>Next, install <a class="reference external" href="https://docs.docker.com/compose/install/">Docker Compose</a>
+using the instructions for your platform.</p>
+</div>
+<div class="section" id="docker-compose">
+<h3>Docker Compose<a class="headerlink" href="#docker-compose" title="Permalink to this headline">¶</a></h3>
+<p>Docker Compose is used to set up and run multiple Docker containers together.
+You should have installed Docker Compose in the previous step. Now you need a
+Docker Compose configuration file (usually called <code class="docutils literal"><span class="pre">docker-compose.yml</span></code>) that
+specifies what containers need to be created and how they should be configured.
+A sample docker-compose.yml configuration file is available for Starbelly, but
+you may need to tailor this file to your unique environment.</p>
+<p>Download this <a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly-docker/repository/master/archive.zip">zip file</a>
+and extract it. (If you have Git installed, you can run <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span>
+<span class="pre">git&#64;gitlab.com:hyperion-gray/starbelly-docker.git</span></code> instead.) From the
+<code class="docutils literal"><span class="pre">starbelly-docker/starbelly</span></code> directory, run the following command:</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span>$ docker-compose up -d
+</pre></div>
+</div>
+<p>This will download the required Docker images, create the corresponding
+containers, and then start the entire application on ports 80 and 443. Once
+the application has started, open up a browser and try navigating to the host
+where you are running Starbelly. The default username and password is “admin”.</p>
+<p>You should see the Dashboard:</p>
+<img alt="screenshot of dashboard" src="_images/dashboard.png" />
+<p>If you experience any problems, try using the command <code class="docutils literal"><span class="pre">docker-compose</span> <span class="pre">logs</span></code>
+to view logging output from the Docker containers.</p>
+</div>
+<div class="section" id="security">
+<h3>Security<a class="headerlink" href="#security" title="Permalink to this headline">¶</a></h3>
+<p>If your Starbelly instance is exposed to the internet, then you should
+immediately do two things to secure it:</p>
+<ol class="arabic simple">
+<li>Change the admin password.</li>
+<li>Create TLS certificates</li>
+</ol>
+<p>The <strong>admin password</strong> is stored in a file called <code class="docutils literal"><span class="pre">htpasswd</span></code> and it can be
+created or edited using the <code class="docutils literal"><span class="pre">htpasswd</span></code> command from the Apache2 utilities
+package (called <code class="docutils literal"><span class="pre">apache2-utils</span></code> on Ubuntu distributions). Install that package
+and then run this command:</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span>$ htpasswd -c passwd admin
+New password:
+Re-type new password:
+Adding password for user admin
+</pre></div>
+</div>
+<p>Type in the new password when prompted. You can change passwords or add
+additional passwords to an existing file by running <code class="docutils literal"><span class="pre">htpasswd</span> <span class="pre">passwd</span> <span class="pre">USER</span></code>,
+where <code class="docutils literal"><span class="pre">USER</span></code> is the username to change. When you are done, copy the <code class="docutils literal"><span class="pre">passwd</span></code>
+file into the Docker container and remove the original.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span>$ docker cp passwd starbelly-web:/etc/nginx/tls/
+$ docker exec starbelly-web nginx -s reload
+2017/11/02 14:29:37 [notice] 1437#1437: signal process started
+$ rm passwd
+</pre></div>
+</div>
+<p>The default <strong>TLS certificate</strong> is automatically generated and self-signed when
+the container is created. If you have a valid domain name for your Starbelly
+server, then you should obtain a real certificate for it.</p>
+<p>If you have obtained your own certificates, you can install them as follows,
+where <code class="docutils literal"><span class="pre">certificate.pem</span></code> is the full certificate chain in PEM format and
+<code class="docutils literal"><span class="pre">privatekey.pem</span></code> is the private key in PEM format.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span>$ docker cp certificate.pem starbelly-web:/etc/nginx/tls/server.crt
+$ docker cp privatekey.pem starbelly-web:/etc/nginx/tls/server.key
+$ docker exec starbelly-web nginx -s reload
+2017/11/02 14:29:37 [notice] 1437#1437: signal process started
+</pre></div>
+</div>
+<p>If you do not already have TLS certificates, you may obtain free certificates
+from <a class="reference external" href="https://letsencrypt.org/">Let’s Encrypt</a>. First, install the certbot
+application using the <a class="reference external" href="https://certbot.eff.org/">instructions for your platform</a>. Now run certbot to create initial certificates,
+replacing <code class="docutils literal"><span class="pre">YOUR_DOMAIN</span></code> with the fully qualified domain name of the server and
+replacing <code class="docutils literal"><span class="pre">/path/to/starbelly-docker/starbelly</span></code> with the path where you placed
+the Starbelly docker configuration files from an earlier step.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span>$ cd /path/to/starbelly-docker/starbelly
+$ certbot certonly \
+    --webroot -w certbot-webroot \
+    -d YOUR_DOMAIN \
+    --deploy-hook ./deploy-certbot.py
+Plugins selected: Authenticator webroot, Installer None
+Enter email address (used for urgent renewal and security notices) (Enter &#39;c&#39; to
+cancel): YOUR EMAIL HERE
+
+-------------------------------------------------------------------------------
+Please read the Terms of Service at
+https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf. You must agree
+in order to register with the ACME server at
+https://acme-staging.api.letsencrypt.org/directory
+-------------------------------------------------------------------------------
+(A)gree/(C)ancel: a
+
+...snip...
+</pre></div>
+</div>
+<p>This command will attempt to get TLS certificates from the Let’s Encrypt server.
+If you’ve never run certbot on this server before, it will prompt you to enter
+a contact e-mail address and agree to the terms of service.</p>
+<p>If certificate generation succeeds, it will install those certificates into the
+Docker container. This certificate is valid for 90 days and will need to be
+renewed before it expires. Create a daily cron job containing the following
+command to ensure that the certificate will be renewed appropriately.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="n">certbot</span> <span class="n">renew</span> <span class="o">--</span><span class="n">deploy</span><span class="o">-</span><span class="n">hook</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">starbelly</span><span class="o">-</span><span class="n">docker</span><span class="o">/</span><span class="n">starbelly</span><span class="o">/</span><span class="n">deploy</span><span class="o">-</span><span class="n">certbot</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-steps">
+<h3>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h3>
+<p>Now that you have Starbelly up and running, take a look at <a class="reference internal" href="first_crawl.html"><span class="doc">Your First Crawl</span></a>.</p>
+</div>
+</div>
+<div class="section" id="developer-installation">
+<h2><a class="toc-backref" href="#id5">Developer Installation</a><a class="headerlink" href="#developer-installation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>Prerequisites<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Separate Docker images are provided for developers who wish to contribute code
+to Starbelly. The development environment contains a few useful changes, such
+as mounting code from you local machine into the Docker container, automatically
+restarting the application server when the code is modified, etc.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">You should make sure that you understand the production installation above
+before attempting the developer installation.</p>
+</div>
+<p>In addition to the prerequisites for the production installation, you also need
+to <a class="reference external" href="https://git-scm.com/downloads">install git</a> for the developer
+installation. Checkout the following repositories into the same parent
+directory. If you do not have a GitLab account, you can check out the
+repositories using HTTPS:</p>
+<ul class="simple">
+<li>git clone <a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly.git">https://gitlab.com/hyperion-gray/starbelly.git</a></li>
+<li>git clone <a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly-docker.git">https://gitlab.com/hyperion-gray/starbelly-docker.git</a></li>
+<li>git clone <a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly-protobuf.git">https://gitlab.com/hyperion-gray/starbelly-protobuf.git</a></li>
+<li>git clone <a class="reference external" href="https://gitlab.com/hyperion-gray/starbelly-web-client.git">https://gitlab.com/hyperion-gray/starbelly-web-client.git</a></li>
+</ul>
+<p>If you do have a GitLab account, you should check out the repositories using
+SSH instead:</p>
+<ul class="simple">
+<li>git clone <a class="reference external" href="mailto:git&#37;&#52;&#48;gitlab&#46;com">git<span>&#64;</span>gitlab<span>&#46;</span>com</a>:hyperion-gray/starbelly.git</li>
+<li>git clone <a class="reference external" href="mailto:git&#37;&#52;&#48;gitlab&#46;com">git<span>&#64;</span>gitlab<span>&#46;</span>com</a>:hyperion-gray/starbelly-docker.git</li>
+<li>git clone <a class="reference external" href="mailto:git&#37;&#52;&#48;gitlab&#46;com">git<span>&#64;</span>gitlab<span>&#46;</span>com</a>:hyperion-gray/starbelly-protobuf.git</li>
+<li>git clone <a class="reference external" href="mailto:git&#37;&#52;&#48;gitlab&#46;com">git<span>&#64;</span>gitlab<span>&#46;</span>com</a>:hyperion-gray/starbelly-web-client.git</li>
+</ul>
+<p>Finally, you should install <a class="reference external" href="https://www.dartlang.org/install">Google Dart SDK</a>. Note that the Pub packaging tool included
+with Dart will install packages to <code class="docutils literal"><span class="pre">/var/cache/pub</span></code> by default on Linux. This
+location is mounted into one of the Docker containers so that Pub packages are
+visible inside the container.</p>
+</div>
+<div class="section" id="docker-images">
+<h3>Docker Images<a class="headerlink" href="#docker-images" title="Permalink to this headline">¶</a></h3>
+<p>Next, you need to build the developer images. These images contain some
+additional development and debugging tools that are not present in the
+production images. Run the following commands:</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span>$ cd /path/to/starbelly-docker/starbelly-dev
+$ docker build -t starbelly-dev-app app
+Sending build context to Docker daemon  2.048kB
+Step 1/3 : FROM hyperiongray/starbelly-app:0.0.1
+ ---&gt; 3e201e933024
+Step 2/3 : RUN apt-get install -y vim
+ ---&gt; Running in e1eca494dd23
+Reading package lists...
+...snip...
+$ docker build -t starbelly-dev-web web
+Sending build context to Docker daemon  5.632kB
+Step 1/7 : FROM hyperiongray/starbelly-web:0.0.1
+ ---&gt; 652fcfaca537
+Step 2/7 : RUN cd /tmp &amp;&amp;     openssl req -x509 -newkey rsa:2048                 -keyout server.key -out server.crt                 -days 365 -nodes -subj &#39;/CN=starbelly&#39; &amp;&amp;     mv server.key server.crt /etc/nginx/tls
+ ---&gt; Running in dc86f5e609bf
+...snip...
+</pre></div>
+</div>
+<p>Now you have built the developer images for Starbelly.</p>
+</div>
+<div class="section" id="id2">
+<h3>Docker Compose<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>After you have built the developer images for Starbelly, the next step is to
+use Docker Compose to start up the entire environment. Run the following
+commands.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span>$ cd /path/to/starbelly-docker/starbelly-dev
+$ docker-compose up
+Creating network &quot;starbellydev_default&quot; with the default driver
+Creating volume &quot;starbellydev_web_tls&quot; with default driver
+Creating volume &quot;starbellydev_db_data&quot; with default driver
+Creating starbelly-dev-app ...
+Creating starbelly-dev-web ...
+Creating starbelly-dev-db ...
+...snip...
+</pre></div>
+</div>
+<p>You should now be able to open the Starbelly GUI by pointing a web browser at
+your development server.</p>
+</div>
+<div class="section" id="dartium">
+<h3>Dartium<a class="headerlink" href="#dartium" title="Permalink to this headline">¶</a></h3>
+<p>The Starbelly web GUI is written in <a class="reference external" href="https://www.dartlang.org/">Dart</a>. If
+you followed the steps above, you should already have installed the Dart SDK.
+Standard web browsers do not possess the Dart virtual machine required to run
+this Dart client code. When you connect with one of these standard browsers, the
+server automatically compiles the Dart code to JavaScript code and serves it to
+you.</p>
+<p>This process can be slow, and during development you can save a lot of time by
+using a special browser called Dartium that includes the Dart virtual machine.
+When you access Starbelly through Dartium, the server will send Dart code  to
+the browser, skipping the slow compilation step. Download Dartium from the <a class="reference external" href="https://www.dartlang.org/tools/download.html">Dart
+downloads page</a>.</p>
+<p>You can unzip the Dartium archive anywhere you want. One suitable place is
+<code class="docutils literal"><span class="pre">/opt/dartium</span></code>. To run it, execute the following command:
+<code class="docutils literal"><span class="pre">/opt/dartium/chrome</span></code>.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="first_crawl.html" class="btn btn-neutral float-right" title="Your First Crawl" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="intro.html" class="btn btn-neutral" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Mark E. Haase.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
