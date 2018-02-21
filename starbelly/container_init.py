@@ -104,7 +104,7 @@ def ensure_db_fixtures(conn):
     ''' Create all fixtures. '''
     # Crawl policy fixtures.
     user_agent = 'Starbelly/{VERSION} ' \
-        '(+https://gitlab.com/hyperion-gray/starbelly)'
+        '(+https://github.com/hyperiongray/starbelly)'
 
     if r.table('policy').count().run(conn) == 0:
         r.table('policy').insert({

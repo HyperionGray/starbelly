@@ -33,9 +33,9 @@ A sample docker-compose.yml configuration file is available for Starbelly, but
 you may need to tailor this file to your unique environment.
 
 Download this `zip file
-<https://gitlab.com/hyperion-gray/starbelly-docker/repository/master/archive.zip>`__
+<https://github.com/HyperionGray/starbelly-docker/archive/master.zip>`__
 and extract it. (If you have Git installed, you can run ``git clone
-git@gitlab.com:hyperion-gray/starbelly-docker.git`` instead.) From the
+git@github.com:HyperionGray/starbelly-docker.git`` instead.) From the
 ``starbelly-docker/starbelly`` directory, run the following command:
 
 .. code::
@@ -169,21 +169,21 @@ restarting the application server when the code is modified, etc.
 In addition to the prerequisites for the production installation, you also need
 to `install git <https://git-scm.com/downloads>`__ for the developer
 installation. Checkout the following repositories into the same parent
-directory. If you do not have a GitLab account, you can check out the
+directory. If you do not have a GitHub account, you can check out the
 repositories using HTTPS:
 
-- git clone https://gitlab.com/hyperion-gray/starbelly.git
-- git clone https://gitlab.com/hyperion-gray/starbelly-docker.git
-- git clone https://gitlab.com/hyperion-gray/starbelly-protobuf.git
-- git clone https://gitlab.com/hyperion-gray/starbelly-web-client.git
+- git clone https://github.com/hyperiongray/starbelly.git
+- git clone https://github.com/hyperiongray/starbelly-docker.git
+- git clone https://github.com/hyperiongray/starbelly-protobuf.git
+- git clone https://github.com/hyperiongray/starbelly-web-client.git
 
-If you do have a GitLab account, you should check out the repositories using
+If you do have a GitHub account, you should check out the repositories using
 SSH instead:
 
-- git clone git@gitlab.com:hyperion-gray/starbelly.git
-- git clone git@gitlab.com:hyperion-gray/starbelly-docker.git
-- git clone git@gitlab.com:hyperion-gray/starbelly-protobuf.git
-- git clone git@gitlab.com:hyperion-gray/starbelly-web-client.git
+- git clone git@github.com:HyperionGray/starbelly.git
+- git clone git@github.com:HyperionGray/starbelly-docker.git
+- git clone git@github.com:HyperionGray/starbelly-protobuf.git
+- git clone git@github.com:HyperionGray/starbelly-web-client.git
 
 Finally, you should install `Google Dart SDK
 <https://www.dartlang.org/install>`__. Note that the Pub packaging tool included
