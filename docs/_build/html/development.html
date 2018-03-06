@@ -1,0 +1,455 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Developer Guide &mdash; Starbelly 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Starbelly 1.0.0 documentation" href="index.html"/>
+        <link rel="next" title="API Documentation" href="api.html"/>
+        <link rel="prev" title="Administrator Guide" href="administration.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Starbelly
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_crawl.html">Your First Crawl</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="policy.html">Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="administration.html">Administrator Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#technologies-used">Technologies Used</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#common-tasks">Common Tasks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#build-documentation">Build Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#clear-database">Clear Database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#database-query">Database Query</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#notebook">Notebook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#starbelly-shell">Starbelly Shell</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Starbelly</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Developer Guide</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/development.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="developer-guide">
+<h1><a class="toc-backref" href="#id1">Developer Guide</a><a class="headerlink" href="#developer-guide" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#developer-guide" id="id1">Developer Guide</a><ul>
+<li><a class="reference internal" href="#technologies-used" id="id2">Technologies Used</a></li>
+<li><a class="reference internal" href="#getting-started" id="id3">Getting Started</a></li>
+<li><a class="reference internal" href="#common-tasks" id="id4">Common Tasks</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="technologies-used">
+<h2><a class="toc-backref" href="#id2">Technologies Used</a><a class="headerlink" href="#technologies-used" title="Permalink to this headline">¶</a></h2>
+<p>If you are thinking about helping out with Starbelly development, it will be
+useful to familiarize yourself with the different components and technologies
+being used:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/hyperiongray/starbelly-docker">Starbelly Docker</a><ul>
+<li><a class="reference external" href="https://docs.docker.com/">Docker</a></li>
+<li><a class="reference external" href="https://docs.docker.com/compose/">Docker Compose</a></li>
+</ul>
+</li>
+<li><a class="reference external" href="https://github.com/hyperiongray/starbelly-protobuf">Starbelly Protobuf</a><ul>
+<li><a class="reference external" href="https://developers.google.com/protocol-buffers/">Protobuf</a></li>
+</ul>
+</li>
+<li><a class="reference external" href="https://github.com/hyperiongray/starbelly">Starbelly Server</a><ul>
+<li><a class="reference external" href="https://docs.python.org/3/library/asyncio.html">Asyncio</a></li>
+<li><a class="reference external" href="https://docs.python.org/3/">Python 3</a></li>
+<li><a class="reference external" href="http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html">Restructed Text</a></li>
+<li><a class="reference external" href="https://www.rethinkdb.com/">RethinkDB</a></li>
+<li><a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API">WebSockets</a></li>
+</ul>
+</li>
+<li><a class="reference external" href="https://github.com/hyperiongray/starbelly-web-client">Starbelly Web Client</a><ul>
+<li><a class="reference external" href="https://webdev.dartlang.org/angular">Angular</a></li>
+<li><a class="reference external" href="https://www.dartlang.org/">Dart</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="getting-started">
+<h2><a class="toc-backref" href="#id3">Getting Started</a><a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h2>
+<p>If you wish to contribute to Starbelly development, you should first make sure
+that you have gone through the Developer Installation in the
+<a class="reference internal" href="installation.html"><span class="doc">Installation Guide</span></a>. Once you have done that, go through the <a class="reference internal" href="api.html"><span class="doc">API Documentation</span></a> and get
+familiar with how the client and server interact.</p>
+</div>
+<div class="section" id="common-tasks">
+<h2><a class="toc-backref" href="#id4">Common Tasks</a><a class="headerlink" href="#common-tasks" title="Permalink to this headline">¶</a></h2>
+<p>As you start working on Starbelly code, you’ll encounter some common tasks that
+you wish to perform. In the examples below, if a command prompt is prefixed with
+a container name, then that indicates that the command must be run inside a
+specific Docker container. For example, if you see this:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">starbelly</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">app</span><span class="p">:</span><span class="o">/</span><span class="n">starbelly</span><span class="c1"># ls /usr/local/etc</span>
+<span class="n">jupyter</span>
+</pre></div>
+</div>
+<p>Then that command should be run inside of the <code class="docutils literal notranslate"><span class="pre">starbelly-dev-app</span></code> container.
+To obtain a shell inside that container, run:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span>$ docker exec -it starbelly-dev-app /bin/bash
+starbelly-dev-app#
+</pre></div>
+</div>
+<p>You can use the same technique to get a shell inside the <code class="docutils literal notranslate"><span class="pre">starbelly-dev-db</span></code> or
+<code class="docutils literal notranslate"><span class="pre">starbelly-dev-web</span></code> containers.</p>
+<div class="section" id="build-documentation">
+<h3>Build Documentation<a class="headerlink" href="#build-documentation" title="Permalink to this headline">¶</a></h3>
+<p>This documentation that you are reading is written in RestructuredText format
+and stored in the main <code class="docutils literal notranslate"><span class="pre">starbelly</span></code> repo under <code class="docutils literal notranslate"><span class="pre">/docs</span></code>.</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">starbelly</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">app</span><span class="p">:</span><span class="o">/</span><span class="n">starbelly</span><span class="o">/</span><span class="n">docs</span><span class="c1"># make html</span>
+<span class="n">Running</span> <span class="n">Sphinx</span> <span class="n">v1</span><span class="o">.</span><span class="mf">7.1</span>
+<span class="n">loading</span> <span class="n">pickled</span> <span class="n">environment</span><span class="o">...</span> <span class="n">done</span>
+<span class="n">building</span> <span class="p">[</span><span class="n">mo</span><span class="p">]:</span> <span class="n">targets</span> <span class="k">for</span> <span class="mi">0</span> <span class="n">po</span> <span class="n">files</span> <span class="n">that</span> <span class="n">are</span> <span class="n">out</span> <span class="n">of</span> <span class="n">date</span>
+<span class="n">building</span> <span class="p">[</span><span class="n">html</span><span class="p">]:</span> <span class="n">targets</span> <span class="k">for</span> <span class="mi">0</span> <span class="n">source</span> <span class="n">files</span> <span class="n">that</span> <span class="n">are</span> <span class="n">out</span> <span class="n">of</span> <span class="n">date</span>
+<span class="n">updating</span> <span class="n">environment</span><span class="p">:</span> <span class="mi">0</span> <span class="n">added</span><span class="p">,</span> <span class="mi">0</span> <span class="n">changed</span><span class="p">,</span> <span class="mi">0</span> <span class="n">removed</span>
+<span class="n">looking</span> <span class="k">for</span> <span class="n">now</span><span class="o">-</span><span class="n">outdated</span> <span class="n">files</span><span class="o">...</span> <span class="n">none</span> <span class="n">found</span>
+<span class="n">no</span> <span class="n">targets</span> <span class="n">are</span> <span class="n">out</span> <span class="n">of</span> <span class="n">date</span><span class="o">.</span>
+<span class="n">build</span> <span class="n">succeeded</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>To view the documentation, use your web browser to navigate to the host’s
+<code class="docutils literal notranslate"><span class="pre">starbelly/docs/_build/html/index.html</span></code>.</p>
+</div>
+<div class="section" id="clear-database">
+<h3>Clear Database<a class="headerlink" href="#clear-database" title="Permalink to this headline">¶</a></h3>
+<p>See the <a class="reference internal" href="administration.html"><span class="doc">Administrator Guide</span></a>.</p>
+</div>
+<div class="section" id="database-query">
+<h3>Database Query<a class="headerlink" href="#database-query" title="Permalink to this headline">¶</a></h3>
+<p>There are two ways to run RethinkDB queries. The easiest way is to access the
+RethinkDB GUI on port 8002 using your browser. You can browse lots of
+information about the database or use the “Data Explorer” to run queries. Note
+that this interface only allows
+<a class="reference external" href="https://www.rethinkdb.com/api/javascript/">JavaScript queries</a>, so if you
+are trying to troubleshoot a
+<a class="reference external" href="https://www.rethinkdb.com/api/python/">Python query</a> you will need to
+translate it into JavaScript.</p>
+<img alt="the RethinkDB GUI" src="_images/rethinkdb_gui.png" />
+<p>If you want to run a Python query, you can use the Starbelly Shell instead,
+but it is a bit less pretty than the GUI:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">query</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">pluck</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span> <span class="o">=</span> <span class="n">qrun</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">qshow</span><span class="p">(</span><span class="n">cursor</span><span class="p">)</span>
+<span class="go">RethinkDB Cursor: [</span>
+<span class="go">    {&#39;name&#39;: &#39;Deep Crawl&#39;},</span>
+<span class="go">    {&#39;name&#39;: &#39;Broad Crawl&#39;},</span>
+<span class="go">]</span>
+</pre></div>
+</div>
+<p>The “Starbelly Shell” section contains more details about the shell.</p>
+</div>
+<div class="section" id="notebook">
+<h3>Notebook<a class="headerlink" href="#notebook" title="Permalink to this headline">¶</a></h3>
+<p>A <a class="reference external" href="http://jupyter.org/">Jupyter server</a> is included in the developer Docker
+images to make it easy to build a notebook for experiments and prototypes. A
+notebook can also be a slightly easier way to use the Starbelly Shell (see
+below).</p>
+<p>Begin by running the Jupyter server:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">starbelly</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">app</span><span class="p">:</span><span class="o">/</span><span class="n">starbelly</span><span class="c1"># jupyter notebook --allow-root --ip 0.0.0.0 --NotebookApp.token=&#39;&#39;</span>
+<span class="p">[</span><span class="n">W</span> <span class="mi">20</span><span class="p">:</span><span class="mi">44</span><span class="p">:</span><span class="mf">35.840</span> <span class="n">NotebookApp</span><span class="p">]</span> <span class="n">All</span> <span class="n">authentication</span> <span class="ow">is</span> <span class="n">disabled</span><span class="o">.</span>  <span class="n">Anyone</span> <span class="n">who</span> <span class="n">can</span> <span class="n">connect</span> <span class="n">to</span> <span class="n">this</span> <span class="n">server</span> <span class="n">will</span> <span class="n">be</span> <span class="n">able</span> <span class="n">to</span> <span class="n">run</span> <span class="n">code</span><span class="o">.</span>
+<span class="p">[</span><span class="n">I</span> <span class="mi">20</span><span class="p">:</span><span class="mi">44</span><span class="p">:</span><span class="mf">35.850</span> <span class="n">NotebookApp</span><span class="p">]</span> <span class="n">Serving</span> <span class="n">notebooks</span> <span class="kn">from</span> <span class="nn">local</span> <span class="n">directory</span><span class="p">:</span> <span class="o">/</span><span class="n">starbelly</span>
+<span class="p">[</span><span class="n">I</span> <span class="mi">20</span><span class="p">:</span><span class="mi">44</span><span class="p">:</span><span class="mf">35.850</span> <span class="n">NotebookApp</span><span class="p">]</span> <span class="mi">0</span> <span class="n">active</span> <span class="n">kernels</span>
+<span class="p">[</span><span class="n">I</span> <span class="mi">20</span><span class="p">:</span><span class="mi">44</span><span class="p">:</span><span class="mf">35.850</span> <span class="n">NotebookApp</span><span class="p">]</span> <span class="n">The</span> <span class="n">Jupyter</span> <span class="n">Notebook</span> <span class="ow">is</span> <span class="n">running</span> <span class="n">at</span><span class="p">:</span>
+<span class="p">[</span><span class="n">I</span> <span class="mi">20</span><span class="p">:</span><span class="mi">44</span><span class="p">:</span><span class="mf">35.850</span> <span class="n">NotebookApp</span><span class="p">]</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">0.0</span><span class="o">.</span><span class="mf">0.0</span><span class="p">:</span><span class="mi">8888</span><span class="o">/</span>
+<span class="p">[</span><span class="n">I</span> <span class="mi">20</span><span class="p">:</span><span class="mi">44</span><span class="p">:</span><span class="mf">35.850</span> <span class="n">NotebookApp</span><span class="p">]</span> <span class="n">Use</span> <span class="n">Control</span><span class="o">-</span><span class="n">C</span> <span class="n">to</span> <span class="n">stop</span> <span class="n">this</span> <span class="n">server</span> <span class="ow">and</span> <span class="n">shut</span> <span class="n">down</span> <span class="nb">all</span> <span class="n">kernels</span> <span class="p">(</span><span class="n">twice</span> <span class="n">to</span> <span class="n">skip</span> <span class="n">confirmation</span><span class="p">)</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Now access the Jupyter server by going to <code class="docutils literal notranslate"><span class="pre">localhost:8001</span></code> in your browser.</p>
+<img alt="the Jupyter notebook GUI" src="_images/jupyter_notebook.png" />
+<p>You can create and manage your notebooks here. In each notebook, you’ll probably
+want to begin by importing the shell functions:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">starbelly.shell</span> <span class="k">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>Then you can run commands inside the notebook just like you can from the
+Starbelly Shell:</p>
+<img alt="the Jupyter notebook GUI" src="_images/jupyter_notebook2.png" />
+<p>When you are done, type &lt;Ctrl&gt;+C on the command line to shut down the Jupyter
+server. An <a class="reference external" href="https://github.com/HyperionGray/starbelly/blob/master/notebooks/Frontier%20Reloading.ipynb">example notebook</a> is included in the repository.</p>
+</div>
+<div class="section" id="starbelly-shell">
+<h3>Starbelly Shell<a class="headerlink" href="#starbelly-shell" title="Permalink to this headline">¶</a></h3>
+<p>The Starbelly shell is an interactive Python interpreter that offers quick
+access to Starbelly’s internal API, and it is a good place to debug little bits
+of code. The Shell cannot directly access the server’s internal state at
+runtime, but it does use the same exact code paths as the server to do things
+like parsing configuration files and connecting to a database.</p>
+<p>To start the shell:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">starbelly</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">app</span><span class="p">:</span><span class="o">/</span><span class="n">starbelly</span><span class="c1"># python3 -im starbelly.shell</span>
+<span class="mi">20</span><span class="p">:</span><span class="mi">03</span><span class="p">:</span><span class="mi">42</span> <span class="p">[</span><span class="n">starbelly</span><span class="o">.</span><span class="n">shell</span><span class="p">]</span> <span class="n">INFO</span><span class="p">:</span> <span class="n">Starbelly</span> <span class="n">Shell</span> <span class="n">v1</span><span class="o">.</span><span class="mf">1.0</span>
+<span class="o">&gt;&gt;&gt;</span>
+</pre></div>
+</div>
+<p>This Python prompt has a lot of additions to the global namespace and helpers
+for debugging code. For example, you can view the configuration:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;database&#39;</span><span class="p">][</span><span class="s1">&#39;user&#39;</span><span class="p">]</span>
+<span class="go">&#39;starbelly-app&#39;</span>
+</pre></div>
+</div>
+<p>Note that the name <code class="docutils literal notranslate"><span class="pre">config</span></code> (and many others) have already been imported into
+the shell’s namespace.</p>
+<p>You can run arbitrary coroutines with <code class="docutils literal notranslate"><span class="pre">crun()</span></code>:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+<span class="gp">... </span>  <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">... </span>  <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;done!&#39;</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">crun</span><span class="p">(</span><span class="n">foo</span><span class="p">())</span>
+<span class="go">done!</span>
+</pre></div>
+</div>
+<p>You can run a query against RethinkDB:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">query</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">pluck</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span> <span class="o">=</span> <span class="n">qrun</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">qshow</span><span class="p">(</span><span class="n">cursor</span><span class="p">)</span>
+<span class="go">RethinkDB Cursor: [</span>
+<span class="go">    {&#39;name&#39;: &#39;Deep Crawl&#39;},</span>
+<span class="go">    {&#39;name&#39;: &#39;Broad Crawl&#39;},</span>
+<span class="go">]</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Showing the results of a query will exhaust the cursor object! If you
+try to do anything else with the cursor, you will find that it has no more
+data. You need to <code class="docutils literal notranslate"><span class="pre">qrun()</span></code> the query again to get a fresh cursor.</p>
+</div>
+<p>You can also run a callback on each row of a cursor to transform the data.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">lower</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+<span class="gp">... </span>  <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">v</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">query</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">pluck</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span> <span class="o">=</span> <span class="n">qrun</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">qiter</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">lower</span><span class="p">)</span>
+<span class="go">[{&#39;name&#39;: &#39;deep crawl&#39;}, {&#39;name&#39;: &#39;broad crawl&#39;}]</span>
+</pre></div>
+</div>
+<p>You can also use the Starbelly Shell functions inside of a Notebook. See the
+“Notebook” section above.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api.html" class="btn btn-neutral float-right" title="API Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="administration.html" class="btn btn-neutral" title="Administrator Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Mark E. Haase.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'1.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Introduction &mdash; Starbelly 1.0.0 documentation</title>
+  <title>Administrator Guide &mdash; Starbelly 1.0.0 documentation</title>
   
 
   
@@ -36,8 +36,8 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="Starbelly 1.0.0 documentation" href="index.html"/>
-        <link rel="next" title="Installation Guide" href="installation.html"/>
-        <link rel="prev" title="Starbelly" href="index.html"/> 
+        <link rel="next" title="Developer Guide" href="development.html"/>
+        <link rel="prev" title="Policy" href="policy.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -91,14 +91,19 @@
             
             
               <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="first_crawl.html">Your First Crawl</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="policy.html">Policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="administration.html">Administration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Administrator Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#clear-database">Clear Database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#change-password">Change Password</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="development.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 
@@ -144,13 +149,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Introduction</li>
+      <li>Administrator Guide</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/intro.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/administration.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -163,18 +168,51 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="introduction">
-<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
-<a class="reference internal image-reference" href="_images/logo.png"><img alt="_images/logo.png" class="align-center" src="_images/logo.png" style="width: 150px; height: 150px;" /></a>
-<p>Starbelly is a user-friendly and highly configurable web crawler front end.
-Compared to other crawling systems, such as Nutch or Scrapy, Starbelly trades
-off lower scalability for improved usability. Starbelly eschews the arcane
-configuration files and custom code required for other crawling systems,
-favoring a GUI for configuration and managment. Starbelly exposes all of its
-features and data through an efficient API, allowing you to build crawling-based
-systems on top of it. For example, you might plug in an Elastic Search backend
-to build a custom search engine, or plug in a scraper to create a data
-collection pipeline.</p>
+  <div class="section" id="administrator-guide">
+<h1><a class="toc-backref" href="#id1">Administrator Guide</a><a class="headerlink" href="#administrator-guide" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#administrator-guide" id="id1">Administrator Guide</a><ul>
+<li><a class="reference internal" href="#overview" id="id2">Overview</a></li>
+<li><a class="reference internal" href="#clear-database" id="id3">Clear Database</a></li>
+<li><a class="reference internal" href="#change-password" id="id4">Change Password</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id2">Overview</a><a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>This section goes over some common tasks that you may need to perform as a
+Starbelly administrator. In the examples below, if a command prompt is prefixed
+with a container name, then that indicates that the command must be run inside
+a specific Docker container. For example, if you see this:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">starbelly</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">app</span><span class="p">:</span><span class="o">/</span><span class="n">starbelly</span><span class="c1"># ls /usr/local/etc</span>
+<span class="n">jupyter</span>
+</pre></div>
+</div>
+<p>Then that command should be run inside of the <code class="docutils literal notranslate"><span class="pre">starbelly-dev-app</span></code> container.
+To obtain a shell inside that container, run:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span>$ docker exec -it starbelly-dev-app /bin/bash
+starbelly-dev-app#
+</pre></div>
+</div>
+<p>You can use the same technique to get a shell inside the <code class="docutils literal notranslate"><span class="pre">starbelly-dev-db</span></code> or
+<code class="docutils literal notranslate"><span class="pre">starbelly-dev-web</span></code> containers.</p>
+</div>
+<div class="section" id="clear-database">
+<h2><a class="toc-backref" href="#id3">Clear Database</a><a class="headerlink" href="#clear-database" title="Permalink to this headline">¶</a></h2>
+<p>To clear all data from the database, including crawl data, job data, and other
+state:</p>
+<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">starbelly</span><span class="o">-</span><span class="n">dev</span><span class="o">-</span><span class="n">app</span><span class="p">:</span><span class="o">/</span><span class="n">starbelly</span><span class="c1"># python3 -m starbelly.clear</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="change-password">
+<h2><a class="toc-backref" href="#id4">Change Password</a><a class="headerlink" href="#change-password" title="Permalink to this headline">¶</a></h2>
+<p>Adding or changing passwords is covered in the <a class="reference internal" href="installation.html"><span class="doc">Installation Guide</span></a> under the
+“Security” section.</p>
+</div>
 </div>
 
 
@@ -187,10 +225,10 @@ collection pipeline.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="installation.html" class="btn btn-neutral float-right" title="Installation Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="development.html" class="btn btn-neutral float-right" title="Developer Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="Starbelly" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="policy.html" class="btn btn-neutral" title="Policy" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

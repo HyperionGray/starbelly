@@ -19,14 +19,16 @@ sections of Starbelly without running the entire server.
 
 import asyncio
 import logging
+import queue
 import sys
 import time
+import threading
 
 import rethinkdb as r
 
 from starbelly import VERSION
 import starbelly.config
-import starbelly.crawl
+# import starbelly.crawl
 import starbelly.db
 import starbelly.downloader
 import starbelly.policy
@@ -38,20 +40,44 @@ import starbelly.tracker
 
 def crun(coroutine):
     '''
-    Run ``coroutine`` on default event loop.
+    Run ``coroutine`` on our custom loop.
 
-    This is just a convenience to save some keystrokes.
+    In some contexts, e.g. Jupyter notebook, there may already be an event loop
+    running so we create our own loop and run it in a separate thread.
     '''
-    return loop.run_until_complete(coroutine)
+    def run_coro(coro, output_q):
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(coro)
+        output_q.put(result)
+
+    q = queue.Queue()
+    thread = threading.Thread(target=run_coro, args=(coroutine, q))
+    thread.start()
+    thread.join()
+    return q.get()
 
 
-def ftime(function):
-    ''' Execution ``function`` and report how long it takes. '''
-    start = time.time()
-    result = function()
-    elapsed = time.time() - start
-    print(f'Elapsed time = {elapsed:0.3f}s')
-    return result
+def enable_jupyter():
+    ''' Set up Jupyter event loop integration. '''
+    from ipykernel.eventloops import register_integration
+
+    def loop_asyncio(kernel):
+        loop = asyncio.get_event_loop()
+
+        def kernel_handler():
+            loop.call_soon(kernel.do_one_iteration)
+            loop.call_later(kernel._poll_interval, kernel_handler)
+
+        loop.call_soon(kernel_handler)
+
+        try:
+            if not loop.is_running():
+                loop.run_forever()
+        finally:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+
+    register_integration(loop_asyncio, 'asyncio')
 
 
 def qiter(cursor, function=None):
@@ -171,12 +197,14 @@ def __db_super_connect():
     )
 
 
+# The standard `if __name__ == "__main__"` guard isn't used here because we may
+# want to import this in contexts where it isn't the main module but we still
+# want the side effects, e.g. in a Jupyter notebook.
 __configure_logging()
 config = starbelly.config.get_config()
-loop = asyncio.get_event_loop()
 r.set_loop_type('asyncio')
+loop = asyncio.new_event_loop()
 db_pool = starbelly.db.AsyncRethinkPool(__db_connect)
 super_db_pool = starbelly.db.AsyncRethinkPool(__db_super_connect)
 logger = logging.getLogger('starbelly.shell')
-
 logger.info(f'Starbelly Shell v{VERSION}')

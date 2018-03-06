@@ -204,7 +204,7 @@ allows clients to efficiently keep track of the status of all jobs. This API is
 used in the GUI to power the Dashboard and Results screens.
 
 For a complete list of API messages, look at the `starbelly-protobuf
-<https://gitlab.com/hyperion-gray/starbelly-protobuf>`__ repository.
+<https://github.com/hyperiongray/starbelly-protobuf>`__ repository.
 
 Web Client
 ==========
@@ -213,14 +213,14 @@ The crawler GUI is implemented as a stand-alone application written in Dart, and
 it interacts with the Starbelly server solely through the public API. Therefore,
 anything that you can do in the GUI can also be done through the API.
 
-https://gitlab.com/hyperion-gray/starbelly-web-client
+https://github.com/hyperiongray/starbelly-web-client
 
 Python Client
 =============
 
 A very basic and incomplete Python client library implementation is available:
 
-https://gitlab.com/hyperion-gray/starbelly-python-client
+https://github.com/hyperiongray/starbelly-python-client
 
 This client library will be improved over time and made more stable, but for
 now it may be used as a reference implementation.

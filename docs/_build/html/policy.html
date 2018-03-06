@@ -36,7 +36,7 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="Starbelly 1.0.0 documentation" href="index.html"/>
-        <link rel="next" title="API Documentation" href="api.html"/>
+        <link rel="next" title="Administration Guide" href="administration.html"/>
         <link rel="prev" title="Configuration Guide" href="configuration.html"/> 
 
   
@@ -107,7 +107,9 @@
 <li class="toctree-l2"><a class="reference internal" href="#limits">Limits</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="administration.html">Administration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Developer Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 
@@ -216,7 +218,7 @@ and specify that solver in the policy.</p>
 <h2><a class="toc-backref" href="#id4">Robots.txt</a><a class="headerlink" href="#robots-txt" title="Permalink to this headline">¶</a></h2>
 <p><a class="reference external" href="http://www.robotstxt.org/">Robots.txt</a> is a standard for specifying how
 crawlers should interact with websites. By default, Starbelly will attempt to
-download a <code class="docutils literal"><span class="pre">robots.txt</span></code> from each domain that it visits, and it will obey the
+download a <code class="docutils literal notranslate"><span class="pre">robots.txt</span></code> from each domain that it visits, and it will obey the
 directives of any such files that it finds. In some circumstances, however,
 such as crawling some old sites, it may be useful to ignore or even invert the
 directives in a site’s robots.txt, which you can configure using the policy.</p>
@@ -250,10 +252,10 @@ link, the crawler checks the rules one-by-one until a rule matches, then the cra
 applies the matching rule.</p>
 <p>For example, the default <em>Deep Crawl</em> policy contains two URL rules:</p>
 <ol class="arabic simple">
-<li>If the URL <em>matches</em> the regex <code class="docutils literal"><span class="pre">^https?://({SEED_DOMAINS})/</span></code> then <em>add</em> <code class="docutils literal"><span class="pre">1.0</span></code>.</li>
-<li>Else <em>multiply by</em> <code class="docutils literal"><span class="pre">0.0</span></code>.</li>
+<li>If the URL <em>matches</em> the regex <code class="docutils literal notranslate"><span class="pre">^https?://({SEED_DOMAINS})/</span></code> then <em>add</em> <code class="docutils literal notranslate"><span class="pre">1.0</span></code>.</li>
+<li>Else <em>multiply by</em> <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</li>
 </ol>
-<p>Let’s say the URL is seeded with <code class="docutils literal"><span class="pre">http://foo.com/bar</span></code>. It downloads this
+<p>Let’s say the URL is seeded with <code class="docutils literal notranslate"><span class="pre">http://foo.com/bar</span></code>. It downloads this
 document and assigns it a cost of 1.0. Cost is roughly similar to the concept of
 <em>crawl depth</em> in other crawlers, but it is a bit more sophisticated. Each link
 is assigned a cost based on the cost of the document where it was found and the
@@ -262,7 +264,7 @@ thrown away. If the link is greater than zero but less than the “Max Cost”
 specified in the crawl policy, then the crawler schedules the link to be
 fetched. Links are fetched roughly in order of cost, so lower-cost items are
 typically fetched before higher-cost items.</p>
-<p>After the crawler downloads the document at <code class="docutils literal"><span class="pre">http://foo.com/bar</span></code>, it checks
+<p>After the crawler downloads the document at <code class="docutils literal notranslate"><span class="pre">http://foo.com/bar</span></code>, it checks
 each link in that document against the URL rules in the policy. For example, if
 the link matches the regex in rule #1, then the link will be given a score of
 2.0: the rule says to add 1.0 to the cost of its parent (which was 1.0).</p>
@@ -298,11 +300,11 @@ Rules</em> above.</p>
 <h2><a class="toc-backref" href="#id9">MIME Type Rules</a><a class="headerlink" href="#mime-type-rules" title="Permalink to this headline">¶</a></h2>
 <p>While <em>URL Rules</em> determine which links to follow, <em>MIME Type Rules</em>  determine
 what types of resources to download. By default, the crawler only downloads
-resources that have a MIME type matching the regex <code class="docutils literal"><span class="pre">^text/</span></code>, which matches
+resources that have a MIME type matching the regex <code class="docutils literal notranslate"><span class="pre">^text/</span></code>, which matches
 plain text and HTML resources. If you want the crawler to download images, for
-example, then you would add a new rule like <code class="docutils literal"><span class="pre">^image/*</span></code> that would match GIF,
+example, then you would add a new rule like <code class="docutils literal notranslate"><span class="pre">^image/*</span></code> that would match GIF,
 JPEG, and PNG resources.</p>
-<p>The MIME type of a resource is determined by inspecting the <code class="docutils literal"><span class="pre">Content-Type</span></code>
+<p>The MIME type of a resource is determined by inspecting the <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code>
 header, which  means that <em>MIME Type Rules</em> are not applied until <em>after the
 crawler downloads headers</em> for a resource. If the crawler determines that a
 resource should not be downloaded, then the crawler closes the connection and
@@ -332,7 +334,7 @@ number includes successes, errors, and exceptions.</li>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="api.html" class="btn btn-neutral float-right" title="API Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="administration.html" class="btn btn-neutral float-right" title="Administration Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="configuration.html" class="btn btn-neutral" title="Configuration Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

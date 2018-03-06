@@ -241,6 +241,25 @@ commands.
 You should now be able to open the Starbelly GUI by pointing a web browser at
 your development server.
 
+.. important::
+
+    The developer Docker images run the Starbelly server in automatic reload
+    mode. If you edit a source file and save it, the server will automatically
+    restart in order to run your latest code. Note that only changes to Python
+    code and some static assets (e.g. CSS) trigger a reload; changes to
+    configuration files do not trigger a reload.
+
+TCP Ports
+---------
+
+The developer image has some additional TCP ports exposed from the Docker
+containers to your localhost.
+
+- Port 8000: the Starbelly server (websocket)
+- Port 8001: Jupyter notebook (for experiments)
+- Port 8002: RethinkDB GUI
+- Port 8003: Pub Development Server
+
 Dartium
 -------
 

@@ -2,13 +2,15 @@ Starbelly
 =========
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    intro
    installation
    first_crawl
    configuration
    policy
+   administration
+   development
    api
    changelog
 

@@ -5,7 +5,7 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-VERSION = '0.1.0'
+VERSION = '1.1.0'
 
 
 async def cancel_futures(*futures):
