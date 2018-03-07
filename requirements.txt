@@ -1,7 +1,7 @@
 aiodns
 aiohttp
 aiosocks
-async_timeout
+async-timeout
 beautifulsoup4
 cchardet
 feedparser

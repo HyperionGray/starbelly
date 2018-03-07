@@ -7,7 +7,7 @@ import traceback
 import aiohttp
 import aiosocks.connector
 import aiosocks.errors
-import async_timeout
+from async_timeout import timeout
 import cchardet as chardet
 from dateutil.tz import tzlocal
 import w3lib.url
@@ -152,7 +152,7 @@ class Downloader:
         dl_response = DownloadResponse(download_request)
 
         try:
-            with session, async_timeout.timeout(20):
+            async with timeout(20), session:
                 kwargs = dict()
                 if proxy_url is not None:
                     kwargs['proxy'] = proxy_url

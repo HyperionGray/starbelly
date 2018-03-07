@@ -40,10 +40,12 @@ def main():
         user=db_config['user'],
         password=db_config['password'],
     )
+    clear(conn, 'captcha_solver')
     clear(conn, 'domain_login')
     clear(conn, 'extraction_queue')
     clear(conn, 'frontier')
     clear(conn, 'job')
+    clear(conn, 'job_schedule')
     clear(conn, 'policy')
     clear(conn, 'rate_limit')
     clear(conn, 'response')
