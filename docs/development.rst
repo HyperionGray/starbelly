@@ -64,9 +64,11 @@ directory that contains tools to help set up your environment.
    <hostname>`` to create a self-signed certificate. You can pick any hostname
    you like. (We recommend putting that hostname in your ``/etc/hosts``.)
 7. Go back to the ``starbelly/`` directory and start the application server:
-   ``python -m starbelly``. The server will launch and [hopefully] stay open.
+   ``python -m starbelly 172.19.0.1``. The server will launch and [hopefully]
+   stay open.
 8. In a new window, go to the ``starbelly-web-client/`` directory and run the
-   Pub server: ``pub serve``. The server will launch and [hopefully] stay open.
+   Pub server: ``pub serve --hostname 172.19.0.1``. The server will launch and
+   [hopefully] stay open.
 9. In a new window, go to the ``starbelly/dev/`` directory and run
    ``docker-compose up`` to start the Docker containers.
 10. In your browser, try navigating to the chosen hostname on port 80 or 443.

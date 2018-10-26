@@ -4,10 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-aiodns = "*"
-aiohttp = "*"
-aiosocks = "*"
-async_timeout = "*"
 "beautifulsoup4" = "*"
 cchardet = "*"
 coveralls = "*"
