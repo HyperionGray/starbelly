@@ -1,13 +1,8 @@
-***************
 Developer Guide
-***************
-
-.. contents::
-    :depth: 2
-
+===============
 
 Technologies Used
-=================
+-----------------
 
 If you are thinking about helping out with Starbelly development, it will be
 useful to familiarize yourself with the different components and technologies
@@ -24,11 +19,17 @@ being used:
 
 - `Starbelly Server <https://github.com/hyperiongray/starbelly>`__
 
-  * `Asyncio <https://docs.python.org/3/library/asyncio.html>`__
+  * `Pipenv <https://pipenv.readthedocs.io/en/latest/>`__
   * `Python 3 <https://docs.python.org/3/>`__
   * `Restructed Text <http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html>`__
   * `RethinkDB <https://www.rethinkdb.com/>`__
+  * `Trio <https://trio.readthedocs.io>`__
   * `WebSockets <https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API>`__
+
+- `Starbelly Python Client <https://github.com/hyperiongray/starbelly-python-client>`__
+
+  * `Python 3 <https://docs.python.org/3/>`__
+  * `Trio <https://trio.readthedocs.io>`__
 
 - `Starbelly Web Client <https://github.com/hyperiongray/starbelly-web-client>`__
 
@@ -36,17 +37,53 @@ being used:
   * `Dart <https://www.dartlang.org/>`__
 
 
-Getting Started
-===============
+Setting Up Dev Environment
+--------------------------
 
-If you wish to contribute to Starbelly development, you should first make sure
-that you have gone through the Developer Installation in the
-:doc:`installation`. Once you have done that, go through the :doc:`api` and get
-familiar with how the client and server interact.
+In a typical dev environment, you will need to run the following components:
 
+- Starbelly Web Client (on your localhost)
+- Starbelly Server (on your localhost)
+- RethinkDB Database Server (in Docker)
+- Nginx Web Server (in Docker)
+
+The first two items (the client and server) should be run on your local machine.
+The third party components (database server and web server) should be run
+inside of Docker containers. In the Starbelly repository there is a ``/dev/``
+directory that contains tools to help set up your environment.
+
+1. Make sure you have Docker and ``pipenv`` installed.
+2. Clone the `main starbelly repository
+   <https://github.com/hyperiongray/starbelly>`__.
+3. Clone the `starbelly-web-client repository
+   <https://github.com/hyperiongray/starbelly-web-client>`__.
+4. Go to the ``starbelly/`` directory and install the server's dependencies:
+   ``pipenv install --dev``.
+5. Open a pipenv shell: ``pipenv shell``.
+6. Go into the ``starbelly/dev/`` directory and run ``python gencert.py
+   <hostname>`` to create a self-signed certificate. You can pick any hostname
+   you like. (We recommend putting that hostname in your ``/etc/hosts``.)
+7. Go back to the ``starbelly/`` directory and start the application server:
+   ``python -m starbelly``. The server will launch and [hopefully] stay open.
+8. In a new window, go to the ``starbelly-web-client/`` directory and run the
+   Pub server: ``pub serve``. The server will launch and [hopefully] stay open.
+9. In a new window, go to the ``starbelly/dev/`` directory and run
+   ``docker-compose up`` to start the Docker containers.
+10. In your browser, try navigating to the chosen hostname on port 80 or 443.
+    You'll see a warning because the SSL certificate is self-signed. You can
+    configure your browser to trust this certificate or you can import the CA
+    from ``/dev/ca.crt``.
+
+If all of these steps worked, then your terminal should look like this:
+
+TODO ADD SCREENSHOT HERE
+
+And you should see the application in your browser window:
+
+TODO ADD SCREENSHOT HERE
 
 Common Tasks
-============
+------------
 
 As you start working on Starbelly code, you'll encounter some common tasks that
 you wish to perform. In the examples below, if a command prompt is prefixed with
@@ -96,7 +133,7 @@ Clear Database
 See the :doc:`administration`.
 
 Database Query
-------------------
+--------------
 
 There are two ways to run RethinkDB queries. The easiest way is to access the
 RethinkDB GUI on port 8002 using your browser. You can browse lots of

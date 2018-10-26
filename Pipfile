@@ -1,0 +1,42 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+aiodns = "*"
+aiohttp = "*"
+aiosocks = "*"
+async_timeout = "*"
+"beautifulsoup4" = "*"
+cchardet = "*"
+coveralls = "*"
+feedparser = "*"
+formasaurus = {extras = ["with-deps"], version = "*"}
+humanize = "*"
+lxml = "*"
+multidict = "*"
+protobuf = "*"
+psutil = "*"
+python-dateutil = "*"
+python-mimeparse = "*"
+rethinkdb = "*"
+robotexclusionrulesparser = "*"
+trio = "*"
+trio-websocket = "*"
+watchdog = "*"
+websockets = "*"
+"w3lib" = "*"
+yarl = "*"
+
+[dev-packages]
+nose = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-trio = "*"
+trustme = "*"
+sphinx = "*"
+sphinx-rtd-theme = "*"
+
+[requires]
+python_version = "3.7"
