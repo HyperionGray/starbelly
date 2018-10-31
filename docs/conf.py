@@ -21,6 +21,14 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import pathlib
+import sys
+
+
+# Add starbelly package to the path. Not sure how to do this with pipenv
+# instead?
+pkg = pathlib.Path(__file__).parent.parent
+sys.path.append(str(pkg))
 
 # -- General configuration ------------------------------------------------
 
@@ -31,7 +39,12 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.graphviz',
+    'sphinxcontrib_trio',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -165,5 +178,9 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+# -- Options for extensions -----------------------------------------------
 
-
+intersphinx_mapping = {
+    'trio': ('https://trio.readthedocs.io/en/stable/', None),
+    'yarl': ('https://yarl.readthedocs.io/en/stable/', None),
+}

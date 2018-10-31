@@ -1,12 +1,10 @@
-*****************
-API Documentation
-*****************
+.. _api-documentation:
 
-.. contents::
-    :depth: 1
+API Documentation
+=================
 
 Overview
-========
+--------
 
 The crawler is controlled completely by an API. Clients connect to the crawler
 using `websockets
@@ -30,7 +28,7 @@ disconnect for some reason, the client is able to reconnect later and pick up
 the stream exactly where it left off.
 
 Connecting to API
-=================
+-----------------
 
 The API is exposed as a websocket service on port 443 at the path ``/ws/``. For
 example, if starbelly is running on the host ``starbelly.example.com``, then you
@@ -40,7 +38,7 @@ authentication, so you need to include those credentials when you connect to the
 API.
 
 Messages
-========
+--------
 
 Starbelly uses ``protobuf`` to encode messages sent between the client and the
 server. There are three types of message used in the API:
@@ -79,7 +77,7 @@ protobuf is more efficient in terms of encoding overhead and serialization
 speed.
 
 Example Session
-===============
+---------------
 
 This section shows a complete interaction where a client starts a crawl and
 synchronizes crawl results. To begin, the client sends a ``RequestSetJob``
@@ -207,7 +205,7 @@ For a complete list of API messages, look at the `starbelly-protobuf
 <https://github.com/hyperiongray/starbelly-protobuf>`__ repository.
 
 Web Client
-==========
+----------
 
 The crawler GUI is implemented as a stand-alone application written in Dart, and
 it interacts with the Starbelly server solely through the public API. Therefore,
@@ -216,7 +214,7 @@ anything that you can do in the GUI can also be done through the API.
 https://github.com/hyperiongray/starbelly-web-client
 
 Python Client
-=============
+-------------
 
 A very basic and incomplete Python client library implementation is available:
 

@@ -1,21 +1,35 @@
+.. image:: logo.png
+    :height: 150px
+    :width: 150px
+    :align: center
+
 Starbelly
 =========
 
+Starbelly is a user-friendly and highly configurable web crawler front end.
+Compared to other crawling systems, such as Nutch or Scrapy, Starbelly trades
+off lower scalability for improved usability. Starbelly eschews the arcane
+configuration files and custom code required for other crawling systems,
+favoring a GUI for configuration and managment. Starbelly exposes all of its
+features and data through an efficient API, allowing you to build crawling-based
+systems on top of it. For example, you might plug in an Elastic Search backend
+to build a custom search engine, or plug in a scraper to create a data
+collection pipeline.
+
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 1
 
-   intro
-   installation
-   first_crawl
-   configuration
-   policy
-   administration
-   development
-   api
-   changelog
-
-----
+    installation
+    first_crawl
+    configuration
+    policy
+    administration
+    api
+    development
+    internals
+    changelog
 
 .. image:: https://hyperiongray.s3.amazonaws.com/define-hg.svg
-	:target: https://hyperiongray.com/?pk_campaign=github&pk_kwd=starbelly
-	:alt: define hyperiongray
+    :target: https://www.hyperiongray.com/?pk_campaign=github&pk_kwd=agnostic
+    :alt: define hyperiongray
+    :width: 500px

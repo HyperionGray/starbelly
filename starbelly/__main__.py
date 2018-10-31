@@ -158,12 +158,32 @@ class Starbelly:
         self._main_task = None
         self._quit_count = 0
 
+    async def initialize_rate_limiter(self, rate_limiter, db_pool):
+        ''' Load rate limits from database. '''
+        async with db_pool.connection() as conn:
+            cursor = await r.table('rate_limit').run(conn)
+            async for rate_limit in cursor:
+                if rate_limit['type'] == 'global':
+                    rate_limiter.set_global_rate_limit(rate_limit['delay'])
+                elif rate_limit['type'] == 'domain':
+                    token = rate_limit['token']
+                    rate_limiter.set_token_rate_limit(token,
+                        rate_limit['delay'])
+                else:
+                    raise Exception('Cannot load rate limit (unknown type): '
+                        .format(repr(rate_limit)))
+            await cursor.close()
+
+        logger.info('Rate limiter is initialized.')
+
     async def run(self):
         ''' The main task. '''
         db_pool = AsyncRethinkPool(self._db_factory())
         tracker = Tracker(db_pool)
         policy_manager = PolicyManager(db_pool)
-        rate_limiter = RateLimiter(db_pool)
+        rl_capacity = self._config['rate_limiter']['capacity']
+        rate_limiter = RateLimiter(db_pool, rl_capacity)
+        initialize_rate_limiter(rate_limiter, db_pool)
         downloader = Downloader(rate_limiter)
         robots_txt_manager = RobotsTxtManager(db_pool, rate_limiter)
         crawl_manager = CrawlManager(db_pool, rate_limiter, downloader,

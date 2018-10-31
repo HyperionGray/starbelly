@@ -1,18 +1,61 @@
-import asyncio
-from collections import deque, namedtuple
+from collections import deque
+from dataclasses import dataclass, field
+import functools
 import hashlib
 from heapq import heappop, heappush
 import logging
-from time import time
 import urllib.parse
 
-import rethinkdb as r
-
-from . import cancel_futures
+import trio
+from yarl import URL
 
 
 logger = logging.getLogger(__name__)
-Expiry = namedtuple('TokenExpiry', ['time', 'token'])
+GLOBAL_RATE_LIMIT_TOKEN = b'\x00' * 16
+
+@dataclass
+@functools.total_ordering
+class Expiry:
+    '''
+    Represents a rate limit token that will expire at a given time.
+
+    Expiries can be compared to each other, e.g. ``expiry1 < expiry2``, or to a
+    timestamp, e.g. ``expiry1 < trio.current_time()``.
+    '''
+    time: float
+    token: bytes
+
+    def __eq__(self, other):
+        '''
+        Implement ``==`` operator.
+
+        Full comparison is provided by the ``functools.total_ordering``
+        decorator.
+
+        :type other: class:`Expiry` or float
+        '''
+        time1 = self.time
+        if isinstance(other, Expiry):
+            time2 = other.time
+        elif isinstance(other, (int, float)):
+            time2 = other
+        return time1 == time2
+
+    def __lt__(self, other):
+        '''
+        Implement ``<`` operator.
+
+        Full comparison is provided by the ``functools.total_ordering``
+        decorator.
+
+        :type other: class:`Expiry` or float
+        '''
+        time1 = self.time
+        if isinstance(other, Expiry):
+            time2 = other.time
+        elif isinstance(other, (int, float)):
+            time2 = other
+        return time1 < time2
 
 
 class RateLimiter:
@@ -25,52 +68,55 @@ class RateLimiter:
     A queue is maintained for each domain that has pending requests to it. When
     a rate limit expires for a given domain, the next URL in the corresponding
     domain queue is sent to the downloader. (If the domain queue is empty, the
-    queue is deleted.) The rate limiter has a fixed capacity; when the number
-    of URLs buffered in the rate limiter exceeds this capacity, subsequent calls
-    to ``add()`` will block until some capacity is available; these calls will
+    queue is deleted.) The rate limiter has a fixed capacity; when the number of
+    URLs buffered in the rate limiter exceeds this capacity, subsequent calls to
+    :meth:`push` will block until some capacity is available; these calls will
     be served in the order they are made.
 
-    In order to provide some flexibility, rate limits are not strictly tied
-    to individual domains. Each URL is mapped to a "rate limit token". URLs
-    with the same token will be placed into the same queue. This system will
-    allow a flexible rate limiting policies in the future, such as applying a
+    In order to provide some flexibility, rate limits are not strictly tied to
+    individual domains. Each URL is mapped to a "rate limit token". URLs with
+    the same token will be placed into the same queue. This system will allow
+    more flexible rate limiting policies in the future, such as applying a
     single rate limit to a set of domains.
     '''
+    def __init__(self, capacity):
+        '''
+        Constructor.
 
-    def __init__(self, db_pool, capacity=1e4):
-        ''' Constructor. '''
-        self._db_pool = db_pool
+        :param int capacity: The number of items to buffer in the rate limiter
+            before calls to :meth:`push` will block. (Must be ≥0.)
+        '''
+        if capacity < 0:
+            raise ValueError('Capacity must be ≥0.')
         self._expires = list()
-        self._expiry_added = asyncio.Event()
+        self._expiry_lock = trio.Lock()
+        self._expiry_cancel_scope = None
         self._global_limit = None
         self._queues = dict()
         self._rate_limits = dict()
-        self._semaphore = asyncio.Semaphore(capacity)
+        self._semaphore = trio.Semaphore(capacity)
 
-    def count(self):
-        ''' Return number of buffered requests. '''
+    def __len__(self):
+        '''
+        Return number of buffered requests.
+
+        :rtype: int
+        '''
         return sum(len(q) for q in self._queues.values())
 
-    async def get_limits(self, limit, skip):
-        ''' Return a list of rate limits ordered by name. '''
-        count_query = r.table('rate_limit').count()
-        item_query = (
-            r.table('rate_limit')
-             .order_by(index='name')
-             .skip(skip)
-             .limit(limit)
-        )
+    def delete_rate_limit(self, token):
+        '''
+        Remove a rate limit for a given token.
 
-        rate_limits = list()
+        If ``token`` does not exist, then this has no effect.
 
-        async with self._db_pool.connection() as conn:
-            count = await count_query.run(conn)
-            cursor = await item_query.run(conn)
-            async for rate_limit in cursor:
-                rate_limits.append(rate_limit)
-            await cursor.close()
-
-        return count, rate_limits
+        :param str token: A rate limit token.
+        '''
+        logger.debug('Delete rate limit: token=%r', token)
+        try:
+            del self._rate_limits[token]
+        except KeyError:
+            pass
 
     async def get_next_request(self):
         '''
@@ -79,7 +125,6 @@ class RateLimiter:
         Maintains the invariant that if a token exists in the ``_expires`` heap,
         then a queue exists for that token.
         '''
-        # Get the next token and then get the next item for that token.
         expiry = await self._get_next_expiry()
         token = expiry.token
         queue = self._queues[token]
@@ -96,38 +141,43 @@ class RateLimiter:
         logger.debug('Popped %s', request.url)
         return request
 
-    async def initialize(self):
-        ''' Load rate limits from database. '''
-        async with self._db_pool.connection() as conn:
-            cursor = await r.table('rate_limit').run(conn)
-            async for rate_limit in cursor:
-                if rate_limit['type'] == 'global':
-                    self._global_limit = rate_limit['delay']
-                elif rate_limit['type'] == 'domain':
-                    token = rate_limit['token']
-                    self._rate_limits[token] = rate_limit['delay']
-                else:
-                    raise Exception('Cannot load rate limit (unknown type): '
-                        .format(repr(rate_limit)))
-            await cursor.close()
+    def get_domain_token(self, domain):
+        '''
+        Get a token for a domain.
 
-        logger.info('Rate limiter is initialized.')
+        :param str domain:
+        :rtype: bytes
+        '''
+        hash_ = hashlib.blake2b(domain.encode('ascii'), digest_size=16)
+        token = hash_.digest()
+        return token
 
     async def push(self, request):
         '''
         Schedule a request for downloading.
 
         Suspends if the rate limiter is already filled to capacity.
+
+        :param request:
+        :type request: FrontierItem
         '''
+        logger.debug('Push request: %r', request)
         await self._semaphore.acquire()
-        token = self._get_token_for_url(request.url)
+        token = self.get_domain_token(request.url.host)
         if token not in self._queues:
             self._queues[token] = deque()
-            self._add_expiry(Expiry(time(), token))
+            self._add_expiry(Expiry(trio.current_time(), token))
         self._queues[token].append(request)
 
     async def remove_job(self, job_id):
-        ''' Remove all download requests for the given job. '''
+        '''
+        Remove all download requests for the given job.
+
+        :param bytes job_id:
+        :returns: The removed requests.
+        :rtype: list[FrontierItem]
+        '''
+        logger.debug('Remove job: id=%r', job_id)
         # Copy all existing queues to new queues but drop items matching the
         # given job_id. This is faster than modifying queues in-place.
         new_queues = dict()
@@ -151,104 +201,69 @@ class RateLimiter:
         return removed_items
 
     def reset(self, url):
-        ''' Reset the rate limit for the specified URL. '''
-        token = self._get_token_for_url(url)
+        '''
+        Reset the rate limit for the specified URL.
+
+        :param yarl.URL url:
+        '''
+        logger.debug('Reset URL: %r', url)
+        token = self.get_domain_token(url.host)
         limit = self._rate_limits.get(token, self._global_limit)
-        self._add_expiry(Expiry(time() + limit, token))
+        self._add_expiry(Expiry(trio.current_time() + limit, token))
 
-    async def set_domain_limit(self, domain, delay):
+    def set_rate_limit(self, token, delay):
         '''
-        Set a rate limit.
+        Set the rate limit for the specified token.
 
-        If delay is None, then remove the rate limit for the specified domain,
-        i.e. use the global default for that domain. Set ``delay=0`` for no
-        delay.
+        :param str token: The rate limit token.
+        :param float delay: The delay between subsequent requests, in seconds.
         '''
-        token = self._get_token_for_domain(domain)
-        base_query = r.table('rate_limit').get_all(token, index='token')
-        if delay is None:
-            try:
-                del self._rate_limits[token]
-            except KeyError:
-                pass
-            async with self._db_pool.connection() as conn:
-                await base_query.delete().run(conn)
+        logger.debug('Set rate limit: token=%r delay=%f', token, delay)
+        if token == GLOBAL_RATE_LIMIT_TOKEN:
+            self._global_limit = delay
         else:
             self._rate_limits[token] = delay
-            async with self._db_pool.connection() as conn:
-                try:
-                    await base_query.nth(0).update({'delay': delay}).run(conn)
-                except r.ReqlNonExistenceError:
-                    await r.table('rate_limit').insert({
-                        'delay': delay,
-                        'domain': domain,
-                        'name': domain,
-                        'token': token,
-                        'type': 'domain',
-                    }).run(conn)
-
-    async def set_global_limit(self, delay):
-        token = b'\x00' * 16
-        if delay is None:
-            raise Exception('Cannot delete the global rate limit.')
-        self._global_limit = delay
-        query = (
-            r.table('rate_limit')
-             .get_all(token, index='token')
-             .nth(0)
-             .update({'delay': delay})
-        )
-        async with self._db_pool.connection() as conn:
-            await query.run(conn)
 
     def _add_expiry(self, expiry):
-        ''' Add the specified expiry to the heap. '''
+        '''
+        Add the specified expiry to the heap.
+
+        :param Expiry expiry:
+        '''
         heappush(self._expires, expiry)
-        self._expiry_added.set()
+        if self._expiry_cancel_scope and expiry.time <= trio.current_time():
+            self._expiry_cancel_scope.cancel()
+            self._expiry_cancel_scope = None
 
     async def _get_next_expiry(self):
         '''
         Pop an expiry off the heap.
 
-        If no tokens on heap, suspend until a token is available.
+        If no tokens on heap, suspend until a token is available. This function
+        uses an internal lock so that only one task can execute it at a time.
+
+        :rtype: Expiry
         '''
+        async with self._expiry_lock:
+            # Peek at the next expiration.
+            logger.debug(self._expires)
+            if len(self._expires) == 0:
+                await self._expiry_added.wait()
+                self._expiry_added.clear()
 
-        # Peek at the next expiration.
-        if len(self._expires) == 0:
-            await self._expiry_added.wait()
-            self._expiry_added.clear()
+            while True:
+                now = trio.current_time()
+                expires = self._expires[0].time
 
-        while True:
-            now = time()
-            expires = self._expires[0].time
-
-            if expires <= now:
-                # The next expiry is in the past, so we can pop it right now.
-                break
-            else:
-                # The next expiry is in the future, so wait for it but also can
-                # be interrupted if somebody adds a new expiry to the heap.
-                try:
-                    await asyncio.wait_for(
-                        self._expiry_added.wait(),
-                        timeout=expires - now
-                    )
-                    self._expiry_added.clear()
-                except asyncio.TimeoutError:
-                    # The next item on the heap is ready to pop.
+                if expires <= now:
+                    # The next expiry is in the past, so we can pop it right now.
                     break
+                else:
+                    # The next expiry is in the future, so wait for it. We can also
+                    # be cancelled if
+                    with trio.move_on_after(expires - now) as cancel_scope:
+                        self._expiry_cancel_scope = cancel_scope
+                        await trio.sleep_forever()
 
-        expiry = heappop(self._expires)
-        return expiry
-
-    def _get_token_for_domain(self, domain):
-        ''' Get a token for a domain. '''
-        hash_ = hashlib.blake2b(domain.encode('ascii'), digest_size=16)
-        token = hash_.digest()
-        return token
-
-    def _get_token_for_url(self, url):
-        ''' Return the token for the domain in ``url``. '''
-        parsed = urllib.parse.urlparse(url)
-        token = self._get_token_for_domain(parsed.hostname)
-        return token
+            expiry = heappop(self._expires)
+            return expiry

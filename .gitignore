@@ -1,5 +1,1 @@
-*.pyc
 __pycache__
-.ipynb_checkpoints
-pyvenv
-TODO

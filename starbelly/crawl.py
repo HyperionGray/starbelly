@@ -1,37 +1,66 @@
-import asyncio
-import base64
-from collections import defaultdict, namedtuple
-from datetime import datetime
-import functools
-import gzip
-import hashlib
+# TODO: commented out imports so I can use FrontierItem in the rate limiter
+# tests.
+
+# import asyncio
+# import base64
+from collections import defaultdict
+# from datetime import datetime
+from dataclasses import dataclass
+# import functools
+# import gzip
+# import hashlib
 import logging
-import pickle
-import random
-import time
+# import pickle
+# import random
+# import time
+from yarl import URL
 
-from aiohttp.cookiejar import CookieJar
-from dateutil.tz import tzlocal
-import mimeparse
-from operator import itemgetter
-import rethinkdb as r
-from rethinkdb.errors import ReqlNonExistenceError
-from urllib.parse import urlparse
+# from aiohttp.cookiejar import CookieJar
+# from dateutil.tz import tzlocal
+# import mimeparse
+# from operator import itemgetter
+# import rethinkdb as r
+# from rethinkdb.errors import ReqlNonExistenceError
+# from urllib.parse import urlparse
 
-from . import cancel_futures, daemon_task, VERSION
-from .db import CursorContext
-from .downloader import DownloadRequest
-from .login import LoginManager
-from .policy import Policy
-from .pubsub import PubSub
-from .url_extractor import extract_urls
+# from . import cancel_futures, daemon_task, VERSION
+# from .db import CursorContext
+# from .downloader import DownloadRequest
+# from .login import LoginManager
+# from .policy import Policy
+# from .pubsub import PubSub
+# from .url_extractor import extract_urls
 
 
 logger = logging.getLogger(__name__)
-FrontierItem = namedtuple('FrontierItem', ['url', 'cost'])
-ExtractItem = namedtuple('ExtractItem', ['url', 'cost', 'content_type', 'body'])
-CrawlStats = namedtuple('CrawlStats', ['job_id', 'frontier', 'pending',
-    'extraction'])
+
+@dataclass
+class FrontierItem:
+    ''' Represents a resource that should be crawled. '''
+    def __post_init__(self):
+        self.url = URL(self.url)
+    url: str
+    cost: float
+
+
+@dataclass
+class ExtractItem:
+    ''' Represents a resource that needs to be extracted. '''
+    def __post_init__(self):
+        self.url = URL(self.url)
+    url: str
+    cost: float
+    content_type: str
+    body: bytes
+
+
+@dataclass
+class CrawlStats:
+    ''' Contains statistics about a crawl job. '''
+    job_id: bytes
+    frontier: int
+    pending: int
+    extraction: int
 
 
 class CrawlManager:
