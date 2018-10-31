@@ -3,15 +3,17 @@ language: python
 git:
   depth: 1
 
-python:
-  - "3.6"
+matrix:
+  include:
+    - python: 3.7
+      dist: xenial
+      sudo: yes
 
 install:
-  - pip install -r requirements.txt
+  - make init
 
 script:
-  - pytest --cov=trio_websocket
+  - make test
 
 after_success:
-  - cat .coverage
-  - coveralls -v
+  - coveralls

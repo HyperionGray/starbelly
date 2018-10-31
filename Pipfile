@@ -25,6 +25,8 @@ websockets = "*"
 "w3lib" = "*"
 yarl = "*"
 sphinxcontrib-trio = "*"
+coverage = "*"
+pytest-cov = "*"
 
 [dev-packages]
 nose = "*"
@@ -34,6 +36,7 @@ pytest-trio = "*"
 trustme = "*"
 sphinx = "*"
 sphinx-rtd-theme = "*"
+coveralls = "*"
 
 [requires]
 python_version = "3.7"
