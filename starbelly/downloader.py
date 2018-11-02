@@ -1,18 +1,19 @@
-import asyncio
-from collections import defaultdict, namedtuple
-from datetime import datetime
+# import asyncio
+# from collections import defaultdict, namedtuple
+# from datetime import datetime
 import logging
-import traceback
+# import traceback
 
-import aiohttp
-import aiosocks.connector
-import aiosocks.errors
-from async_timeout import timeout
-import cchardet as chardet
-from dateutil.tz import tzlocal
+# import aiohttp
+# import aiosocks.connector
+# import aiosocks.errors
+# from async_timeout import timeout
+# import cchardet as chardet
+# from dateutil.tz import tzlocal
 import w3lib.url
+from yarl import URL
 
-from . import cancel_futures, daemon_task, raise_future_exception
+# from . import cancel_futures, daemon_task, raise_future_exception
 
 
 logger = logging.getLogger(__name__)
@@ -204,7 +205,7 @@ class DownloadRequest:
         cookie_jar=None, method='GET', form_data=None):
         ''' Constructor. '''
         self.job_id = job_id
-        self.url = url
+        self.url = URL(url)
         self.url_can = w3lib.url.canonicalize_url(url).encode('ascii')
         self.cost = cost
         self.policy = policy

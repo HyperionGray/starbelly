@@ -76,8 +76,8 @@ these classes.
         apiserver -> manager [dir=both];
         apiserver -> resource_monitor [dir=both];
         apiserver -> scheduler;
-        manager -> rate_limiter [label="FrontierItem"];
-        rate_limiter -> downloader [label="FrontierItem"];
+        manager -> rate_limiter [label="DownloadRequest"];
+        rate_limiter -> downloader [label="DownloadRequest"];
         downloader -> extractor [label="ExtractItem"];
         extractor -> manager [label="list[URL]"];
     }

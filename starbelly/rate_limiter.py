@@ -13,6 +13,7 @@ from yarl import URL
 logger = logging.getLogger(__name__)
 GLOBAL_RATE_LIMIT_TOKEN = b'\x00' * 16
 
+
 @dataclass
 @functools.total_ordering
 class Expiry:
@@ -110,7 +111,7 @@ class RateLimiter:
 
         If ``token`` does not exist, then this has no effect.
 
-        :param str token: A rate limit token.
+        :param bytes token: A rate limit token.
         '''
         logger.debug('Delete rate limit: token=%r', token)
         try:
@@ -124,6 +125,9 @@ class RateLimiter:
 
         Maintains the invariant that if a token exists in the ``_expires`` heap,
         then a queue exists for that token.
+
+        :returns: The next download request.
+        :rtype: starbelly.downloader.DownloadRequest
         '''
         expiry = await self._get_next_expiry()
         token = expiry.token
@@ -145,7 +149,8 @@ class RateLimiter:
         '''
         Get a token for a domain.
 
-        :param str domain:
+        :param str domain: The domain to generate a token for.
+        :returns: The token corresponding to the domain.
         :rtype: bytes
         '''
         hash_ = hashlib.blake2b(domain.encode('ascii'), digest_size=16)
@@ -158,8 +163,8 @@ class RateLimiter:
 
         Suspends if the rate limiter is already filled to capacity.
 
-        :param request:
-        :type request: FrontierItem
+        :param request: A download request.
+        :type request: starbelly.downloader.DownloadRequest
         '''
         logger.debug('Push request: %r', request)
         await self._semaphore.acquire()
@@ -169,13 +174,13 @@ class RateLimiter:
             self._add_expiry(Expiry(trio.current_time(), token))
         self._queues[token].append(request)
 
-    async def remove_job(self, job_id):
+    def remove_job(self, job_id):
         '''
         Remove all download requests for the given job.
 
         :param bytes job_id:
         :returns: The removed requests.
-        :rtype: list[FrontierItem]
+        :rtype: list[starbelly.downloader.DownloadRequest]
         '''
         logger.debug('Remove job: id=%r', job_id)
         # Copy all existing queues to new queues but drop items matching the
@@ -242,28 +247,27 @@ class RateLimiter:
         If no tokens on heap, suspend until a token is available. This function
         uses an internal lock so that only one task can execute it at a time.
 
+        :returns: The next expiry.
         :rtype: Expiry
         '''
         async with self._expiry_lock:
-            # Peek at the next expiration.
-            logger.debug(self._expires)
+            # If there are no pending expirations, then we wait for somebody to
+            # call push() or reset().
             if len(self._expires) == 0:
-                await self._expiry_added.wait()
-                self._expiry_added.clear()
+                with trio.open_cancel_scope() as cancel_scope:
+                    self._expiry_cancel_scope = cancel_scope
+                    await trio.sleep_forever()
 
-            while True:
-                now = trio.current_time()
-                expires = self._expires[0].time
-
-                if expires <= now:
-                    # The next expiry is in the past, so we can pop it right now.
-                    break
-                else:
-                    # The next expiry is in the future, so wait for it. We can also
-                    # be cancelled if
-                    with trio.move_on_after(expires - now) as cancel_scope:
-                        self._expiry_cancel_scope = cancel_scope
-                        await trio.sleep_forever()
+            # Now there are definitely pending expirations. Examine the earliest
+            # pending expiration. If it is in the past, then we pop it
+            # immediately. If it is in the future, then sleep until its
+            # expiration time or until somebody calls reset() or push().
+            now = trio.current_time()
+            expires = self._expires[0].time
+            if expires > now:
+                with trio.move_on_after(expires - now) as cancel_scope:
+                    self._expiry_cancel_scope = cancel_scope
+                    await trio.sleep_forever()
 
             expiry = heappop(self._expires)
             return expiry
