@@ -68,6 +68,7 @@ these classes.
         manager;
         rate_limiter [label="RateLimiter",href="#rate-limiter"];
         downloader;
+        extractor [label="Extractor",href="#extractor"];
         resource_monitor;
         scheduler;
 
@@ -75,9 +76,10 @@ these classes.
         apiserver -> manager [dir=both];
         apiserver -> resource_monitor [dir=both];
         apiserver -> scheduler;
-        manager -> rate_limiter;
-        rate_limiter -> downloader;
-        downloader -> manager;
+        manager -> rate_limiter [label="FrontierItem"];
+        rate_limiter -> downloader [label="FrontierItem"];
+        downloader -> extractor [label="ExtractItem"];
+        extractor -> manager [label="list[URL]"];
     }
 
 Each of these classes is documented below.
@@ -98,3 +100,15 @@ The rate limiter uses the following class to store expiry information.
 
 .. autoclass:: Expiry
     :members:
+
+.. _extractor:
+
+Extractor
+---------
+
+.. currentmodule:: starbelly.url_extractor
+
+After a resource is downloaded, the following function is called to extract
+URLs from the resource that the crawler can follow.
+
+.. autofunction:: extract_urls

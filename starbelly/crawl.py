@@ -750,11 +750,14 @@ class _CrawlJob:
 
         logger.debug('Extracting links from %s', extract_item.url)
 
-        extracted_urls = await asyncio.get_event_loop().run_in_executor(
-            None,
-            extract_urls,
-            extract_item
-        )
+        try:
+            extracted_urls = await asyncio.get_event_loop().run_in_executor(
+                None,
+                extract_urls,
+                extract_item
+            )
+        except Exception as e:
+            logging.exception(str(e))
         frontier_items = list()
         counter = 0
 

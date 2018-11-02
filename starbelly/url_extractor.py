@@ -18,6 +18,9 @@ def extract_urls(extract_item):
 
     Any relative URLs found in the response body are converted to absolute URLs
     using the original request URL.
+
+    :param extract_item: A resource to extract URLs from.
+    :type extract_item: starbelly.crawl.ExtractItem
     '''
 
     extracted_urls = list()
@@ -25,19 +28,15 @@ def extract_urls(extract_item):
     type_, subtype, parameters = mimeparse.parse_mime_type(
         extract_item.content_type)
 
-    try:
-        if type_ == 'text' and subtype == 'html' or \
-           type_ == 'application' and subtype == 'xhtml+xml':
-            extracted_urls = _extract_html(extract_item)
-        elif type_ == 'application' and subtype == 'atom+xml' or \
-             type_ == 'application' and subtype == 'rss+xml':
-            extracted_urls = _extract_feed(extract_item)
-        else:
-            logging.error(
-                'Unsupported MIME in extract_urls(): %s (url=%s)',
-                extract_item.content_type, base_url)
-    except:
-        logger.exception('Cannot extract URLs from %s', base_url)
+    if type_ == 'text' and subtype == 'html' or \
+       type_ == 'application' and subtype == 'xhtml+xml':
+        extracted_urls = _extract_html(extract_item)
+    elif type_ == 'application' and subtype == 'atom+xml' or \
+         type_ == 'application' and subtype == 'rss+xml':
+        extracted_urls = _extract_feed(extract_item)
+    else:
+        raise ValueError('Unsupported MIME in extract_urls(): {} (url={})'
+            .format(extract_item.content_type, base_url))
 
     return extracted_urls
 
@@ -46,6 +45,7 @@ def _extract_feed(extract_item):
     ''' Extract links from Atom or RSS feeds. '''
 
     doc = feedparser.parse(extract_item.body)
+    logger.debug(doc)
     return [entry.link for entry in doc.entries]
 
 
