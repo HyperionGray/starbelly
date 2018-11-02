@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import dateutil.parser
-import rethinkdb as r
 import w3lib.url
 
 from . import VERSION
@@ -32,86 +31,18 @@ def _invalid(message, location=None):
         raise PolicyValidationError(f'{message} in {location}.')
 
 
-class PolicyManager:
-    ''' Manages policy objects. '''
-
-    def __init__(self, db_pool):
-        ''' Constructor. '''
-        self._db_pool = db_pool
-
-    async def delete_policy(self, policy_id):
-        ''' Delete a policy. '''
-        async with self._db_pool.connection() as conn:
-            await r.table('policy').get(policy_id).delete().run(conn)
-
-    async def get_policy(self, policy_id):
-        ''' Get policy details. '''
-        async with self._db_pool.connection() as conn:
-            policy = await r.table('policy').get(policy_id).run(conn)
-        return policy
-
-    async def list_policies(self, limit, offset):
-        ''' Return a list of policies. '''
-        policies = list()
-        query = (
-            r.table('policy')
-             .order_by(index='name')
-             .skip(offset)
-             .limit(limit)
-        )
-
-        async with self._db_pool.connection() as conn:
-            count = await r.table('policy').count().run(conn)
-            cursor = await query.run(conn)
-            async for policy in cursor:
-                policies.append(policy)
-            await cursor.close()
-
-        return count, policies
-
-    async def set_policy(self, policy):
-        '''
-        Save policy details.
-
-        If the policy has an ID, then that the corresponding document is
-        updated and this method returns None. If the policy does not have an ID,
-        then a new document is created and this method returns the new ID.
-        '''
-        # Validate policy by trying to instantiate a Policy object, which will
-        # raise an exception if the policy is invalid.
-        Policy(
-            policy,
-            version=VERSION,
-            seeds=['http://test1.com', 'http://test2.org'],
-            robots_txt_manager=None
-        )
-
-        # Save policy.
-        async with self._db_pool.connection() as conn:
-            if 'id' in policy:
-                policy['updated_at'] = r.now()
-                await (
-                    r.table('policy')
-                     .get(policy['id'])
-                     .update(policy)
-                     .run(conn)
-                )
-                policy_id = None
-            else:
-                policy['created_at'] = r.now()
-                policy['updated_at'] = r.now()
-                result = await r.table('policy').insert(policy).run(conn)
-                policy_id = result['generated_keys'][0]
-
-        return policy_id
-
-
 class Policy:
-    ''' Container for policies. '''
+    ''' A container for subpolicies. '''
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert policy from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.Policy
+        '''
         pb.policy_id = UUID(doc['id']).bytes
         pb.name = doc['name']
         pb.created_at = doc['created_at'].isoformat()
@@ -139,7 +70,14 @@ class Policy:
 
     @staticmethod
     def convert_pb_to_doc(pb):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.Policy.
+        :returns: Database document.
+        :rtype: dict
+        '''
         doc = {
             'name': pb.name,
             'authentication': dict(),
@@ -175,7 +113,17 @@ class Policy:
         return doc
 
     def __init__(self, doc, version, seeds, robots_txt_manager):
-        ''' Initialize from ``doc``, a dict representation of a policy. '''
+        '''
+        Initialize a policy object from its database document.
+
+        :param dict doc: A database document.
+        :param str version: The version number of Starbelly that created the
+            policy.
+        :param list seeds: A list of seed URLs, used for computing costs for
+            crawled links.
+        :param robots_txt_manager: A robots.txt manager.
+        :type robots_txt_manager: starbelly.robots.RobotsTxtManager
+        '''
         if doc['name'].strip() == '':
             _invalid('Policy name cannot be blank')
 
@@ -194,16 +142,20 @@ class Policy:
         self.url_rules = PolicyUrlRules(doc['url_rules'], seeds)
         self.user_agents = PolicyUserAgents(doc['user_agents'], version)
 
-    def replace_mime_type_rules(self, doc):
+    def replace_mime_type_rules(self, rules):
         '''
         Return a shallow copy of this policy with new MIME type rules from
         ``doc``.
+
+        :param list rules: MIME type rules in database document form.
+        :returns: A new policy.
+        :rtype: Policy
         '''
         policy = Policy.__new__(Policy)
         policy.authentication = self.authentication
         policy.captcha_solver = self.captcha_solver
         policy.limits = self.limits
-        policy.mime_type_rules = PolicyMimeTypeRules(doc)
+        policy.mime_type_rules = PolicyMimeTypeRules(rules)
         policy.proxy_rules = self.proxy_rules
         policy.robots_txt = self.robots_txt
         policy.url_normalization = self.url_normalization
@@ -217,20 +169,41 @@ class PolicyAuthentication:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyAuthentication
+        '''
         pb.enabled = doc['enabled']
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyAuthentication
+        :returns: Database document.
+        :rtype: dict
+        '''
         doc['enabled'] = pb.enabled
 
     def __init__(self, doc):
-        ''' Initialize from ``doc``, a dict representation of limits. '''
+        '''
+        Initialize from a database document.
+
+        :param dict doc: A database document.
+        '''
         self._enabled = doc.get('enabled', False)
 
     def is_enabled(self):
-        ''' Return True if authentication is enabled. '''
+        '''
+        Return True if authentication is enabled.
+
+        :rtype: bool
+        '''
         return self._enabled
 
 
@@ -239,7 +212,13 @@ class PolicyLimits:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyLimits
+        '''
         if doc.get('max_cost') is not None:
             pb.max_cost = doc['max_cost']
         if doc.get('max_duration') is not None:
@@ -249,14 +228,25 @@ class PolicyLimits:
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyLimits
+        :returns: Database document.
+        :rtype: dict
+        '''
         doc['max_cost'] = pb.max_cost if pb.HasField('max_cost') else None
         doc['max_duration'] = pb.max_duration if pb.HasField('max_duration') \
             else None
         doc['max_items'] = pb.max_items if pb.HasField('max_items') else None
 
     def __init__(self, doc):
-        ''' Initialize from ``doc``, a dict representation of limits. '''
+        '''
+        Initialize from a database document.
+
+        :param dict doc: A database document.
+        '''
         self._max_cost = doc.get('max_cost')
         self._max_duration = doc.get('max_duration')
         self._max_items = doc.get('max_items')
@@ -266,13 +256,21 @@ class PolicyLimits:
             _invalid('Max items must be ≥0')
 
     def exceeds_max_cost(self, cost):
-        ''' Return true if ``cost`` is greater than the policy's max cost. '''
+        '''
+        Return true if ``cost`` is greater than the policy's max cost.
+
+        :param float cost:
+        :rtype: bool
+        '''
         return self._max_cost is not None and cost > self._max_cost
 
     def exceeds_max_duration(self, duration):
         '''
         Return true if ``duration`` is greater than or equal to the policy's max
         duration.
+
+        :param float duration:
+        :rtype: bool
         '''
         return self._max_duration is not None and duration >= self._max_duration
 
@@ -280,6 +278,9 @@ class PolicyLimits:
         '''
         Return true if ``items`` is greater than or equal to the policy's max
         item count.
+
+        :param int items:
+        :rtype: bool
         '''
         return self._max_items is not None and items >= self._max_items
 
@@ -289,7 +290,13 @@ class PolicyMimeTypeRules:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyMimeTypeRules
+        '''
         for doc_mime in doc:
             pb_mime = pb.add()
             if 'pattern' in doc_mime:
@@ -301,7 +308,14 @@ class PolicyMimeTypeRules:
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyMimeTypeRules
+        :returns: Database document.
+        :rtype: dict
+        '''
         for pb_mime in pb:
             doc_mime = dict()
             if pb_mime.HasField('pattern'):
@@ -313,8 +327,12 @@ class PolicyMimeTypeRules:
             doc.append(doc_mime)
 
     def __init__(self, docs):
-        ''' Initialize from ``docs``, a dict representation of MIME rules. '''
+        '''
+        Initialize from database documents.
 
+        :param docs: Database document.
+        :type docs: list[dict]
+        '''
         if len(docs) == 0:
             _invalid('At least one MIME type rule is required')
 
@@ -358,6 +376,9 @@ class PolicyMimeTypeRules:
         Returns True if ``mime_type`` is approved by this policy.
 
         If rules are valid, this method always returns True or False.
+
+        :param str mime_type:
+        :rtype: bool
         '''
         for pattern, match, save in self._rules:
             if pattern is None:
@@ -377,7 +398,13 @@ class PolicyProxyRules:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyProxyRules
+        '''
         for doc_proxy in doc:
             pb_proxy = pb.add()
             if 'pattern' in doc_proxy:
@@ -389,7 +416,14 @@ class PolicyProxyRules:
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyProxyRules
+        :returns: Database document.
+        :rtype: dict
+        '''
         for pb_proxy in pb:
             doc_proxy = dict()
             if pb_proxy.HasField('pattern'):
@@ -401,8 +435,12 @@ class PolicyProxyRules:
             doc.append(doc_proxy)
 
     def __init__(self, docs):
-        ''' Initialize from ``docs``, a dict representation of proxy rules. '''
+        '''
+        Initialize from database documents.
 
+        :param docs: Database document.
+        :type docs: list[dict]
+        '''
         # Rules are stored as list of tuples: (pattern, match, proxy_type,
         # proxy_url)
         self._rules = list()
@@ -467,6 +505,9 @@ class PolicyProxyRules:
         '''
         Return a proxy (type, URL) tuple associated with ``target_url`` or
         (None, None) if no such proxy is defined.
+
+        :param str target_url:
+        :rtype: tuple[proxy_type,URL]
         '''
         proxy = None, None
 
@@ -488,17 +529,38 @@ class PolicyRobotsTxt:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyRobotsTxt
+        '''
         pb.usage = USAGE_ENUM.Value(doc['usage'])
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyRobotsTxt
+        :returns: Database document.
+        :rtype: dict
+        '''
         if pb.HasField('usage'):
             doc['usage'] = USAGE_ENUM.Name(pb.usage)
 
     def __init__(self, doc, robots_txt_manager, parent_policy):
-        ''' Initialize from ``doc``, a dict representation of robots policy. '''
+        '''
+        Initialize from a database document.
+
+        :param dict doc: A database document.
+        :param robots_txt_manager: A robots.txt manager.
+        :type robots_txt_manager: starbelly.robots.RobotsTxtManager
+        :param parent_policy: The policy container for this subpolicy.
+        :type parent_policy: Policy
+        '''
         if 'usage' not in doc:
             _invalid('Robots.txt usage is required')
         self._parent_policy = parent_policy
@@ -506,7 +568,11 @@ class PolicyRobotsTxt:
         self._robots_txt_manager = robots_txt_manager
 
     async def is_allowed(self, url):
-        ''' Returns True if robots policy permits ``url``. '''
+        '''
+        :param str url: The URL to check against this policy.
+        :returns: ``True`` if robots policy permits ``url``.
+        :rtype: bool
+        '''
         if self._usage == 'IGNORE':
             return True
 
@@ -526,25 +592,48 @@ class PolicyUrlNormalization:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyUrlNormalization
+        '''
         if 'enabled' in doc:
             pb.enabled = doc['enabled']
         if 'strip_parameters' in doc:
             pb.strip_parameters.extend(doc['strip_parameters'])
 
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyUrlNormalization
+        :returns: Database document.
+        :rtype: dict
+        '''
         if pb.HasField('enabled'):
             doc['enabled'] = pb.enabled
         doc['strip_parameters'] = list(pb.strip_parameters)
 
     def __init__(self, doc):
-        ''' Instantiate from a dictionary representation ``doc``. '''
+        '''
+        Initialize from a database document.
+
+        :param dict doc: A database document.
+        '''
         self._enabled = doc.get('enabled', True)
         self._strip_parameters = doc.get('strip_parameters', list())
 
     def normalize(self, url):
-        ''' Normalize ``url`` according to policy. '''
+        '''
+        Normalize ``url`` according to policy.
+
+        :param str url: The URL to be normalized.
+        :returns: The normalized URL.
+        :rtype str:
+        '''
         if self._enabled:
             if len(self._strip_parameters) > 0:
                 url = w3lib.url.url_query_cleaner(url, remove=True,
@@ -560,7 +649,13 @@ class PolicyUrlRules:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyUrlRules
+        '''
         for doc_url in doc:
             pb_url = pb.add()
             if 'pattern' in doc_url:
@@ -574,7 +669,14 @@ class PolicyUrlRules:
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyUrlRules
+        :returns: Database document.
+        :rtype: dict
+        '''
         for pb_url in pb:
             doc_url = dict()
             if pb_url.HasField('pattern'):
@@ -588,7 +690,14 @@ class PolicyUrlRules:
             doc.append(doc_url)
 
     def __init__(self, docs, seeds):
-        ''' Initialize from ``docs``, a dict representation of url rules. '''
+        '''
+        Initialize from database documents.
+
+        :param docs: Database document.
+        :type docs: list[dict]
+        :param seeds: Seed URLs, used for computing the costs for crawled links.
+        :type seeds: list[str]
+        '''
         if len(docs) == 0:
             _invalid('At least one URL rule is required')
 
@@ -641,7 +750,15 @@ class PolicyUrlRules:
                 ))
 
     def get_cost(self, parent_cost, url):
-        ''' Return the cost for a URL. '''
+        '''
+        Return the cost for a URL.
+
+        :param float parent_cost: The cost of the resource which yielded this
+            URL.
+        :param str url: The URL to compute cost for.
+        :returns: Cost of ``url``.
+        :rtype: float
+        '''
         for pattern, match, action, amount in self._rules:
             if pattern is None:
                 break
@@ -662,21 +779,40 @@ class PolicyUserAgents:
 
     @staticmethod
     def convert_doc_to_pb(doc, pb):
-        ''' Convert policy from document to protobuf. '''
+        '''
+        Convert from database document to protobuf.
+
+        :param dict doc: Database document.
+        :param pb: An empty protobuf.
+        :type pb: protobuf.shared_pb2.PolicyUserAgents
+        '''
         for doc_user_agent in doc:
             pb_user_agent = pb.add()
             pb_user_agent.name = doc_user_agent['name']
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
-        ''' Convert policy from protobuf to document. '''
+        '''
+        Convert protobuf to database document.
+
+        :param pb: A protobuf
+        :type pb: protobuf.shared_pb2.PolicyUserAgents
+        :returns: Database document.
+        :rtype: dict
+        '''
         for user_agent in pb:
             doc.append({
                 'name': user_agent.name,
             })
 
     def __init__(self, docs, version):
-        ''' Initialize from ``docs``, a dict representation of user agents. '''
+        '''
+        Initialize from database documents.
+
+        :param docs: Database document.
+        :type docs: list[dict]
+        :param str version: The version number interpolated into ``{VERSION}``.
+        '''
         if len(docs) == 0:
             _invalid('At least one user agent is required')
         self._user_agents = list()
@@ -687,5 +823,8 @@ class PolicyUserAgents:
             self._user_agents.append(user_agent['name'].format(VERSION=version))
 
     def get_user_agent(self):
-        ''' Return a user agent string. '''
+        '''
+        :returns: A randomly selected user agent string.
+        :rtype: str
+        '''
         return random.choice(self._user_agents)

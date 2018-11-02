@@ -64,8 +64,9 @@ these classes.
         edge [fontsize=10];
 
         // Nodes
-        apiserver;
-        manager;
+        api_server;
+        crawl_manager [label="CrawlManager"];
+        policy_manager [label="PolicyManager",href="#policy"];
         rate_limiter [label="RateLimiter",href="#rate-limiter"];
         downloader;
         extractor [label="Extractor",href="#extractor"];
@@ -73,13 +74,15 @@ these classes.
         scheduler;
 
         // Edges
-        apiserver -> manager [dir=both];
-        apiserver -> resource_monitor [dir=both];
-        apiserver -> scheduler;
-        manager -> rate_limiter [label="DownloadRequest"];
+        api_server -> crawl_manager [dir=both];
+        api_server -> resource_monitor [dir=both];
+        api_server -> scheduler;
+        crawl_manager -> rate_limiter [label="DownloadRequest"];
+        crawl_manager -> policy_manager;
         rate_limiter -> downloader [label="DownloadRequest"];
         downloader -> extractor [label="ExtractItem"];
-        extractor -> manager [label="list[URL]"];
+        downloader -> policy_manager;
+        extractor -> crawl_manager [label="list[URL]"];
     }
 
 Each of these classes is documented below.
@@ -112,3 +115,50 @@ After a resource is downloaded, the following function is called to extract
 URLs from the resource that the crawler can follow.
 
 .. autofunction:: extract_urls
+
+.. _policy:
+
+Policy
+------
+
+Policy objects guide the crawler's decision making, i.e. which links to follow,
+which resources to download, when to use a proxy, etc. The policy manager is
+responsible for saving and loading policies from the database.
+
+.. currentmodule:: starbelly.policy
+
+.. autoclass:: PolicyManager
+    :members:
+
+A policy object is a container that includes many various subpolicies.
+
+.. autoclass:: Policy
+    :members:
+
+.. autoclass:: PolicyAuthentication
+    :members:
+
+.. autoclass:: PolicyLimits
+    :members:
+
+.. autoclass:: PolicyMimeTypeRules
+    :members:
+
+.. autoclass:: PolicyProxyRules
+    :members:
+
+.. autoclass:: PolicyRobotsTxt
+    :members:
+
+.. autoclass:: PolicyValidationError
+    :members:
+
+.. autoclass:: PolicyUrlNormalization
+    :members:
+
+.. autoclass:: PolicyUrlRules
+    :members:
+
+.. autoclass:: PolicyUserAgents
+    :members:
+

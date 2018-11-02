@@ -1,15 +1,17 @@
 from datetime import datetime, timedelta
-import unittest
+from unittest.mock import Mock
 
 import protobuf.shared_pb2
 import pytest
 
+from starbelly.captcha import CaptchaSolver
 from starbelly.policy import (
     Policy,
     PolicyAuthentication,
     PolicyLimits,
     PolicyMimeTypeRules,
     PolicyProxyRules,
+    PolicyRobotsTxt,
     PolicyValidationError,
     PolicyUrlNormalization,
     PolicyUrlRules,
@@ -33,13 +35,17 @@ def test_convert_policy_doc_to_pb():
         'authentication': {'enabled': True},
         'limits': {
             'max_cost': 10,
+            'max_duration': 3600,
+            'max_items': 10_000,
         },
         'mime_type_rules': [
             {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
             {'save': False},
         ],
         'proxy_rules': [
-            {'proxy_url': 'socks5://localhost:1234'},
+            {'proxy_url': 'socks5://localhost:1234',
+             'pattern': r'\.onion',
+             'match': 'MATCHES'},
         ],
         'robots_txt': {
             'usage': 'IGNORE',
@@ -101,6 +107,47 @@ def test_convert_policy_doc_to_pb():
     assert len(pb.user_agents) == 1
     assert pb.user_agents[0].name == 'Test User Agent'
 
+def test_convert_policy_doc_to_pb_captcha():
+    created_at = datetime.now()
+    updated_at = datetime.now() + timedelta(minutes=1)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': created_at,
+        'updated_at': updated_at,
+        'captcha_solver_id': 'e27223d3-85ef-4e89-8fc8-dbcf8df0ce97',
+        'authentication': {'enabled': True},
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'robots_txt': {
+            'usage': 'IGNORE',
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': ['PHPSESSID'],
+        },
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'Test User Agent'}
+        ]
+    }
+    pb = protobuf.shared_pb2.Policy()
+    Policy.convert_doc_to_pb(doc, pb)
+    assert pb.captcha_solver_id == \
+        b'\xe2\x72\x23\xd3\x85\xef\x4e\x89\x8f\xc8\xdb\xcf\x8d\xf0\xce\x97'
+
 
 def test_convert_policy_pb_to_doc():
     created_at = datetime.now()
@@ -117,6 +164,8 @@ def test_convert_policy_pb_to_doc():
 
     # Limits
     pb.limits.max_cost = 10
+    pb.limits.max_duration = 3600
+    pb.limits.max_items = 10_000
 
     # MIME type rules
     mime1 = pb.mime_type_rules.add()
@@ -129,6 +178,8 @@ def test_convert_policy_pb_to_doc():
     # Proxy rules
     proxy1 = pb.proxy_rules.add()
     proxy1.proxy_url = 'socks5://localhost:1234'
+    proxy1.pattern = r'\.onion'
+    proxy1.match = MATCH_ENUM.Value('MATCHES')
 
     # Robots.txt
     pb.robots_txt.usage = USAGE_ENUM.Value('IGNORE')
@@ -199,6 +250,22 @@ def test_convert_policy_pb_to_doc():
     assert len(doc['user_agents']) == 1
     agent1 = doc['user_agents'][0]
     assert agent1['name'] == 'Test User Agent'
+
+
+def test_convert_policy_pb_to_doc_captcha():
+    created_at = datetime.now()
+    updated_at = datetime.now() + timedelta(minutes=1)
+    pb = protobuf.shared_pb2.Policy()
+    pb.policy_id = \
+        b'\x01\xb6\x0e\xeb*\xc9OA\x9b\x0cG\xdc\xbc\xf67\xf7'
+    pb.name = 'Test'
+    pb.created_at = created_at.isoformat()
+    pb.updated_at = updated_at.isoformat()
+    pb.captcha_solver_id = \
+        b'\xe2\x72\x23\xd3\x85\xef\x4e\x89\x8f\xc8\xdb\xcf\x8d\xf0\xce\x97'
+
+    doc = Policy.convert_pb_to_doc(pb)
+    assert doc['captcha_solver_id'] == 'e27223d3-85ef-4e89-8fc8-dbcf8df0ce97'
 
 
 def test_policy_authentication():
@@ -299,7 +366,6 @@ def test_policy_mime_rules_missing_pattern_or_match():
             {'pattern': '^text/', 'save': True},
             {'save': False},
         ])
-
     with pytest.raises(PolicyValidationError):
         PolicyMimeTypeRules([
             {'match': 'MATCHES', 'save': True},
@@ -313,11 +379,37 @@ def test_policy_mime_rules_invalid_regex():
             {'save': False},
         ])
 
-def test_policy_mime_rules_invalid_last_rule():
+def test_policy_mime_rules_invalid_terminal():
+    # Save is required in terminal rule:
     with pytest.raises(PolicyValidationError):
         PolicyMimeTypeRules([
             {'pattern': '^text/', 'match': 'MATCHES', 'save': True},
-            {'pattern': '^image/', 'match': 'MATCHES', 'save': True},
+            {},
+        ])
+    # Pattern is not allowed in terminal rule:
+    with pytest.raises(PolicyValidationError):
+        PolicyMimeTypeRules([
+            {'pattern': '^text/', 'match': 'MATCHES', 'save': True},
+            {'pattern': '^image/', 'save': True},
+        ])
+    # Match is not allowed in terminal rule:
+    with pytest.raises(PolicyValidationError):
+        PolicyMimeTypeRules([
+            {'pattern': '^text/', 'match': 'MATCHES', 'save': True},
+            {'match': 'MATCHES', 'save': True},
+        ])
+
+
+def test_policy_mime_rules_missing_save():
+    with pytest.raises(PolicyValidationError):
+        PolicyMimeTypeRules([
+            {'pattern': '^text/(', 'match': 'MATCHES'},
+            {'save': False},
+        ])
+    with pytest.raises(PolicyValidationError):
+        PolicyMimeTypeRules([
+            {'pattern': '^text/(', 'match': 'MATCHES', 'save': True},
+            {},
         ])
 
 
@@ -330,7 +422,7 @@ def test_policy_proxy_never_proxy():
     assert proxy == (None, None)
 
 
-def test_policy_proxy_last_rule():
+def test_policy_proxy_invalid_terminal():
     ''' Last rule may not contain match or pattern. '''
     with pytest.raises(PolicyValidationError):
         proxy_rules = PolicyProxyRules([
@@ -365,10 +457,83 @@ def test_policy_proxy_conditional_proxy():
     assert proxy2 == (None, None)
 
 
-# class TestPolicyRobotsTxt(unittest.TestCase):
-#     # PolicyRobotsTxt.is_allowed() is async, so I don't know how to write
-#     # tests for it. This is just a placeholder test to fill in later.
-#     pass
+def test_policy_proxy_invalid_non_terminal():
+    # Proxy URL is required in non-terminal rule.
+    with pytest.raises(PolicyValidationError):
+        proxy_rules = PolicyProxyRules([
+            {'match': 'MATCHES',
+             'pattern': r'\.onion'},
+            {}
+        ])
+    # Match is required in non-terminal rule.
+    with pytest.raises(PolicyValidationError):
+        proxy_rules = PolicyProxyRules([
+            {'pattern': r'\.onion',
+             'proxy_url': 'socks5://tor:9050'},
+            {}
+        ])
+    # Pattern is required in non-terminal rule.
+    with pytest.raises(PolicyValidationError):
+        proxy_rules = PolicyProxyRules([
+            {'match': 'MATCHES',
+             'proxy_url': 'socks5://tor:9050'},
+            {}
+        ])
+    # Pattern must be a valid regex.
+    with pytest.raises(PolicyValidationError):
+        proxy_rules = PolicyProxyRules([
+            {'match': 'MATCHES',
+             'pattern': r'[',
+             'proxy_url': 'socks5://tor:9050'},
+            {}
+        ])
+
+def test_policy_proxy_invalid_url_scheme():
+    with pytest.raises(PolicyValidationError):
+        proxy_rules = PolicyProxyRules([
+            {'proxy_url': 'ftp://domain.example'},
+        ])
+
+
+def test_policy_robots_invalid_usage():
+    with pytest.raises(PolicyValidationError):
+        robots = PolicyRobotsTxt(doc={}, robots_txt_manager=None,
+            parent_policy=None)
+
+
+async def test_policy_robots_is_allowed():
+    # The first set of tests uses a mock robots that allows all requests.
+    async def allow_all(url, policy):
+        return True
+    permit_robots = Mock()
+    permit_robots.is_allowed.side_effect = allow_all
+
+    robots1 = PolicyRobotsTxt(doc={'usage': 'OBEY'},
+        robots_txt_manager=permit_robots, parent_policy=None)
+    robots2 = PolicyRobotsTxt(doc={'usage': 'IGNORE'},
+        robots_txt_manager=permit_robots, parent_policy=None)
+    robots3 = PolicyRobotsTxt(doc={'usage': 'INVERT'},
+        robots_txt_manager=permit_robots, parent_policy=None)
+    assert     await robots1.is_allowed('http://domain.example/foo')
+    assert     await robots2.is_allowed('http://domain.example/foo')
+    assert not await robots3.is_allowed('http://domain.example/foo')
+
+    # The second set of tests uses a mock robots that doesn't allow any
+    # requests.
+    async def allow_none(url, policy):
+        return False
+    restrict_robots = Mock()
+    restrict_robots.is_allowed.side_effect = allow_none
+    robots4 = PolicyRobotsTxt(doc={'usage': 'OBEY'},
+        robots_txt_manager=restrict_robots, parent_policy=None)
+    robots5 = PolicyRobotsTxt(doc={'usage': 'IGNORE'},
+        robots_txt_manager=restrict_robots, parent_policy=None)
+    robots6 = PolicyRobotsTxt(doc={'usage': 'INVERT'},
+        robots_txt_manager=restrict_robots, parent_policy=None)
+    assert not await robots4.is_allowed('http://domain.example/foo')
+    assert     await robots5.is_allowed('http://domain.example/foo')
+    assert     await robots6.is_allowed('http://domain.example/foo')
+
 
 def test_policy_url_normalization_normalize():
     ''' Normalize a URL. '''
@@ -453,35 +618,69 @@ def test_policy_url_rules_no_rules():
         PolicyUrlRules([], seeds=['https://foo.com'])
 
 
-def test_policy_url_rules_missing_pattern_or_match():
+def test_policy_url_rules_invalid_non_terminal():
+    # Match is required in non-terminal:
     with pytest.raises(PolicyValidationError):
         PolicyUrlRules([
-            {'pattern': '^https:', 'action': 'ADD', 'amount': 1},
+            {'pattern': r'^https:', 'action': 'ADD', 'amount': 1},
             {'action': 'ADD', 'amount': 2},
         ], seeds=['https://foo.com'])
-
+    # Pattern is required in non-terminal:
     with pytest.raises(PolicyValidationError):
         PolicyUrlRules([
             {'match': 'MATCHES', 'action': 'ADD', 'amount': 1},
             {'action': 'ADD', 'amount': 2},
         ], seeds=['https://foo.com'])
-
-
-def test_policy_url_rules_invalid_last_rule():
+    # Action is required in non-terminal:
     with pytest.raises(PolicyValidationError):
         PolicyUrlRules([
-            {
-                'pattern': '^https:',
-                'match': 'MATCHES',
-                'action': 'ADD',
-                'amount': 1
-            },
-            {
-                'pattern': '^http:',
-                'match': 'MATCHES',
-                'action': 'ADD',
-                'amount': 2
-            },
+            {'pattern': r'^https:', 'match': 'MATCHES', 'amount': 1},
+            {'action': 'ADD', 'amount': 2},
+        ], seeds=['https://foo.com'])
+    # Amount is required in non-terminal:
+    with pytest.raises(PolicyValidationError):
+        PolicyUrlRules([
+            {'pattern': r'^https:', 'match': 'MATCHES', 'action': 'ADD'},
+            {'action': 'ADD', 'amount': 2},
+        ], seeds=['https://foo.com'])
+    # Pattern must be valid regex:
+    with pytest.raises(PolicyValidationError):
+        PolicyUrlRules([
+            {'pattern': r'[',
+             'match': 'MATCHES',
+             'action': 'ADD',
+             'amount': 1},
+            {'action': 'ADD', 'amount': 2},
+        ], seeds=['https://foo.com'])
+
+
+def test_policy_url_rules_invalid_terminal():
+    rule1 = {'pattern': r'^h', 'match': 'MATCHES', 'action': 'ADD', 'amount': 1}
+
+    # Action is required in terminal rule:
+    with pytest.raises(PolicyValidationError):
+        PolicyUrlRules([
+            rule1,
+            {'amount': 2},
+        ], seeds=['https://foo.com'])
+    # Action is required in terminal rule:
+    with pytest.raises(PolicyValidationError):
+        PolicyUrlRules([
+            rule1,
+            {'action': 'ADD'},
+        ], seeds=['https://foo.com'])
+
+    # Match is not allowed in terminal rule:
+    with pytest.raises(PolicyValidationError):
+        PolicyUrlRules([
+            rule1,
+            {'action': 'ADD', 'amount': 2, 'match': 'MATCHES'},
+        ], seeds=['https://foo.com'])
+    # Pattern is not allowed in terminal rule:
+    with pytest.raises(PolicyValidationError):
+        PolicyUrlRules([
+            rule1,
+            {'action': 'ADD', 'amount': 2, 'pattern': '^https'},
         ], seeds=['https://foo.com'])
 
 
@@ -498,6 +697,203 @@ def test_policy_user_agent_single_agent():
     assert user_agents.get_user_agent() == 'Starbelly/1.0.0'
 
 
-def test_policy_user_agent_no_user_agents():
+def test_policy_user_agent_invalid():
     with pytest.raises(PolicyValidationError):
         PolicyUserAgents([], version='1.0.0')
+    with pytest.raises(PolicyValidationError):
+        PolicyUserAgents([{'name': ''}], version='1.0.0')
+
+
+def test_policy_constructor():
+    created_at = datetime.now()
+    updated_at = datetime.now() + timedelta(minutes=1)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': created_at,
+        'updated_at': updated_at,
+        'authentication': {'enabled': True},
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'robots_txt': {
+            'usage': 'IGNORE',
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': ['PHPSESSID'],
+        },
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'Test User Agent'}
+        ]
+    }
+    policy = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+    assert isinstance(policy.authentication, PolicyAuthentication)
+    assert policy.captcha_solver is None
+    assert isinstance(policy.limits, PolicyLimits)
+    assert isinstance(policy.mime_type_rules, PolicyMimeTypeRules)
+    assert isinstance(policy.proxy_rules, PolicyProxyRules)
+    assert isinstance(policy.robots_txt, PolicyRobotsTxt)
+    assert isinstance(policy.url_normalization, PolicyUrlNormalization)
+    assert isinstance(policy.url_rules, PolicyUrlRules)
+    assert isinstance(policy.user_agents, PolicyUserAgents)
+
+
+def test_policy_constructor_blank_name():
+    created_at = datetime.now()
+    updated_at = datetime.now() + timedelta(minutes=1)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': '',
+        'created_at': created_at,
+        'updated_at': updated_at,
+        'authentication': {'enabled': True},
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'robots_txt': {
+            'usage': 'IGNORE',
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': ['PHPSESSID'],
+        },
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'Test User Agent'}
+        ]
+    }
+    with pytest.raises(PolicyValidationError):
+        policy = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+
+
+def test_policy_constructor_captcha():
+    created_at = datetime.now()
+    updated_at = datetime.now() + timedelta(minutes=1)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': created_at,
+        'updated_at': updated_at,
+        'authentication': {'enabled': True},
+        'captcha_solver': {
+            'id': b'captcha1',
+            'name': 'CAPTCHA Solver 1',
+            'service_url': 'https://solver.example',
+            'api_key': 'test-key',
+            'require_phrase': False,
+            'case_sensitive': False,
+            'characters': 'abcdefg',
+            'require_math': False,
+            'min_length': 6,
+            'max_length': 6,
+        },
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'robots_txt': {
+            'usage': 'IGNORE',
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': ['PHPSESSID'],
+        },
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'Test User Agent'}
+        ]
+    }
+    policy = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+    assert isinstance(policy.captcha_solver, CaptchaSolver)
+
+
+def test_policy_replace_mime_rules():
+    created_at = datetime.now()
+    updated_at = datetime.now() + timedelta(minutes=1)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': created_at,
+        'updated_at': updated_at,
+        'authentication': {'enabled': True},
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'robots_txt': {
+            'usage': 'IGNORE',
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': ['PHPSESSID'],
+        },
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'Test User Agent'}
+        ]
+    }
+    policy1 = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+    policy2 = policy1.replace_mime_type_rules([
+            {'match': 'MATCHES', 'pattern': '^application/', 'save': True},
+            {'save': False},
+    ])
+    # These properties are all the same:
+    assert policy1.authentication is policy2.authentication
+    assert policy1.captcha_solver is policy2.captcha_solver
+    assert policy1.limits is policy2.limits
+    assert policy1.proxy_rules is policy2.proxy_rules
+    assert policy1.robots_txt is policy2.robots_txt
+    assert policy1.url_normalization is policy2.url_normalization
+    assert policy1.url_rules is policy2.url_rules
+    assert policy1.user_agents is policy2.user_agents
+    # The MIME type rules are different:
+    assert policy1.mime_type_rules is not policy2.mime_type_rules
+    assert     policy1.mime_type_rules.should_save('text/plain')
+    assert not policy1.mime_type_rules.should_save('application/json')
+    assert not policy2.mime_type_rules.should_save('text/plain')
+    assert     policy2.mime_type_rules.should_save('application/json')
+
