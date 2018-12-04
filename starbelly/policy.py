@@ -8,7 +8,6 @@ from uuid import UUID
 import dateutil.parser
 import w3lib.url
 
-from . import VERSION
 from .captcha import CaptchaSolver
 import protobuf.shared_pb2
 

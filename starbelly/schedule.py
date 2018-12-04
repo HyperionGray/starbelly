@@ -1,16 +1,19 @@
-import asyncio
 import calendar
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 import functools
 import heapq
 import logging
 from uuid import UUID
 
-from dateutil.tz import tzlocal
-import protobuf.shared_pb2
-import rethinkdb as r
+from protobuf import pb_date
+from protobuf.shared_pb2 import (
+    JobScheduleTiming as PbJobScheduleTiming,
+    JobScheduleTimeUnit as PbJobScheduleTimeUnit,
+)
+import trio
 
-from . import cancel_futures, daemon_task, wait_first
+from .crawl import JobStatusNotification
 
 
 logger = logging.getLogger(__name__)
@@ -20,20 +23,180 @@ class ScheduleValidationError(Exception):
     ''' Custom error for job schedule validation. '''
 
 
+@dataclass
+class ScheduleNotification:
+    ''' Indicates that a scheduled job is ready start. '''
+    schedule_id: bytes
+    job_name: str
+    seeds: list
+    tags: list
+
+
+@dataclass
+class Schedule:
+    ''' A schedule for running a job periodically. '''
+    id_: bytes
+    name: str
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    time_unit: str
+    num_units: int
+    timing: str
+    job_name: str
+    job_count: int
+    seeds: list
+    tags: list
+    policy_id: bytes
+    latest_job_id: bytes
+
+    def __post_init__(self):
+        ''' Validate schedule attributes. '''
+        if not self.seeds:
+            raise ScheduleValidationError(
+                'Crawl schedule must have at least one seed URL.')
+        if self.num_units <= 0:
+            raise ScheduleValidationError('Time units must be positive')
+        try:
+            self.format_job_name(datetime(1982, 11, 21, 3, 14, 0).timestamp())
+        except KeyError:
+            raise ScheduleValidationError('Invalid variable in job name:'
+                ' COUNT, DATE, & TIME are allowed.')
+        except:
+            raise ScheduleValidationError('Invalid job name')
+
+    @classmethod
+    def from_doc(cls, doc):
+        '''
+        Create a schedule from a database document.
+
+        :param dict doc:
+        '''
+        return cls(
+            doc['id'],
+            doc['schedule_name'],
+            doc['enabled'],
+            doc['created_at'],
+            doc['updated_at'],
+            doc['time_unit'],
+            doc['num_units'],
+            doc['timing'],
+            doc['job_name'],
+            doc['job_count'],
+            doc['seeds'],
+            doc['tags'],
+            doc['policy_id'],
+            doc['latest_job_id']
+        )
+
+    @classmethod
+    def from_pb(cls, pb):
+        '''
+        Create a schedule from a protobuf object.
+
+        :param pb:
+        '''
+        return cls(
+            pb.schedule_id,
+            pb.schedule_name,
+            pb.enabled,
+            pb_date(pb, 'created_at'),
+            pb_date(pb, 'updated_at'),
+            PbJobScheduleTimeUnit.Name(pb.time_unit),
+            pb.num_units,
+            PbJobScheduleTiming.Name(pb.timing),
+            pb.job_name,
+            pb.job_count,
+            [seed for seed in pb.seeds],
+            [tag for tag in pb.tag_list.tags],
+            pb.policy_id,
+            pb.latest_job_id
+        )
+
+    def to_doc(self):
+        '''
+        Convert schedule to database document.
+
+        :returns: A database document.
+        :rtype: dict
+        '''
+        return {
+            'id': self.id_,
+            'schedule_name': self.name,
+            'enabled': self.enabled,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+            'time_unit': self.time_unit,
+            'num_units': self.num_units,
+            'timing': self.timing,
+            'job_name': self.job_name,
+            'job_count': self.job_count,
+            'seeds': self.seeds,
+            'tags': self.tags,
+            'policy_id': self.policy_id,
+            'latest_job_id': self.latest_job_id,
+        }
+
+    def to_pb(self, pb):
+        '''
+        Convert schedule to a protobuf object.
+
+        :param pb: A schedule protobuf.
+        '''
+        pb.schedule_id = self.id_
+        pb.schedule_name = self.name
+        pb.enabled = self.enabled
+        pb.created_at = self.created_at.isoformat()
+        pb.updated_at = self.updated_at.isoformat()
+        pb.time_unit = PbJobScheduleTimeUnit.Value(self.time_unit)
+        pb.num_units = self.num_units
+        pb.timing = PbJobScheduleTiming.Value(self.timing)
+        pb.job_name = self.job_name
+        pb.job_count = self.job_count
+        for seed in self.seeds:
+            pb.seeds.append(seed)
+        for tag in self.tags:
+            pb.tag_list.tags.append(tag)
+        pb.policy_id = self.policy_id
+        pb.latest_job_id = self.latest_job_id
+
+    def format_job_name(self, when):
+        '''
+        Format a name for a new job.
+
+        :param float when: The timestamp when the job is starting.
+        :returns: A formatted job name.
+        :rtype: str
+        '''
+        return self.job_name.format(
+            COUNT=self.job_count,
+            TIME=int(when),
+            DATE=datetime.fromtimestamp(when)
+        )
+
+
 @functools.total_ordering
 class ScheduleEvent:
     '''
     An instance of one event in a schedule.
 
-    This class implements rich comparison based on when the event is due.
-    '''
+    The scheduler will instantiate one event for each schedule. That event
+    corresponds to the next time that scheduled job needs to run. When a job
+    starts and finishes, the scheduler will check if it needs to instantiate a
+    new event and add it to the schedule.
 
+    This class implements comparison operators to make it easy to sort events
+    into chronological order.
+    '''
     def __init__(self, schedule, due):
-        ''' Constructor. '''
-        self.schedule_id = schedule['id']
-        self.schedule_name = schedule['schedule_name']
+        '''
+        Construct a schedule event from a database document..
+
+        :param dict schedule: A database document.
+        :param float due: The timestamp when this event is due.
+        '''
+        self._schedule = schedule
         self._due = due
-        self._enabled = True
 
     def __eq__(self, other):
         ''' Implement == '''
@@ -45,242 +208,112 @@ class ScheduleEvent:
 
     def __repr__(self):
         ''' Make string representation. '''
-        return 'ScheduleEvent<id={} name={} due={} enabled={}>'.format(
-            self.schedule_id[:8], self.schedule_name, self._due.isoformat(),
-            self._enabled
+        return 'ScheduleEvent<id={} name={} due={}>'.format(
+            UUID(bytes=self.schedule.id_), self._schedule.name, self._due
         )
 
-    def disable(self):
+    @property
+    def due(self):
         '''
-        Disable this event.
-
-        This means that the event will be ignored when it becomes due, which is
-        easier than trying to remove an arbitrary event from the heap.
+        :returns: The timestamp when this event is due.
+        :rtype float:
         '''
-        self._enabled = False
+        return self._due
 
-    def is_enabled(self):
-        ''' Return true if this event is enabled. '''
-        return self._enabled
+    @property
+    def is_due(self):
+        '''
+        :returns: Indicates if this event is due.
+        :rtype: bool
+        '''
+        return self.seconds_until_due <= 0
 
-    def seconds_due(self):
-        ''' Return the number of seconds until this event is due. '''
-        return (self._due - datetime.now(tzlocal())).total_seconds()
+    @property
+    def schedule(self):
+        '''
+        :returns: The schedule object.
+        :rtype: Schedule
+        '''
+        return self._schedule
+
+    @property
+    def seconds_until_due(self):
+        '''
+        :returns: The number of seconds until this event is due.
+        :rtype: float
+        '''
+        return self._due - trio.current_time()
 
 
 class Scheduler:
-    ''' Implements job scheduling. '''
-    def __init__(self, crawl_manager, db_pool):
-        ''' Constructor. '''
-        self._crawl_manager = crawl_manager
-        self._db_pool = db_pool
+    '''
+    Starts jobs according to a schedule.
+
+
+    '''
+    def __init__(self, recv_channel, send_channel):
+        '''
+        Constructor.
+
+        :param trio.abc.ReceiveChannel recv_channel: A channel for receiving
+            updates on job status, i.e. when jobs start and complete.
+        :parm trio.abc.SendChannel send_channel: A channel for sending schedule
+            status, i.e. when a job needs to start.
+        '''
         self._events = list()
-        self._schedule_changed = asyncio.Event()
-
-    async def delete_job_schedule(self, schedule_id):
-        ''' Delete a job schedule from the database. '''
-        async with self._db_pool.connection() as conn:
-            await r.table('job_schedule').get(schedule_id).delete().run(conn)
-        self._disable_schedule(schedule_id)
-
-    @staticmethod
-    def doc_to_pb(doc, pb):
-        ''' Convert database document schedule to protobuf. '''
-        pb.schedule_id = UUID(doc['id']).bytes
-        pb.created_at = doc['created_at'].isoformat()
-        pb.updated_at = doc['updated_at'].isoformat()
-        pb.enabled = doc['enabled']
-        pb.time_unit = protobuf.shared_pb2.JobScheduleTimeUnit.Value(
-            doc['time_unit'])
-        pb.num_units = doc['num_units']
-        pb.timing = protobuf.shared_pb2.JobScheduleTiming.Value(
-            doc['timing'])
-        pb.schedule_name = doc['schedule_name']
-        pb.job_name = doc['job_name']
-        pb.job_count = doc['job_count']
-        for seed in doc['seeds']:
-            pb.seeds.append(seed)
-        pb.policy_id = UUID(doc['policy_id']).bytes
-        for tag in doc['tags']:
-            pb.tag_list.tags.append(tag)
-        if 'latest_job_id' in doc:
-            pb.latest_job_id = UUID(doc['latest_job_id']).bytes
-
-    @staticmethod
-    def format_job_name(name, now, job_count):
-        ''' Format a name for a new job. '''
-        return name.format(
-            COUNT=job_count,
-            TIME=int(now.timestamp()),
-            DATE=now.strftime('%Y-%m-%d %H:%M:%S')
-        )
-
-    async def get_job_schedule(self, schedule_id):
-        ''' Get a job schedule from the database. '''
-        async with self._db_pool.connection() as conn:
-            return await r.table('job_schedule').get(schedule_id).run(conn)
-
-    async def list_job_schedules(self, limit, offset):
-        ''' List job schedules in the database. '''
-        schedules = list()
-        query = (
-            r.table('job_schedule')
-             .order_by(index='schedule_name')
-             .skip(offset)
-             .limit(limit)
-        )
-        async with self._db_pool.connection() as conn:
-            count = await r.table('job_schedule').count().run(conn)
-            cursor = await query.run(conn)
-            async for schedule in cursor:
-                schedules.append(schedule)
-            await cursor.close()
-        return count, schedules
-
-    @staticmethod
-    def pb_to_doc(pb):
-        ''' Convert a protobuf schedule to a database document. '''
-        if pb.num_units <= 0:
-            raise ScheduleValidationError('Time units must be positive')
-
-        try:
-            Scheduler.format_job_name(pb.job_name, datetime.now(tzlocal()),
-                job_count=0)
-        except KeyError:
-            raise ScheduleValidationError('Invalid variable in job name:'
-                ' COUNT, DATE, & TIME are allowed.')
-        except:
-            raise ScheduleValidationError('Invalid job name')
-
-        if len(pb.seeds) == 0:
-            raise Exception('Crawl schedule must have at least one seed URL.')
-
-        doc = {
-            'enabled': pb.enabled,
-            'time_unit': protobuf.shared_pb2.JobScheduleTimeUnit.Name(
-                pb.time_unit),
-            'num_units': pb.num_units,
-            'timing': protobuf.shared_pb2.JobScheduleTiming.Name(pb.timing),
-            'schedule_name': pb.schedule_name,
-            'job_name': pb.job_name,
-            'seeds': [seed for seed in pb.seeds],
-            'policy_id': str(UUID(bytes=pb.policy_id)),
-            'tags': [tag for tag in pb.tag_list.tags],
-        }
-
-        if pb.HasField('schedule_id'):
-            doc['id'] = str(UUID(bytes=pb.schedule_id))
-        if pb.HasField('latest_job_id'):
-            doc['latest_job_id'] = str(UUID(bytes=pb.latest_job_id))
-
-        return doc
+        self._schedules = dict()
+        self._recv_channel = recv_channel
+        self._send_channel = send_channel
+        self._event_added = trio.Event()
 
     async def run(self):
-        ''' Run the schedule. '''
-        # Determine when the next job should start for each schedule.
-        schedule_query = self._get_schedule_query()
-        async with self._db_pool.connection() as conn:
-            cursor = await schedule_query.run(conn)
-            async for schedule in cursor:
-                self._add_next_event(schedule)
+        '''
+        Listen for changes in job status and check if a job needs to be
+        rescheduled.
 
-        # Dispatch schedule events.
-        job_complete_task = daemon_task(self._job_complete_task())
-        while True:
-            try:
-                if len(self._events) == 0:
-                    await self._schedule_changed.wait()
-                    self._schedule_changed.clear()
-                else:
-                    next_event = self._get_next_event()
-                    if next_event is None:
-                        if len(self._events) == 0:
-                            continue
-                        next_due = self._events[0].seconds_due()
-                        sleeper = asyncio.sleep(next_due)
-                        waiter = self._schedule_changed.wait()
-                        await wait_first(sleeper, waiter)
-                        self._schedule_changed.clear()
-                    else:
-                        logger.info('Start scheduled job: name=%r id=%r',
-                            next_event.schedule_name, next_event.schedule_id)
-                        await self._start_scheduled_job(next_event.schedule_id)
-            except asyncio.CancelledError:
-                await cancel_futures(job_complete_task)
-                break
+        :returns: This method runs until cancelled.
+        '''
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(self._listen_task,
+                name='Scheduler Listen Task')
+            nursery.start_soon(self._schedule_task,
+                name='Scheduler Task')
 
-    async def set_job_schedule(self, doc):
-        ''' Create or update a job schedule from a database document. '''
-        # Update database.
-        async with self._db_pool.connection() as conn:
-            if 'id' not in doc:
-                # Create policy
-                doc['created_at'] = r.now()
-                doc['updated_at'] = r.now()
-                doc['job_count'] = 0
-                result = await r.table('job_schedule').insert(doc).run(conn)
-                schedule_id = result['generated_keys'][0]
-            else:
-                doc['updated_at'] = r.now()
-                await (
-                    r.table('job_schedule')
-                     .get(doc['id'])
-                     .update(doc)
-                     .run(conn)
-                )
-                schedule_id = None
+    def add_schedule(self, schedule):
+        '''
+        Add a schedule.
 
-        # Reschedule.
-        async with self._db_pool.connection() as conn:
-            query = self._get_schedule_query(schedule_id or doc['id'])
-            schedule = await query.run(conn)
-            self._disable_schedule(schedule['id'])
-            self._add_next_event(schedule)
-            self._schedule_changed.set()
+        :param Schedule schedule:
+        '''
+        if schedule.id_ in self._schedules:
+            raise Exception('Schedule ID {:x} has already been added.'.format(
+                schedule.id_))
+        self._schedules[schedule.id_] = schedule
 
-        return schedule_id
+    def remove_schedule(self, schedule_id):
+        '''
+        Remove pending events for the specified schedule and do not schedule
+        additional events.
 
-    def _add_next_event(self, schedule):
-        ''' Add the next event for the given schedule. '''
-        if not schedule['enabled']:
-            return
+        It is easier to copy all non-cancelled events into a new list than to
+        remove an element from the middle of the list.
 
-        latest_job = schedule['latest_job']
-        num_units = schedule['num_units']
-        time_unit = schedule['time_unit']
-
-        if latest_job is None:
-            # The first job should start 1 minute after the schedule is saved.
-            due = datetime.now(tzlocal()) + timedelta(minutes=1)
-        elif schedule['timing'] == 'REGULAR_INTERVAL':
-            # The next job should be scheduled relative to the start time of
-            # the latest job.
-            due = self._compute_next_event(
-                latest_job['started_at'],
-                num_units,
-                time_unit
-            )
-        else:
-            # The next job should be scheduled relative to the completion time
-            # of the latest job.
-            if schedule['latest_job']['completed_at'] is None:
-                # Cannot schedule until the latest job is complete.
-                return
-            else:
-                due = self._compute_next_event(
-                    latest_job['completed_at'],
-                    num_units,
-                    time_unit
-                )
-
-        logger.info('Scheduling crawl for "{}" at {}'.format(
-            schedule['schedule_name'], due.isoformat()
-        ))
-        event = ScheduleEvent(schedule, due)
-        heapq.heappush(self._events, event)
+        :param bytes schedule_id: The ID of the schedule to disable.
+        '''
+        self._events = [e for e in self._events if e.schedule.id_ !=
+            schedule_id]
+        self._schedules.pop(schedule_id)
 
     def _compute_next_event(self, base, num_units, time_unit):
-        ''' Add an offset to a base time. '''
+        '''
+        Add an offset to a base time.
+
+        :param float base: The base timestamp.
+        :param int num_units: The number of units to add to the base timestamp.
+        :param str time_unit: The type of units to add to the base timestamp.
+        :returns: The future timestamp.
+        :rtype: float
+        '''
         if time_unit == 'MINUTES':
             next_ = base + timedelta(minutes=num_units)
         elif time_unit == 'HOURS':
@@ -297,118 +330,75 @@ class Scheduler:
             next_ = base.replace(year=year, month=month, day=day)
         elif time_unit == 'YEARS':
             next_ = base.replace(base.year + num_units)
-        else:
-            raise Exception('Invalid time unit: {}'.format(time_unit))
         return next_
 
-    def _disable_schedule(self, schedule_id):
-        ''' Disable events for a schedule. '''
-        for event in self._events:
-            if event.schedule_id == schedule_id:
-                event.disable()
-
-    def _get_next_event(self):
+    async def _listen_task(self):
         '''
-        Get the next event that is due.
+        Listen for JobStatusNotification and check if a job needs to be
+        rescheduled.
 
-        Returns None if nothing is due.
+        :returns: This method runs until cancelled.
         '''
-        # Pop off any disabled events.
-        while len(self._events) > 0 and not self._events[0].is_enabled():
-            heapq.heappop(self._events)
+        async for job_notification in self._recv_channel:
+            try:
+                schedule = self._schedules[job_notification.schedule_id]
+            except KeyError:
+                # This job is not associated with a schedule.
+                continue
 
-        # Return next event, if there is one.
-        if len(self._events) > 0 and self._events[0].seconds_due() <= 0:
-            return heapq.heappop(self._events)
-        else:
-            return None
+            # Keep track of job counts.
+            if job_notification.status == 'STARTED':
+                schedule.job_count += 1
 
-    def _get_schedule_query(self, schedule_id=None):
+            # Compute the due date for the next event.
+            due = None
+            if job_notification.status is None:
+                # This schedule has not run before, so it should start soon.
+                due = datetime.fromtimestamp(trio.current_time()) \
+                    + timedelta(minutes=1)
+            elif ((job_notification.status == 'STARTED' and
+                      schedule.timing == 'REGULAR_INTERVAL') or
+                  (job_notification.status == 'COMPLETED' and
+                      schedule.timing == 'AFTER_PREVIOUS_JOB_FINISHED')):
+                due = self._compute_next_event(
+                    job_notification.datetime,
+                    schedule.num_units,
+                    schedule.time_unit
+                )
+
+            if due:
+                # Add job to schedule.
+                logger.info('Scheduling crawl for "{}" at {}'.format(
+                    schedule.name, due.isoformat()
+                ))
+                event = ScheduleEvent(schedule, due.timestamp())
+                heapq.heappush(self._events, event)
+                self._event_added.set()
+                self._event_added = trio.Event()
+
+    async def _schedule_task(self):
         '''
-        Construct a query for getting active schedules.
+        Send notifications when scheduled events are ready to run.
 
-        If schedule_id is provided, then the query returns a single schedule.
-        Otherwise, running this query returns a cursor.
+        :returns: This method runs until cancelled.
         '''
-        def get_job(schedule):
-            return {
-                'latest_job': r.branch(
-                    schedule.has_fields('latest_job_id'),
-                    r.table('job')
-                     .get(schedule['latest_job_id'])
-                     .pluck('run_state', 'started_at', 'completed_at'),
-                    None
-                ),
-            }
+        while True:
+            if len(self._events) == 0:
+                await self._event_added.wait()
+                continue
 
-        query = r.table('job_schedule')
+            next_event = self._events[0]
 
-        if schedule_id is None:
-            query = query.filter({'enabled': True})
-        else:
-            query = query.get(schedule_id)
+            if not next_event.is_due:
+                with trio.move_on_after(next_event.seconds_until_due):
+                    await self._event_added.wait()
+                continue
 
-        return query.merge(get_job)
-
-    async def _job_complete_task(self):
-        '''
-        Listen for jobs that finish, and then check if they should be
-        re-scheduled.
-        '''
-        job_query = (
-            r.table('job')
-             .pluck('run_state', 'schedule_id')
-             .changes()
-             .pluck('new_val')
-        )
-        async with self._db_pool.connection() as conn:
-            feed = await job_query.run(conn)
-            async for change in feed:
-                job = change['new_val']
-                if job is None:
-                    continue
-                if job['run_state'] in ('cancelled', 'completed') and \
-                    'schedule_id' in job:
-                    schedule_query = self._get_schedule_query(
-                        job['schedule_id'])
-                    schedule = await schedule_query.run(conn)
-                    if schedule['timing'] == 'AFTER_PREVIOUS_JOB_FINISHED':
-                        self._add_next_event(schedule)
-                        self._schedule_changed.set()
-
-    async def _start_scheduled_job(self, schedule_id):
-        ''' Start a job that is ready to run. '''
-        async with self._db_pool.connection() as conn:
-            query = self._get_schedule_query(schedule_id)
-            schedule = await query.run(conn)
-
-        # If a job is already running, cancel it.
-        latest_job = schedule['latest_job']
-        if latest_job is not None and \
-            latest_job['run_state'] not in ('cancelled', 'completed'):
-            await self._crawl_manager.cancel_job(schedule['latest_job_id'])
-
-        # Start a new job for this schedule.
-        name = Scheduler.format_job_name(schedule['job_name'],
-            datetime.now(tzlocal()), schedule['job_count'])
-
-        job_id = await self._crawl_manager.start_job(
-            schedule['seeds'],
-            schedule['policy_id'],
-            name,
-            schedule['tags'],
-            schedule['id']
-        )
-
-        async with self._db_pool.connection() as conn:
-            await r.table('job_schedule').get(schedule_id).update({
-                'latest_job_id': job_id,
-                'job_count': schedule['job_count'] + 1,
-            }).run(conn)
-
-        # If the schedule runs at regular intervals, then reschedule it now.
-        if schedule['timing'] == 'REGULAR_INTERVAL':
-            async with self._db_pool.connection() as conn:
-                query = self._get_schedule_query(schedule_id)
-                schedule = await query.run(conn)
-                self._add_next_event(schedule)
+            self._events.pop(0)
+            schedule = next_event.schedule
+            job_count = schedule.job_count + 1
+            job_name = schedule.format_job_name(next_event.due)
+            notification = ScheduleNotification(schedule.id_, job_name,
+                list(schedule.seeds), list(schedule.tags))
+            logger.info('Scheduled job "%s" is ready to start.', job_name)
+            await self._send_channel.send(notification)

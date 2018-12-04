@@ -4,8 +4,9 @@
 # import asyncio
 # import base64
 from collections import defaultdict
-# from datetime import datetime
+from datetime import datetime
 from dataclasses import dataclass
+from enum import Enum
 # import functools
 # import gzip
 # import hashlib
@@ -32,7 +33,114 @@ from yarl import URL
 # from .url_extractor import extract_urls
 
 
+# TODO
+#
+# Taken out of schedule.py. Needs to be moved into crawl manager. Connect to
+# the schedule with a send channel and receive channel. When job status changes,
+# send events to the channel. Start a task to listen for events on the receive
+# channel: these tell us when to start new jobs.
+#
+# async def listen_finished(self):
+#     '''
+#     Listen for jobs that finish, and then check if they should be
+#     re-scheduled.
+
+#     :returns: This method runs until cancelled.
+#     '''
+#     job_query = (
+#         r.table('job')
+#          .pluck('run_state', 'schedule_id')
+#          .changes()
+#          .pluck('new_val')
+#     )
+#     async with self._db_pool.connection() as conn:
+#         feed = await job_query.run(conn)
+#         async for change in feed:
+#             job = change['new_val']
+#             if job is None:
+#                 continue
+#             if job['run_state'] in ('cancelled', 'completed') and \
+#                 'schedule_id' in job:
+#                 schedule_query = self._get_schedule_query(
+#                     job['schedule_id'])
+#                 schedule = await schedule_query.run(conn)
+#                 if schedule['timing'] == 'AFTER_PREVIOUS_JOB_FINISHED':
+#                     self.schedule_next_event(schedule)
+#                     self._schedule_changed.set()
+
+
+# def _get_schedule_query(self, schedule_id=None):
+#     '''
+#     Construct a query for getting active schedules.
+
+#     If schedule_id is provided, then the query returns a single schedule.
+#     Otherwise, running this query returns a cursor.
+#     '''
+#     def get_job(schedule):
+#         return {
+#             'latest_job': r.branch(
+#                 schedule.has_fields('latest_job_id'),
+#                 r.table('job')
+#                  .get(schedule['latest_job_id'])
+#                  .pluck('run_state', 'started_at', 'completed_at'),
+#                 None
+#             ),
+#         }
+
+#     query = r.table('job_schedule')
+
+#     if schedule_id is None:
+#         query = query.filter({'enabled': True})
+#     else:
+#         query = query.get(schedule_id)
+
+#     return query.merge(get_job)
+
+
+    # async def _start_scheduled_job(self, schedule_id):
+    #     '''
+    #     Start a job that is ready to run.
+
+    #     :param bytes schedule_id:
+    #     '''
+    #     async with self._db_pool.connection() as conn:
+    #         query = self._get_schedule_query(schedule_id)
+    #         schedule = await query.run(conn)
+
+    #     # If a job is already running, cancel it.
+    #     latest_job = schedule['latest_job']
+    #     if latest_job is not None and \
+    #         latest_job['run_state'] not in ('cancelled', 'completed'):
+    #         await self._crawl_manager.cancel_job(schedule['latest_job_id'])
+
+    #     # Start a new job for this schedule.
+    #     name = _format_job_name(schedule['job_name'],
+    #         datetime.now(timezone.utc), schedule['job_count'])
+
+    #     job_id = await self._crawl_manager.start_job(
+    #         schedule['seeds'],
+    #         schedule['policy_id'],
+    #         name,
+    #         schedule['tags'],
+    #         schedule['id']
+    #     )
+
+    #     async with self._db_pool.connection() as conn:
+    #         await r.table('job_schedule').get(schedule_id).update({
+    #             'latest_job_id': job_id,
+    #             'job_count': schedule['job_count'] + 1,
+    #         }).run(conn)
+
+    #     # If the schedule runs at regular intervals, then reschedule it now.
+    #     if schedule['timing'] == 'REGULAR_INTERVAL':
+    #         async with self._db_pool.connection() as conn:
+    #             query = self._get_schedule_query(schedule_id)
+    #             schedule = await query.run(conn)
+    #             self.schedule_next_event(schedule)
+
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class FrontierItem:
@@ -52,6 +160,15 @@ class ExtractItem:
     cost: float
     content_type: str
     body: bytes
+
+
+@dataclass
+class JobStatusNotification:
+    '''  Contains status for a job. '''
+    job_id: bytes
+    schedule_id: bytes
+    status: str
+    datetime: datetime
 
 
 @dataclass

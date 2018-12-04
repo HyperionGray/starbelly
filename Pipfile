@@ -27,6 +27,7 @@ yarl = "*"
 sphinxcontrib-trio = "*"
 coverage = "*"
 pytest-cov = "*"
+pytz = "*"
 
 [dev-packages]
 nose = "*"

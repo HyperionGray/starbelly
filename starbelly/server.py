@@ -20,14 +20,23 @@ from rethinkdb.errors import ReqlNonExistenceError
 import websockets
 import websockets.exceptions
 
-from . import cancel_futures, daemon_task, raise_future_exception
+from . import (
+    __version__ as VERSION,
+    cancel_futures,
+    daemon_task,
+    raise_future_exception
+)
 from .captcha import captcha_doc_to_pb, captcha_pb_to_doc
 from .policy import Policy
 from .pubsub import PubSub
 from .rate_limiter import GLOBAL_RATE_LIMIT_TOKEN
 from .schedule import Scheduler
-from .subscription import CrawlSyncSubscription, JobStatusSubscription, \
-    ResourceMonitorSubscription, TaskMonitorSubscription
+from .subscription import (
+    CrawlSyncSubscription,
+    JobStatusSubscription,
+    ResourceMonitorSubscription,
+    TaskMonitorSubscription
+)
 
 
 logger = logging.getLogger(__name__)
@@ -191,13 +200,16 @@ class Server:
     async def _delete_job_schedule(self, command, socket):
         ''' Delete a job schedule. '''
         schedule_id = str(UUID(bytes=command.schedule_id))
-        await self._scheduler.delete_job_schedule(schedule_id)
+        async with db_pool.connection() as conn:
+            await r.table('job_schedule').get(schedule_id).delete().run(conn)
+        self._scheduler.cancel_schedule(schedule_id)
         return Response()
 
     async def _delete_policy(self, command, socket):
         ''' Delete a policy. '''
         policy_id = str(UUID(bytes=command.policy_id))
-        await self._policy_manager.delete_policy(policy_id)
+        async with db_pool.connection() as conn:
+            await r.table('policy').get(policy_id).delete().run(conn)
         return Response()
 
     async def _handle_request(self, client_ip, websocket, request_data):
@@ -382,7 +394,8 @@ class Server:
     async def _get_job_schedule(self, command, socket):
         ''' Get metadata for a job schedule. '''
         schedule_id = str(UUID(bytes=command.schedule_id))
-        doc = await self._scheduler.get_job_schedule(schedule_id)
+        async with db_pool.connection() as conn:
+            doc = await r.table('job_schedule').get(schedule_id).run(conn)
         response = Response()
         if doc is None:
             response.is_success = False
@@ -395,7 +408,8 @@ class Server:
     async def _get_policy(self, command, socket):
         ''' Get a single policy. '''
         policy_id = str(UUID(bytes=command.policy_id))
-        policy_doc = await self._policy_manager.get_policy(policy_id)
+        async with db_pool.connection() as conn:
+            policy_doc = await r.table('policy').get(policy_id).run(conn)
         response = Response()
         Policy.convert_doc_to_pb(policy_doc, response.policy)
         return response
@@ -532,8 +546,19 @@ class Server:
         ''' Return a list of job schedules. '''
         limit = command.page.limit
         offset = command.page.offset
-        count, schedules = await self._scheduler.list_job_schedules(limit,
-            offset)
+        schedules = list()
+        query = (
+            r.table('job_schedule')
+             .order_by(index='schedule_name')
+             .skip(offset)
+             .limit(limit)
+        )
+        async with db_pool.connection() as conn:
+            count = await r.table('job_schedule').count().run(conn)
+            cursor = await query.run(conn)
+            async for schedule in cursor:
+                schedules.append(schedule)
+            await cursor.close()
         response = Response()
         response.list_jobs.total = count
         for doc in schedules:
@@ -545,8 +570,20 @@ class Server:
         ''' Get a list of policies. '''
         limit = command.page.limit
         offset = command.page.offset
-        count, policies = await self._policy_manager.list_policies(
-            limit, offset)
+        policies = list()
+        query = (
+            r.table('policy')
+             .order_by(index='name')
+             .skip(offset)
+             .limit(limit)
+        )
+
+        async with db_pool.connection() as conn:
+            count = await r.table('policy').count().run(conn)
+            cursor = await query.run(conn)
+            async for policy in cursor:
+                policies.append(policy)
+            await cursor.close()
 
         response = Response()
         response.list_policies.total = count
@@ -741,7 +778,7 @@ class Server:
     async def _set_job_schedule(self, command, socket):
         ''' Create or update job schedule metadata. '''
         doc = Scheduler.pb_to_doc(command.job_schedule)
-        schedule_id = await self._scheduler.set_job_schedule(doc)
+        schedule_id = await set_job_schedule(self._db_pool, doc)
         response = Response()
         if schedule_id is not None:
             response.new_job_schedule.schedule_id = UUID(schedule_id).bytes
@@ -755,7 +792,29 @@ class Server:
         Otherwise, create a new policy.
         '''
         policy_doc = Policy.convert_pb_to_doc(command.policy)
-        policy_id = await self._policy_manager.set_policy(policy_doc)
+        # Validate policy by trying to instantiate a Policy object, which will
+        # raise an exception if the policy is invalid.
+        Policy(
+            policy_doc,
+            version=VERSION,
+            seeds=['http://test1.com', 'http://test2.org'],
+            robots_txt_manager=None
+        )
+        async with db_pool.connection() as conn:
+            if 'id' in policy:
+                policy['updated_at'] = r.now()
+                await (
+                    r.table('policy')
+                     .get(policy['id'])
+                     .update(policy)
+                     .run(conn)
+                )
+                policy_id = None
+            else:
+                policy['created_at'] = r.now()
+                policy['updated_at'] = r.now()
+                result = await r.table('policy').insert(policy).run(conn)
+                policy_id = result['generated_keys'][0]
         response = Response()
         if policy_id is not None:
             response.new_policy.policy_id = UUID(policy_id).bytes
