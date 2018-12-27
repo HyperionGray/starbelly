@@ -1,6 +1,6 @@
 import calendar
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import functools
 import heapq
 import logging

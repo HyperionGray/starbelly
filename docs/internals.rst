@@ -16,7 +16,7 @@ This diagram shows the components used to deploy Starbelly.
         edge [fontsize=10];
 
         // Nodes
-        app            [label="Crawler"];
+        app            [label="Starbelly"];
         web            [label="Web server"];
         database       [label="RethinkDB"];
         webclient      [label="Web client"];
@@ -68,7 +68,7 @@ these classes.
         crawl_manager [label="CrawlManager"];
         policy_manager [label="PolicyManager",href="#policy"];
         rate_limiter [label="RateLimiter",href="#rate-limiter"];
-        downloader;
+        downloader [label="Downloader",href="#downloader"];
         extractor [label="Extractor",href="#extractor"];
         resource_monitor;
         scheduler [label="Scheduler",href="#scheduler"];
@@ -88,22 +88,15 @@ these classes.
 
 Each of these classes is documented below.
 
-.. _rate-limiter:
+.. _downloader:
 
-Rate Limiter
-------------
+Downloader
+----------
 
-.. currentmodule:: starbelly.rate_limiter
+The downloader is responsible for fetching resources over the network and
+sending them back to the crawl manager.
 
-The rate limiting logic is implemented in the following class.
-
-.. autoclass:: RateLimiter
-    :members:
-
-The rate limiter uses the following class to store expiry information.
-
-.. autoclass:: Expiry
-    :members:
+.. currentmodule:: starbelly.downloader
 
 .. _extractor:
 
@@ -116,6 +109,7 @@ After a resource is downloaded, the following function is called to extract
 URLs from the resource that the crawler can follow.
 
 .. autofunction:: extract_urls
+
 
 .. _policy:
 
@@ -159,14 +153,35 @@ A policy object is a container that includes many various subpolicies.
 .. autoclass:: PolicyUserAgents
     :members:
 
+.. _rate-limiter:
+
+Rate Limiter
+------------
+
+The rate limiter ensures that multiple requests to the same domain are not sent
+too quickly. The rate limiter acts a bottle neck between the crawl manager and
+the downloader. The crawl manager sends items to the rate limiter, and the
+rate limiter forwards those items to the downloader when the appropriate amount
+of time has passed.
+
+.. currentmodule:: starbelly.rate_limiter
+
+
+.. autoclass:: RateLimiter
+    :members:
+
+The rate limiter uses the following class to store expiry information.
+
+.. autoclass:: Expiry
+    :members:
+
 .. _scheduler:
 
 Scheduler
 ---------
 
-
-Crawls may be scheduled to run automatically at specified periods. The Scheduler
-is the main class for implementing this logic.
+The scheduler is responsible for ensuring that scheduled jobs run at appropriate
+times.
 
 .. currentmodule:: starbelly.schedule
 
