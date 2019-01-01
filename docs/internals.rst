@@ -45,6 +45,18 @@ WebSocket API requests.
 All configuration, metadata, and crawl data `are stored in RethinkDB.
 <https://www.rethinkdb.com/>`__.
 
+Asynchronous Framework
+----------------------
+
+Starbelly is written in `Python 3 <https://www.python.org/>`__ using the `Trio
+framework <https://trio.readthedocs.io/>`__ for most of the asynchronous I/O.
+Some parts of the implementation depend on `asyncio libraries
+<https://docs.python.org/3/library/asyncio.html>`__, which are invoked using
+the `trio-asyncio bridge <https://trio-asyncio.readthedocs.io/>`__:
+
+- The downloader uses ``aiohttp`` and ``aiosocks``, because there is not a
+  mature Trio library for HTTP that supports SOCKS proxies.
+
 Crawler Architecture
 --------------------
 
@@ -97,6 +109,8 @@ The downloader is responsible for fetching resources over the network and
 sending them back to the crawl manager.
 
 .. currentmodule:: starbelly.downloader
+
+
 
 .. _extractor:
 

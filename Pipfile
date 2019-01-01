@@ -28,6 +28,10 @@ sphinxcontrib-trio = "*"
 coverage = "*"
 pytest-cov = "*"
 pytz = "*"
+trio-asyncio = "*"
+aiohttp = "*"
+aiohttp-socks = "*"
+async-timeout = "*"
 
 [dev-packages]
 nose = "*"

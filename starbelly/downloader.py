@@ -1,14 +1,15 @@
-# from collections import defaultdict, namedtuple
+import asyncio
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
 import logging
-# import traceback
+import traceback
 from typing import Any
 
-# import aiohttp
-# import aiosocks.connector
-# import aiosocks.errors
+import aiohttp
+import aiohttp_socks
+import aiohttp_socks.errors
 import trio
+import trio_asyncio
 import w3lib.url
 import yarl
 
@@ -16,6 +17,8 @@ from .policy import Policy
 
 
 logger = logging.getLogger(__name__)
+_HTTP_PROXY_SCHEMES = ('http', 'https')
+_SOCKS_PROXY_SCHEMES = ('socks4', 'socks4a', 'socks5')
 
 
 class MimeNotAllowedError(Exception):
@@ -31,7 +34,7 @@ class DownloadRequest:
     form_data: dict
     cost: float
     policy: Policy
-    cookie_jar: Any = field() # TODO what type for cookie jar?
+    cookie_jar: aiohttp.CookieJar
     canonical_url: str = field(init=False)
 
     def __post_init__(self):
@@ -54,10 +57,11 @@ class DownloadResponse:
     started_at: datetime = field(default=None)
     completed_at: datetime = field(default=None)
     exception: str = field(default=None)
+    status_code: int = field(default=None)
     headers: dict = field(default=None)
     should_save: bool = field(default=None)
-
     @classmethod
+
     def from_request(cls, request):
         '''
         Initialize a response from its corresponding request.
@@ -99,21 +103,11 @@ class DownloadResponse:
         self.body = body
 
 
-@dataclass
-class _JobDownloaderState:
-    '''
-    Contains state needed to oversee the download tasks for a single job.
-    '''
-
-    send_channel: trio.SendChannel
-    recv_channel: trio.ReceiveChannel
-    cancel_scope: trio.CancelScope = field(default=None)
-
-
 class Downloader:
-    ''' This class is responsible for downloading resources. '''
+    ''' This class is responsible for downloading resources. A new instance is
+    created for each crawl job. '''
 
-    def __init__(self, request_channel, response_channel, concurrent):
+    def __init__(self, request_channel, response_channel, semaphore):
         '''
         Constructor.
 
@@ -121,28 +115,12 @@ class Downloader:
             download requests.
         :param trio.SendChannel response_channel: A Trio channel that the
             downloader will send downloaded resources to.
-        :param int concurrent: The maximum number of concurrent downloads.
+        :param trio.Semaphore semaphore: The downloader acquires the semaphore
+            for each download.
         '''
-        self._job_tasks = dict()
         self._request_channel = request_channel
         self._response_channel = response_channel
-        self._capacity_limiter = trio.CapacityLimiter(concurrent)
-
-    def count(self):
-        ''' Return number of active downloads. '''
-        return sum(len(dls) for dls in self._downloads_by_job.values())
-
-    def add_job(self, job_id):
-
-
-    def remove_job(self, job_id):
-        '''
-        Cancel any pending downloads for the specified job. Clean up all
-        associated tasks.
-
-        :param bytes job_id: The job ID to cancel downloads for.
-        '''
-        self._cancel_scopes[job_id].cancel()
+        self._semaphore = semaphore
 
     async def run(self):
         '''
@@ -151,110 +129,93 @@ class Downloader:
 
         :returns: Runs until cancelled.
         '''
-        async with trio.open_nursery() as nursery:
-            while True:
-                await self._capacity_limiter.acquire()
-                request = await self._request_channel.receive()
-                try:
-                    job_nursery = self._job_nurseries[request.job_id]
-                except KeyError:
-                    job_nursery = _JobDownloaderState(
-                        *trio.open_memory_channel(0))
-                    nursery.start_soon()
-                    self._job_nurseries[request.job_id] = job_nursery
-                job_nursery.start_soon(self._download, request)
+        async with trio.open_nursery() as nursery, \
+                   trio_asyncio.open_loop() as loop:
+            async for request in self._request_channel:
+                await self._semaphore.acquire()
+                nursery.start_soon(self._download, request)
 
-    async def _run_job_nursery(self, job_nursery):
+    async def _download(self, request):
         '''
-        Creates a nursery for all downloads beginning to a particular job.
+        Download a requested resource and send the response to an output queue.
 
-        :returns: Runs until cancelled.
+        :param DownloadRequest request:
         '''
-        async with trio.open_nursery() as nursery:
-            self._job_nurseries
+        try:
+            with trio.fail_after(20): # TODO make this part of policy
+                response = await self._download_asyncio(request)
+            await self._response_channel.send(response)
+        finally:
+            # self._rate_limiter.reset(request.url) # TODO how to reset rate limiter?
+            self._semaphore.release()
 
-    # async def _download(self, download_request):
-    #     ''' Download a URL and send the result to an output queue. '''
-    #     try:
-    #         response = await self._download_helper(download_request)
-    #         await self._response_channel.send(response)
-    #         self._rate_limiter.reset(download_request.url)
-    #     finally:
-    #         task = asyncio.Task.current_task()
-    #         job_id = download_request.job_id
-    #         job_downloads = self._downloads_by_job[job_id]
-    #         job_downloads.remove(task)
-    #         if len(job_downloads) == 0:
-    #             del self._downloads_by_job[job_id]
-    #         self._capacity_limiter.release()
+    @trio_asyncio.trio2aio
+    async def _download_asyncio(self, request):
+        '''
+        A helper for ``_download()`` that runs on the asyncio event loop. There
+        is not a mature Trio library for HTTP that supports SOCKS proxies, so
+        we use asyncio libraries instead.
 
-    # async def _download_helper(self, download_request):
-    #     ''' A helper to ``_download()``. '''
-    #     HTTP_PROXY = ('http', 'https')
-    #     SOCKS_PROXY = ('socks4', 'socks4a', 'socks5')
-    #     session_args = dict()
-    #     policy = download_request.policy
-    #     url = download_request.url
-    #     proxy_type, proxy_url = policy.proxy_rules.get_proxy_url(url)
+        :param DownloadRequest request:
+        '''
+        session_args = dict()
+        policy = request.policy
+        url = request.url
+        proxy_type, proxy_url = policy.proxy_rules.get_proxy_url(url)
 
-    #     if proxy_type in SOCKS_PROXY:
-    #         session_args['connector'] = aiosocks.connector.ProxyConnector(
-    #             remote_resolve=(proxy_type != 'socks4'),
-    #             verify_ssl=False
-    #         )
-    #         session_args['request_class'] = \
-    #             aiosocks.connector.ProxyClientRequest
-    #     else:
-    #         session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+        if proxy_type in _SOCKS_PROXY_SCHEMES:
+            session_args['connector'] = aiohttp_socks.SocksConnector.from_url(
+                proxy_url)
+        else:
+            session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 
-    #     user_agent = download_request.policy.user_agents.get_user_agent()
-    #     session_args['headers'] = {'User-Agent': user_agent}
-    #     if download_request.cookie_jar is not None:
-    #         session_args['cookie_jar'] = download_request.cookie_jar
-    #     session = aiohttp.ClientSession(**session_args)
-    #     dl_response = DownloadResponse(download_request)
+        user_agent = request.policy.user_agents.get_user_agent()
+        session_args['headers'] = {'User-Agent': user_agent}
+        if request.cookie_jar is not None:
+            session_args['cookie_jar'] = request.cookie_jar
+        session = aiohttp.ClientSession(**session_args)
+        dl_response = DownloadResponse.from_request(request)
 
-    #     try:
-    #         async with timeout(20), session:
-    #             kwargs = dict()
-    #             if proxy_url is not None:
-    #                 kwargs['proxy'] = proxy_url
-    #             if download_request.method == 'GET':
-    #                 if download_request.form_data is not None:
-    #                     kwargs['params'] = download_request.form_data
-    #                 http_request = session.get(url, **kwargs)
-    #             elif download_request.method == 'POST':
-    #                 if download_request.form_data is not None:
-    #                     kwargs['data'] = download_request.form_data
-    #                 http_request = session.post(url, **kwargs)
-    #             else:
-    #                 raise Exception('Unsupported HTTP method: {}'
-    #                     .format(download_request.method))
-    #             async with http_request as http_response:
-    #                 mime = http_response.headers.get('content-type',
-    #                     'application/octet-stream')
-    #                 if not policy.mime_type_rules.should_save(mime):
-    #                     raise MimeNotAllowedError()
-    #                 body = await http_response.read()
-    #                 dl_response.set_response(http_response, body)
-    #         logger.info('%d %s (cost=%0.2f)', dl_response.status_code,
-    #             dl_response.url, dl_response.cost)
-    #     except asyncio.CancelledError:
-    #         raise
-    #     except MimeNotAllowedError:
-    #         logger.info('MIME %s disallowed by policy for URL %s', mime,
-    #             download_request.url)
-    #         dl_response.should_save = False
-    #     except (aiohttp.ClientError, aiosocks.errors.SocksError) as err:
-    #         # Don't need a full stack trace for these common exceptions.
-    #         msg = '{}: {}'.format(err.__class__.__name__, err)
-    #         logger.warn('Failed downloading %s: %s', download_request.url, msg)
-    #         dl_response.set_exception(msg)
-    #     except asyncio.TimeoutError as te:
-    #         logger.warn('Timed out downloading %s', download_request.url)
-    #         dl_response.set_exception('Timed out')
-    #     except Exception as exc:
-    #         logger.exception('Failed downloading %s', download_request.url)
-    #         dl_response.set_exception(traceback.format_exc())
+        try:
+            kwargs = dict()
+            if proxy_type in _HTTP_PROXY_SCHEMES:
+                kwargs['proxy'] = proxy_url
+            if request.method == 'GET':
+                if request.form_data is not None:
+                    kwargs['params'] = request.form_data
+                http_request = session.get(url, **kwargs)
+            elif request.method == 'POST':
+                if request.form_data is not None:
+                    kwargs['data'] = request.form_data
+                http_request = session.post(url, **kwargs)
+            else:
+                raise Exception('Unsupported HTTP method: {}'
+                    .format(request.method))
+            async with http_request as http_response:
+                mime = http_response.headers.get('content-type',
+                    'application/octet-stream')
+                if not policy.mime_type_rules.should_save(mime):
+                    raise MimeNotAllowedError()
+                body = await http_response.read()
+                dl_response.set_response(http_response, body)
+            logger.info('%d %s (cost=%0.2f)', dl_response.status_code,
+                dl_response.url, dl_response.cost)
+        except asyncio.CancelledError:
+            raise
+        except MimeNotAllowedError:
+            logger.info('MIME %s disallowed by policy for URL %s', mime,
+                request.url)
+            dl_response.should_save = False
+        except (aiohttp.ClientError, aiohttp_socks.errors.SocksError) as err:
+            # Don't need a full stack trace for these common exceptions.
+            msg = '{}: {}'.format(err.__class__.__name__, err)
+            logger.warn('Failed downloading %s: %s', request.url, msg)
+            dl_response.set_exception(msg)
+        except asyncio.TimeoutError as te:
+            logger.warn('Timed out downloading %s', request.url)
+            dl_response.set_exception('Timed out')
+        except Exception as exc:
+            logger.exception('Failed downloading %s', request.url)
+            dl_response.set_exception(traceback.format_exc())
 
-    #     return dl_response
+        return dl_response
