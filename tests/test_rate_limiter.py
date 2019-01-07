@@ -4,7 +4,6 @@ from uuid import UUID
 import pytest
 import trio
 
-from . import fail_after
 from starbelly.rate_limiter import (
     Expiry,
     get_domain_token,

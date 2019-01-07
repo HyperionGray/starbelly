@@ -108,7 +108,7 @@ def test_format_job_name():
     args[8] = 'Another Job on {DATE}'
     schedule = Schedule(*args)
     format_name = schedule.format_job_name(when=time)
-    assert format_name == 'Another Job on 2018-11-02 12:15:31'
+    assert format_name == 'Another Job on 2018-11-02T16:15:31'
 
 
 async def test_schedule_doc_to_pb():

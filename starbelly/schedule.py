@@ -1,6 +1,6 @@
 import calendar
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import functools
 import heapq
 import logging
@@ -171,7 +171,8 @@ class Schedule:
         return self.job_name.format(
             COUNT=self.job_count,
             TIME=int(when),
-            DATE=datetime.fromtimestamp(when)
+            DATE=datetime.fromtimestamp(when, timezone.utc)
+                         .strftime('%Y-%m-%dT%H:%M:%S')
         )
 
 
