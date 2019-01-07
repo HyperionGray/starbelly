@@ -189,6 +189,11 @@ The rate limiter uses the following class to store expiry information.
 .. autoclass:: Expiry
     :members:
 
+The following functions are used to determine the token to be used for a
+request.
+
+.. autofunction:: get_domain_token
+
 .. _scheduler:
 
 Scheduler

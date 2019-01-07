@@ -178,7 +178,7 @@ class Starbelly:
 
     async def run(self):
         ''' The main task. '''
-        # TODO use trio_asyncio.run() instead of trio.run()?
+        # TODO when adding trio.run(), set restrict_keyboard_interrupt_to_checkpoints=True
         db_pool = AsyncRethinkPool(self._db_factory())
         tracker = Tracker(db_pool)
         policy_manager = PolicyManager(db_pool)

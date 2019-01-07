@@ -1,3 +1,4 @@
+from binascii import hexlify
 from collections import deque
 from dataclasses import dataclass, field
 import functools
@@ -58,129 +59,94 @@ class Expiry:
             time2 = other
         return time1 < time2
 
+    def __repr__(self):
+        ''' This repr is easier to read than the default. '''
+        return 'Expiry(time={:0.3f}, token={})'.format(self.time,
+            hexlify(self.token).decode('ascii'))
+
+
+def get_domain_token(domain):
+    '''
+    Get a token for a domain.
+
+    :param str domain: The domain to generate a token for.
+    :returns: The token corresponding to the domain.
+    :rtype: bytes
+    '''
+    hash_ = hashlib.blake2b(domain.encode('ascii'), digest_size=16)
+    token = hash_.digest()
+    return token
+
 
 class RateLimiter:
     '''
     This class is responsible for enforcing rate limits.
 
     The rate limiter acts as a bottleneck between the multiple crawl frontiers
-    and the downloader, enforcing the configured rate limits.
-
-    A queue is maintained for each domain that has pending requests to it. When
-    a rate limit expires for a given domain, the next URL in the corresponding
-    domain queue is sent to the downloader. (If the domain queue is empty, the
-    queue is deleted.) The rate limiter has a fixed capacity; when the number of
-    URLs buffered in the rate limiter exceeds this capacity, subsequent calls to
-    :meth:`push` will block until some capacity is available; these calls will
-    be served in the order they are made.
+    and the downloader, enforcing the configured rate limits. Each crawl job
+    sends download requests to the rate limiter ordered by priority of download,
+    then the rate limiter forwards those items to the appropriate downloader
+    when the appropriate amount of time has elapsed. This ensure that rate
+    limits are correctly enforced even if multiple crawl jobs are accessing the
+    same domain.
 
     In order to provide some flexibility, rate limits are not strictly tied to
     individual domains. Each URL is mapped to a "rate limit token". URLs with
-    the same token will be placed into the same queue. This system will allow
-    more flexible rate limiting policies in the future, such as applying a
-    single rate limit to a set of domains.
+    the same token will share the same rate limit. This system will allow more
+    flexible rate limiting policies in the future, such as applying a single
+    rate limit to a set of domains.
+
+    Internally, a queue is maintained for each rate limit token that has pending
+    requests to it. When a rate limit expires for a given token, the next URL in
+    the corresponding queue is sent to the downloader. The rate limiter has a
+    fixed capacity that is controlled by a Semaphore object passed into the
+    constructor. This prevents the rate limiter's memory usage from growing
+    without bounds and applies backpressure to the crawl jobs that are
+    submitting download requests to the rate limiter.
     '''
-    def __init__(self, capacity):
+    def __init__(self, semaphore, request_recv, reset_recv):
         '''
         Constructor.
 
-        :param int capacity: The number of items to buffer in the rate limiter
-            before calls to :meth:`push` will block. (Must be ≥0.)
+        :param trio.Semaphore semaphore: This semaphore is acquired and released
+            once for each item in the queue.
+        :param trio.ReceiveChannel request_recv: A channel that receives
+            `DownloadRequest` to be placed in rate limit queue.
+        :param trio.ReceiveChannel reset_recv: Receives URLs of items that can
+            have their rate limit reset, i.e. when they have finished
+            downloading.
         '''
-        if capacity < 0:
-            raise ValueError('Capacity must be ≥0.')
         self._expires = list()
-        self._expiry_lock = trio.Lock()
         self._expiry_cancel_scope = None
         self._global_limit = None
         self._queues = dict()
         self._rate_limits = dict()
-        self._semaphore = trio.Semaphore(capacity)
+        self._semaphore = semaphore
+        self._request_recv = request_recv
+        self._reset_recv = reset_recv
+        self._job_channels = dict()
 
-    def __len__(self):
+    @property
+    def job_count(self):
+        ''' The number of jobs currently tracked by the rate limiter. '''
+        return len(self._job_channels)
+
+    def add_job(self, job_id):
         '''
-        Return number of buffered requests.
+        Add a job to the rate limiter. Returns a send channel that requests for
+        this job will be sent to.
 
-        :rtype: int
+        :param bytes job_id: A job ID.
         '''
-        return sum(len(q) for q in self._queues.values())
+        job_send, job_recv = trio.open_memory_channel(0)
+        self._job_channels[job_id] = job_send
+        return job_recv
 
-    def delete_rate_limit(self, token):
-        '''
-        Remove a rate limit for a given token.
-
-        If ``token`` does not exist, then this has no effect.
-
-        :param bytes token: A rate limit token.
-        '''
-        logger.debug('Delete rate limit: token=%r', token)
-        try:
-            del self._rate_limits[token]
-        except KeyError:
-            pass
-
-    async def get_next_request(self):
-        '''
-        Get the next download request from this rate limiter.
-
-        Maintains the invariant that if a token exists in the ``_expires`` heap,
-        then a queue exists for that token.
-
-        :returns: The next download request.
-        :rtype: starbelly.downloader.DownloadRequest
-        '''
-        expiry = await self._get_next_expiry()
-        token = expiry.token
-        queue = self._queues[token]
-
-        if len(queue) == 0:
-            # If nothing left in this queue, delete it and get another
-            # token instead.
-            del self._queues[token]
-            request = await self.get_next_request()
-        else:
-            request = queue.popleft()
-
-        self._semaphore.release()
-        logger.debug('Popped %s', request.url)
-        return request
-
-    def get_domain_token(self, domain):
-        '''
-        Get a token for a domain.
-
-        :param str domain: The domain to generate a token for.
-        :returns: The token corresponding to the domain.
-        :rtype: bytes
-        '''
-        hash_ = hashlib.blake2b(domain.encode('ascii'), digest_size=16)
-        token = hash_.digest()
-        return token
-
-    async def push(self, request):
-        '''
-        Schedule a request for downloading.
-
-        Suspends if the rate limiter is already filled to capacity.
-
-        :param request: A download request.
-        :type request: starbelly.downloader.DownloadRequest
-        '''
-        logger.debug('Push request: %r', request)
-        await self._semaphore.acquire()
-        token = self.get_domain_token(request.url.host)
-        if token not in self._queues:
-            self._queues[token] = deque()
-            self._add_expiry(Expiry(trio.current_time(), token))
-        self._queues[token].append(request)
-
-    def remove_job(self, job_id):
+    async def remove_job(self, job_id):
         '''
         Remove all download requests for the given job.
 
         :param bytes job_id:
-        :returns: The removed requests.
-        :rtype: list[starbelly.downloader.DownloadRequest]
         '''
         logger.debug('Remove job: id=%r', job_id)
         # Copy all existing queues to new queues but drop items matching the
@@ -200,21 +166,29 @@ class RateLimiter:
             new_queues[token] = new_deque
 
         self._queues = new_queues
+        channel = self._job_channels.pop(job_id)
+        await channel.aclose()
 
-        # Return the removed items so the crawl job can place them back into
-        # the frontier.
-        return removed_items
+    async def run(self):
+        ''' Run the rate limiter. '''
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(self._read_requests_task)
+            nursery.start_soon(self._write_requests_task)
+            nursery.start_soon(self._read_resets_task)
 
-    def reset(self, url):
+    def delete_rate_limit(self, token):
         '''
-        Reset the rate limit for the specified URL.
+        Remove a rate limit for a given token.
 
-        :param yarl.URL url:
+        If ``token`` does not exist, then this has no effect.
+
+        :param bytes token: A rate limit token.
         '''
-        logger.debug('Reset URL: %r', url)
-        token = self.get_domain_token(url.host)
-        limit = self._rate_limits.get(token, self._global_limit)
-        self._add_expiry(Expiry(trio.current_time() + limit, token))
+        logger.debug('Delete rate limit: token=%r', token)
+        try:
+            del self._rate_limits[token]
+        except KeyError:
+            pass
 
     def set_rate_limit(self, token, delay):
         '''
@@ -223,7 +197,8 @@ class RateLimiter:
         :param str token: The rate limit token.
         :param float delay: The delay between subsequent requests, in seconds.
         '''
-        logger.debug('Set rate limit: token=%r delay=%f', token, delay)
+        logger.debug('Set rate limit: token=%r delay=%f',
+            hexlify(token).decode('ascii'), delay)
         if token == GLOBAL_RATE_LIMIT_TOKEN:
             self._global_limit = delay
         else:
@@ -236,7 +211,7 @@ class RateLimiter:
         :param Expiry expiry:
         '''
         heappush(self._expires, expiry)
-        if self._expiry_cancel_scope and expiry.time <= trio.current_time():
+        if self._expiry_cancel_scope:
             self._expiry_cancel_scope.cancel()
             self._expiry_cancel_scope = None
 
@@ -244,30 +219,87 @@ class RateLimiter:
         '''
         Pop an expiry off the heap.
 
-        If no tokens on heap, suspend until a token is available. This function
-        uses an internal lock so that only one task can execute it at a time.
+        If no tokens on heap, suspend until a token is available.
 
         :returns: The next expiry.
         :rtype: Expiry
         '''
-        async with self._expiry_lock:
-            # If there are no pending expirations, then we wait for somebody to
-            # call push() or reset().
+        while True:
             if len(self._expires) == 0:
+                # If there are no pending expirations, then we wait for a new
+                # token or a reset of an existing token.
                 with trio.open_cancel_scope() as cancel_scope:
                     self._expiry_cancel_scope = cancel_scope
                     await trio.sleep_forever()
+                continue
 
             # Now there are definitely pending expirations. Examine the earliest
             # pending expiration. If it is in the past, then we pop it
             # immediately. If it is in the future, then sleep until its
-            # expiration time or until somebody calls reset() or push().
+            # expiration time or until somebody adds or resets a token.
             now = trio.current_time()
             expires = self._expires[0].time
-            if expires > now:
+            if expires <= now:
+                expiry = heappop(self._expires)
+                return expiry
+            else:
                 with trio.move_on_after(expires - now) as cancel_scope:
                     self._expiry_cancel_scope = cancel_scope
                     await trio.sleep_forever()
+                continue
 
-            expiry = heappop(self._expires)
-            return expiry
+    async def _read_requests_task(self):
+        '''
+        This task reads incoming requests, e.g. from the crawl frontier, and
+        places them into the rate limiting queue.
+
+        :returns: This task runs until cancelled.
+        '''
+        async for request in self._request_recv:
+            await self._semaphore.acquire()
+            logger.debug('Received request: %s', request.url)
+            token = get_domain_token(request.url.host)
+            if token not in self._queues:
+                self._queues[token] = deque()
+                self._add_expiry(Expiry(trio.current_time(), token))
+            self._queues[token].append(request)
+
+    async def _read_resets_task(self):
+        '''
+        This task listens for incoming resets that indicate that a request has
+        finished downloading and its corresponding rate limit should start.
+
+        :returns: This task runs until cancelled.
+        '''
+        async for url in self._reset_recv:
+            logger.debug('Reset URL: %s', url)
+            token = get_domain_token(url.host)
+            limit = self._rate_limits.get(token, self._global_limit)
+            self._add_expiry(Expiry(trio.current_time() + limit, token))
+
+    async def _write_requests_task(self):
+        '''
+        When a request is ready to be downloaded, i.e. the required rate limit
+        time has elapsed, this task forwards the request to the appropriate
+        downloader.
+
+        :returns: This task runs until cancelled.
+        '''
+        while True:
+            expiry = await self._get_next_expiry()
+            logger.debug('Popped expiry: %r', expiry)
+            token = expiry.token
+            queue = self._queues[token]
+
+            if len(queue) == 0:
+                # If nothing left in this queue, delete it and get another
+                # token instead.
+                del self._queues[token]
+                continue
+            else:
+                request = queue.popleft()
+
+            channel = self._job_channels[request.job_id]
+            await channel.send(request)
+            self._semaphore.release()
+            logger.debug('Sent request:  %s', request.url)
