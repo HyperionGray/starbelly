@@ -360,6 +360,14 @@ class JobStatusSubscription(BaseSubscription):
     The first emitted event will contain the complete status for each running
     crawl; subsequent events will only include fields that have changed since
     the previous event.
+
+    TODO     JOB_STATUS_FIELDS = [
+        'id', 'name', 'seeds', 'tags', 'run_state', 'started_at',
+        'completed_at', 'item_count', 'http_success_count', 'http_error_count',
+        'exception_count', 'http_status_counts', 'schedule_id',
+    ]
+
+
     '''
 
     def __init__(self, tracker, socket, min_interval):
