@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from functools import wraps
 import pathlib
 import sys
@@ -12,18 +13,24 @@ pkg = pathlib.Path(__file__).parent.parent
 sys.path.append(str(pkg))
 
 
-class fail_after:
-    ''' This decorator fails if the runtime of the decorated function (as
-    measured by the Trio clock) exceeds the specified value. '''
-    def __init__(self, seconds):
-        self._seconds = seconds
+@contextmanager
+def assert_min_elapsed(seconds=None):
+    '''
+    Fail the test if the execution of a block takes less than ``seconds``.
+    '''
+    start = trio.current_time()
+    yield
+    elapsed = trio.current_time() - start
+    assert elapsed >= seconds, 'Completed in under {} seconds'.format(seconds)
 
-    def __call__(self, fn):
-        @wraps(fn)
-        async def wrapper(*args, **kwargs):
-            with trio.move_on_after(self._seconds) as cancel_scope:
-                await fn(*args, **kwargs)
-            if cancel_scope.cancelled_caught:
-                pytest.fail('Test runtime exceeded the maximum {} seconds'
-                    .format(self._seconds))
-        return wrapper
+
+@contextmanager
+def assert_max_elapsed(seconds=None):
+    '''
+    Fail the test if the execution of a block takes longer than ``seconds``.
+    '''
+    try:
+        with trio.fail_after(seconds):
+            yield
+    except trio.TooSlowError:
+        pytest.fail('Failed to complete within {} seconds'.format(seconds))

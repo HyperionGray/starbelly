@@ -104,12 +104,12 @@ class RateLimiter:
     without bounds and applies backpressure to the crawl jobs that are
     submitting download requests to the rate limiter.
     '''
-    def __init__(self, semaphore, request_recv, reset_recv):
+    def __init__(self, capacity, request_recv, reset_recv):
         '''
         Constructor.
 
-        :param trio.Semaphore semaphore: This semaphore is acquired and released
-            once for each item in the queue.
+        :param int capacity: The maximum number of items to buffer inside of the
+            rate limiter.
         :param trio.ReceiveChannel request_recv: A channel that receives
             `DownloadRequest` to be placed in rate limit queue.
         :param trio.ReceiveChannel reset_recv: Receives URLs of items that can
@@ -121,14 +121,20 @@ class RateLimiter:
         self._global_limit = None
         self._queues = dict()
         self._rate_limits = dict()
-        self._semaphore = semaphore
+        self._capacity = capacity
+        self._semaphore = trio.Semaphore(capacity)
         self._request_recv = request_recv
         self._reset_recv = reset_recv
         self._job_channels = dict()
 
     @property
+    def item_count(self):
+        ''' The number of requests queueud inside the rate limiter. '''
+        return self._capacity - self._semaphore.value
+
+    @property
     def job_count(self):
-        ''' The number of jobs currently tracked by the rate limiter. '''
+        ''' The number of jobs tracked by the rate limiter. '''
         return len(self._job_channels)
 
     def add_job(self, job_id):

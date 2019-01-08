@@ -32,6 +32,7 @@ trio-asyncio = "*"
 aiohttp = "*"
 aiohttp-socks = "*"
 async-timeout = "*"
+pytest-mock = "*"
 
 [dev-packages]
 nose = "*"

@@ -1,9 +1,9 @@
-from contextlib import contextmanager
 from uuid import UUID
 
 import pytest
 import trio
 
+from . import assert_min_elapsed, assert_max_elapsed
 from starbelly.rate_limiter import (
     Expiry,
     get_domain_token,
@@ -11,29 +11,6 @@ from starbelly.rate_limiter import (
     RateLimiter,
 )
 from starbelly.downloader import DownloadRequest
-
-
-@contextmanager
-def assert_min_elapsed(seconds=None):
-    '''
-    Fail the test if the execution of a block takes less than ``seconds``.
-    '''
-    start = trio.current_time()
-    yield
-    elapsed = trio.current_time() - start
-    assert elapsed >= seconds, 'Completed in under {} seconds'.format(seconds)
-
-
-@contextmanager
-def assert_max_elapsed(seconds=None):
-    '''
-    Fail the test if the execution of a block takes longer than ``seconds``.
-    '''
-    try:
-        with trio.fail_after(seconds):
-            yield
-    except trio.TooSlowError:
-        pytest.fail('Failed to complete within {} seconds'.format(seconds))
 
 
 def make_request(job_id, url):
@@ -75,12 +52,12 @@ def test_compare_expiry_to_float():
 
 async def test_one_request(nursery):
     job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    semaphore = trio.Semaphore(1)
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(semaphore, request_recv, reset_recv)
+    rl = RateLimiter(1, request_recv, reset_recv)
     job_recv = rl.add_job(job_id)
     assert rl.job_count == 1
+    assert rl.item_count == 0
     nursery.start_soon(rl.run)
     request = make_request(job_id, 'http://domain.example')
     await request_send.send(request)
@@ -94,10 +71,9 @@ async def test_two_requests_different_domains(nursery):
     requests without delay.
     '''
     job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    semaphore = trio.Semaphore(2)
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(semaphore, request_recv, reset_recv)
+    rl = RateLimiter(2, request_recv, reset_recv)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)
@@ -119,10 +95,9 @@ async def test_two_requests_same_domain(autojump_clock, nursery):
     second request.
     '''
     job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    semaphore = trio.Semaphore(2)
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(semaphore, request_recv, reset_recv)
+    rl = RateLimiter(2, request_recv, reset_recv)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)
@@ -145,10 +120,9 @@ async def test_rate_limiter_over_capacity(autojump_clock, nursery):
     rate limiter.
     '''
     job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    semaphore = trio.Semaphore(2)
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(semaphore, request_recv, reset_recv)
+    rl = RateLimiter(2, request_recv, reset_recv)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)
@@ -174,10 +148,9 @@ async def test_token_limit_supercedes_global_limit(autojump_clock, nursery):
     global rate limit is used.
     '''
     job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    semaphore = trio.Semaphore(2)
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(semaphore, request_recv, reset_recv)
+    rl = RateLimiter(2, request_recv, reset_recv)
     token = get_domain_token('domain.example')
     rl.set_rate_limit(token, 2)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
@@ -218,10 +191,9 @@ async def test_skip_expired_limit_if_nothing_pending(autojump_clock, nursery):
     domain2, but since domain1 has no pending requests, it will wait for domain2
     to become available again. '''
     job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    semaphore = trio.Semaphore(2)
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(semaphore, request_recv, reset_recv)
+    rl = RateLimiter(2, request_recv, reset_recv)
     token1 = get_domain_token('domain1.example')
     token2 = get_domain_token('domain2.example')
     rl.set_rate_limit(token1, 1)
@@ -250,10 +222,9 @@ async def test_push_after_get(autojump_clock, nursery):
     ''' If a job is waiting for a request but nothing is pending, then the rate
     limiter will wait until it receives a request. '''
     job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    semaphore = trio.Semaphore(2)
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(semaphore, request_recv, reset_recv)
+    rl = RateLimiter(2, request_recv, reset_recv)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)

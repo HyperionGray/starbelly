@@ -62,7 +62,9 @@ Crawler Architecture
 
 Within the Starbelly server, the implementation is divided into multiple classes
 that handle separate concerns. This diagram shows the relationships between
-these classes.
+these classes with a focus on the flow of data through the crawling pipeline.
+Note that some components, such as the Policy Manager, do not directly handle
+crawling data but instead influence the behavior of other components.
 
 .. note::
 
@@ -77,28 +79,36 @@ these classes.
 
         // Nodes
         api_server;
-        crawl_manager [label="CrawlManager"];
-        policy_manager [label="PolicyManager",href="#policy"];
-        rate_limiter [label="RateLimiter",href="#rate-limiter"];
+        crawl_manager [label="Crawl Manager"];
+        policy_manager [label="Policy Manager",href="#policy"];
+        rate_limiter [label="Rate Limiter",href="#rate-limiter"];
         downloader [label="Downloader",href="#downloader"];
         extractor [label="Extractor",href="#extractor"];
-        resource_monitor;
+        resource_monitor [label="Resource Monitor", href="#resource-monitor"];
         scheduler [label="Scheduler",href="#scheduler"];
+        database [label="Database",href="#database"]
 
         // Edges
-        api_server -> crawl_manager [label="Manage Crawls"];
+        api_server -> crawl_manager [label="Manage crawls"];
         api_server -> scheduler [label="Configure"];
-        resource_monitor -> api_server [label="Usage Stats"];
-        scheduler -> crawl_manager [label="Start Crawls"];
-        crawl_manager -> rate_limiter [label="DownloadRequest"];
-        crawl_manager -> policy_manager;
-        rate_limiter -> downloader [label="DownloadRequest"];
-        downloader -> extractor [label="ExtractItem"];
-        downloader -> policy_manager;
-        extractor -> crawl_manager [label="URLs"];
+        api_server -> database [label="View data"];
+        scheduler -> crawl_manager [label="Start crawls"];
+        crawl_manager -> rate_limiter [label="Download request"];
+        rate_limiter -> downloader [label="Download request"];
+        downloader -> extractor [label="Extract URLs"];
+        downloader -> database [label="Store downloads"];
+        extractor -> crawl_manager [label="Queue URLs"];
     }
 
 Each of these classes is documented below.
+
+.. _database:
+
+Database
+--------
+
+TBD
+
 
 .. _downloader:
 
@@ -193,6 +203,20 @@ The following functions are used to determine the token to be used for a
 request.
 
 .. autofunction:: get_domain_token
+
+.. _resource_monitor:
+
+Resource Monitor
+----------------
+
+.. currentmodule:: starbelly.resource_monitor
+
+The resource monitor introspects various objects in the crawling pipe in order
+to keep track of consumption and usage of various resources, such as where items
+are in the crawling pipeline, CPU utilization, memory usage, etc.
+
+.. autoclass:: ResourceMonitor
+    :members:
 
 .. _scheduler:
 

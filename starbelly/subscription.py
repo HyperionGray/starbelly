@@ -449,7 +449,49 @@ class JobStatusSubscription(BaseSubscription):
 
 
 class ResourceMonitorSubscription:
-    ''' Keep track of consumption for various resources. '''
+    ''' Keep track of consumption for various resources.
+
+    TODO convert dict to PB
+
+    message = ServerMessage()
+    frame = message.event.resource_frame
+    frame.timestamp = measure['timestamp'].isoformat()
+
+    # CPUs
+    for cpu_percent in message['cpus']:
+        cpu = frame.cpus.add()
+        cpu.usage = cpu_percent
+
+    # Memory
+    frame.memory.used = measurement['memory_used']
+    frame.memory.total = measurement['memory_total']
+
+    # Disks
+    for disk_measure in measurement['disks']:
+        disk.mount = disk_measure['mount']
+        disk.used = disk_measure['used']
+        disk.total = disk_measure['total']
+
+    # Networks
+    for network_measure in measurement['networks']:
+        net = frame.networks.add()
+        net.name = network_measure['name']
+        net.sent = network_measure['sent']
+        net.received = network_measure['received']
+
+    # Crawls
+    for crawl_measure in measurement['crawls']:
+        crawl = frame.crawls.add()
+        crawl.job_id = crawl_measure['job_id']
+        crawl.frontier = crawl_measure['frontier']
+        crawl.pending = crawl_measure['pending']
+        crawl.extraction = crawl_measure['extraction']
+
+    # Rate limiter
+    frame.rate_limiter.count = self._rate_limiter.count()
+    # TOTO Modify the PB! REmove downloader here and add to job above.
+    frame.downloader.count = self._downloader.count()
+    '''
     # The maximum buffer size for outgoing frames. This number should be higher
     # than ResourceMonitor's FRAME_BUFFER.
     QUEUE_SIZE = 500

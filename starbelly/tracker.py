@@ -17,6 +17,8 @@ class Tracker:
 
     This is focused on crawl status (# successes, # errors, etc.) for now but
     will eventually include things like CPU utilization, disk space, etc.
+
+    TODO add crawl manager, rate limiter, downloader
     '''
 
     JOB_STATUS_FIELDS = [
