@@ -497,42 +497,7 @@ def test_policy_proxy_invalid_url_scheme():
 
 def test_policy_robots_invalid_usage():
     with pytest.raises(PolicyValidationError):
-        robots = PolicyRobotsTxt(doc={}, robots_txt_manager=None,
-            parent_policy=None)
-
-
-async def test_policy_robots_is_allowed():
-    # The first set of tests uses a mock robots that allows all requests.
-    async def allow_all(url, policy):
-        return True
-    permit_robots = Mock()
-    permit_robots.is_allowed.side_effect = allow_all
-
-    robots1 = PolicyRobotsTxt(doc={'usage': 'OBEY'},
-        robots_txt_manager=permit_robots, parent_policy=None)
-    robots2 = PolicyRobotsTxt(doc={'usage': 'IGNORE'},
-        robots_txt_manager=permit_robots, parent_policy=None)
-    robots3 = PolicyRobotsTxt(doc={'usage': 'INVERT'},
-        robots_txt_manager=permit_robots, parent_policy=None)
-    assert     await robots1.is_allowed('http://domain.example/foo')
-    assert     await robots2.is_allowed('http://domain.example/foo')
-    assert not await robots3.is_allowed('http://domain.example/foo')
-
-    # The second set of tests uses a mock robots that doesn't allow any
-    # requests.
-    async def allow_none(url, policy):
-        return False
-    restrict_robots = Mock()
-    restrict_robots.is_allowed.side_effect = allow_none
-    robots4 = PolicyRobotsTxt(doc={'usage': 'OBEY'},
-        robots_txt_manager=restrict_robots, parent_policy=None)
-    robots5 = PolicyRobotsTxt(doc={'usage': 'IGNORE'},
-        robots_txt_manager=restrict_robots, parent_policy=None)
-    robots6 = PolicyRobotsTxt(doc={'usage': 'INVERT'},
-        robots_txt_manager=restrict_robots, parent_policy=None)
-    assert not await robots4.is_allowed('http://domain.example/foo')
-    assert     await robots5.is_allowed('http://domain.example/foo')
-    assert     await robots6.is_allowed('http://domain.example/foo')
+        robots = PolicyRobotsTxt(doc={})
 
 
 def test_policy_url_normalization_normalize():
@@ -739,7 +704,7 @@ def test_policy_constructor():
             {'name': 'Test User Agent'}
         ]
     }
-    policy = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+    policy = Policy(doc, version='1.0.0', seeds=[])
     assert isinstance(policy.authentication, PolicyAuthentication)
     assert policy.captcha_solver is None
     assert isinstance(policy.limits, PolicyLimits)
@@ -787,7 +752,7 @@ def test_policy_constructor_blank_name():
         ]
     }
     with pytest.raises(PolicyValidationError):
-        policy = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+        policy = Policy(doc, version='1.0.0', seeds=[])
 
 
 def test_policy_constructor_captcha():
@@ -837,7 +802,7 @@ def test_policy_constructor_captcha():
             {'name': 'Test User Agent'}
         ]
     }
-    policy = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+    policy = Policy(doc, version='1.0.0', seeds=[])
     assert isinstance(policy.captcha_solver, CaptchaSolver)
 
 
@@ -876,7 +841,7 @@ def test_policy_replace_mime_rules():
             {'name': 'Test User Agent'}
         ]
     }
-    policy1 = Policy(doc, version='1.0.0', seeds=[], robots_txt_manager=None)
+    policy1 = Policy(doc, version='1.0.0', seeds=[])
     policy2 = policy1.replace_mime_type_rules([
             {'match': 'MATCHES', 'pattern': '^application/', 'save': True},
             {'save': False},

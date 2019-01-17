@@ -7,6 +7,7 @@ import aiohttp
 import pytest
 import trio
 
+from . import asyncio_loop
 from starbelly.downloader import (
     Downloader,
     DownloadRequest,
@@ -66,7 +67,7 @@ def make_policy(proxy=None):
             {'name': 'Test User Agent'}
         ]
     }
-    return Policy(doc, '1.0.0', ['https://seeds.example'], None)
+    return Policy(doc, '1.0.0', ['https://seeds.example'])
 
 
 def test_request():
@@ -105,7 +106,7 @@ def test_response_exception():
     assert resp.exception == 'Sample exception'
 
 
-async def test_http_get(nursery):
+async def test_http_get(nursery, asyncio_loop):
     # Create a server:
     async def handler(stream):
         request = await stream.receive_some(4096)

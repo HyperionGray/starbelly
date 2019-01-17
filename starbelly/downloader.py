@@ -60,8 +60,8 @@ class DownloadResponse:
     status_code: int = field(default=None)
     headers: dict = field(default=None)
     should_save: bool = field(default=None)
-    @classmethod
 
+    @classmethod
     def from_request(cls, request):
         '''
         Initialize a response from its corresponding request.
@@ -158,7 +158,8 @@ class Downloader:
 
         :param DownloadRequest request:
         '''
-        session_args = dict()
+        # Timeout is handled by the caller:
+        session_args = {'timeout': aiohttp.ClientTimeout(total=None)}
         policy = request.policy
         url = request.url
         proxy_type, proxy_url = policy.proxy_rules.get_proxy_url(url)

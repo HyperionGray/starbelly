@@ -111,7 +111,7 @@ class Policy:
         PolicyUserAgents.convert_pb_to_doc(pb.user_agents, doc['user_agents'])
         return doc
 
-    def __init__(self, doc, version, seeds, robots_txt_manager):
+    def __init__(self, doc, version, seeds):
         '''
         Initialize a policy object from its database document.
 
@@ -120,8 +120,6 @@ class Policy:
             policy.
         :param list seeds: A list of seed URLs, used for computing costs for
             crawled links.
-        :param robots_txt_manager: A robots.txt manager.
-        :type robots_txt_manager: starbelly.robots.RobotsTxtManager
         '''
         if doc['name'].strip() == '':
             _invalid('Policy name cannot be blank')
@@ -134,8 +132,7 @@ class Policy:
         self.limits = PolicyLimits(doc['limits'])
         self.mime_type_rules = PolicyMimeTypeRules(doc['mime_type_rules'])
         self.proxy_rules = PolicyProxyRules(doc['proxy_rules'])
-        self.robots_txt = PolicyRobotsTxt(doc['robots_txt'], robots_txt_manager,
-            self)
+        self.robots_txt = PolicyRobotsTxt(doc['robots_txt'])
         self.url_normalization = PolicyUrlNormalization(
             doc['url_normalization'])
         self.url_rules = PolicyUrlRules(doc['url_rules'], seeds)
@@ -550,40 +547,20 @@ class PolicyRobotsTxt:
         if pb.HasField('usage'):
             doc['usage'] = USAGE_ENUM.Name(pb.usage)
 
-    def __init__(self, doc, robots_txt_manager, parent_policy):
+    def __init__(self, doc):
         '''
         Initialize from a database document.
 
         :param dict doc: A database document.
-        :param robots_txt_manager: A robots.txt manager.
-        :type robots_txt_manager: starbelly.robots.RobotsTxtManager
-        :param parent_policy: The policy container for this subpolicy.
-        :type parent_policy: Policy
         '''
         if 'usage' not in doc:
             _invalid('Robots.txt usage is required')
-        self._parent_policy = parent_policy
         self._usage = doc['usage']
-        self._robots_txt_manager = robots_txt_manager
 
-    async def is_allowed(self, url):
-        '''
-        :param str url: The URL to check against this policy.
-        :returns: ``True`` if robots policy permits ``url``.
-        :rtype: bool
-        '''
-        if self._usage == 'IGNORE':
-            return True
-
-        result = await self._robots_txt_manager.is_allowed(
-            url,
-            self._parent_policy
-        )
-
-        if self._usage == 'INVERT':
-            result = not result
-
-        return result
+    @property
+    def usage(self):
+        ''' OBEY, IGNORE, or INVERT '''
+        return self._usage
 
 
 class PolicyUrlNormalization:
@@ -820,6 +797,13 @@ class PolicyUserAgents:
             if user_agent.get('name', '').strip() == '':
                 _invalid('Name is required', location)
             self._user_agents.append(user_agent['name'].format(VERSION=version))
+
+    def get_first_user_agent(self):
+        '''
+        :returns: Return the first user agent.
+        :rtype: str
+        '''
+        return self._user_agents[0]
 
     def get_user_agent(self):
         '''

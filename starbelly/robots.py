@@ -1,33 +1,44 @@
-import asyncio
 from collections import OrderedDict
-from datetime import datetime
-from urllib.parse import urlparse, urlunparse
+from datetime import datetime, timezone
 
 import aiohttp
-import async_timeout
-from dateutil.tz import tzlocal
 import logging
 from robotexclusionrulesparser import RobotExclusionRulesParser
-import rethinkdb as r
+from rethinkdb import RethinkDB
+from yarl import URL
+import trio
 
-from . import VERSION
 from .downloader import DownloadRequest
 
 
+r = RethinkDB()
 logger = logging.getLogger(__name__)
 
 
 class RobotsTxtManager:
     ''' Store and manage robots.txt files. '''
-    def __init__(self, db_pool, rate_limiter, max_age=24*60*60, max_cache=1e3):
-        ''' Constructor. '''
+    def __init__(self, db_pool, request_send, response_recv, max_age=24*60*60,
+            max_cache=1e3):
+        '''
+        Constructor.
+
+        :param db_pool: A DB connection pool.
+        :param trio.SendChannel request_send: A channel to send requests to
+            download.
+        :param trio.ReceiveChannel response_recv: A channel that the downloader
+            will send completed downloads to.
+        :param int max_age: The maximum age before a robots.txt is downloaded
+            again.
+        :param int max_cache: The maximum number of robots.txt files to cache
+            in memory.
+        '''
         self._db_pool = db_pool
+        self._request_send = request_send
+        self._response_recv = response_recv
+        self._events = dict()
         self._cache = OrderedDict()
-        self._rate_limiter = rate_limiter
         self._max_age = max_age
         self._max_cache = max_cache
-        self._robots_futures = dict()
-        self._user_agent = f'Starbelly {VERSION}'
 
     async def is_allowed(self, url, policy):
         '''
@@ -36,31 +47,51 @@ class RobotsTxtManager:
         This fetches the applicable robots.txt if we don't have a recent copy
         of it cached in memory or in the database. The ``policy`` is used if a
         robots.txt file needs to be fetched from the network.
+
+        :param str url: Check this URL to see if the robots.txt and accompanying
+            policy permit access to it.
+        :param starbelly.policy.Policy policy:
+        :rtype: bool
         '''
+        if policy.robots_txt.usage == 'IGNORE':
+            # No need to fetch robots.txt.
+            return True
 
         robots_url = self._get_robots_url(url)
 
         # Check if cache has a current copy of robots.txt.
-        if robots_url in self._cache:
+        try:
             robots = self._cache[robots_url]
             if robots.is_older_than(self._max_age):
-                robots = None
                 del self._cache[robots_url]
+                robots = None
             else:
                 self._cache.move_to_end(robots_url)
-        else:
+        except KeyError:
             robots = None
 
-        # If not in cache, get it from DB or network. _get_robots() will add
-        # the object to the cache.
+        # Do we need to fetch robots into cache?
         if robots is None:
-            robots = await self._get_robots(robots_url, policy)
+            try:
+                # If another task is fetching it, then just wait for that task.
+                await self._events[robots_url].wait()
+                robots = self._cache[robots_url]
+            except KeyError:
+                # Create a new task to fetch it.
+                self._events[robots_url] = trio.Event()
+                robots = await self._get_robots(robots_url, policy)
 
-        return robots.is_allowed(self._user_agent, url)
+        # Note: we only check the first user agent.
+        user_agent = policy.user_agents.get_first_user_agent()
+        robots_decision = robots.is_allowed(user_agent, url)
+        if policy.robots_txt.usage == 'OBEY':
+            return robots_decision
+        else:
+            return not robots_decision
 
     async def _get_robots(self, robots_url, policy):
         '''
-        Get a ``RobotsTxt`` that is applicable for ``url``.
+        Locate and return a robots.txt file.
 
         Looks for non-expired robots.txt file first in database then request
         from network. Wherever the robots file is found, it is placed into the
@@ -71,25 +102,17 @@ class RobotsTxtManager:
         we have a database copy, then we update the database copy's expiration.
         If we cannot get a copy from database or network, then we create a
         permissive robots.txt and use that instead.
+
+        :param str url: Fetch the file at this URL.
+        :param starbelly.policy.Policy policy:
+        :rtype: RobotsTxt
         '''
-
-        # If another task is already fetching this robots file, then just wait
-        # for it to finish.
-        if robots_url in self._robots_futures:
-            return await self._robots_futures[robots_url]
-
-        # Otherwise, this task creates a future (for other tasks to use) and
-        # then tries to locate a suitable RobotsTxt.
-        robots_future = asyncio.Future()
-        self._robots_futures[robots_url] = robots_future
-
         # Check DB. If not there (or expired), check network.
-        now = datetime.now(tzlocal())
+        now = datetime.now(timezone.utc)
         robots_doc = await self._get_robots_from_db(robots_url)
 
         if robots_doc is None or \
-            (now - robots_doc['updated_at']).seconds > self._max_age:
-
+                (now - robots_doc['updated_at']).seconds > self._max_age:
             robots_file = await self._get_robots_from_net(robots_url, policy)
         else:
             robots_file = None
@@ -97,7 +120,7 @@ class RobotsTxtManager:
         if robots_doc is None:
             # No local copy: create a new local copy. If robots_file is None, it
             # will be treated as a permissive RobotsTxt.
-            logger.debug('Saving new robots.txt file: %s', robots_url)
+            logger.info('Saving new robots.txt file: %s', robots_url)
             robots_doc = {
                 'file': robots_file,
                 'updated_at': now,
@@ -108,7 +131,7 @@ class RobotsTxtManager:
             # If we have a network copy, use that to update local copy.
             # Otherwise, just update the local copy's timestamp.
             robots = RobotsTxt(robots_doc)
-            logger.debug('Updating robots.txt file: %s', robots_url)
+            logger.info('Updating robots.txt file: %s', robots_url)
             if robots_file is not None:
                 robots_doc['file'] = robots_file
             else:
@@ -118,21 +141,15 @@ class RobotsTxtManager:
             del robots_doc['url']
 
         # Upsert robots_docs.
-        async with self._db_pool.connection() as conn:
-            await (
-                r.table('robots_txt')
-                 .insert(robots_doc, conflict='update')
-                 .run(conn)
-            )
-
-        # Enforce maximum cache size.
-        if len(self._cache) == self._max_cache:
-            self._cache.popitem(last=False)
+        await self._save_robots_to_db(robots_doc)
 
         # Add to cache before completing the future to avoid race condition.
         self._cache[robots_url] = robots
-        robots_future = self._robots_futures.pop(robots_url)
-        robots_future.set_result(robots)
+        self._cache.move_to_end(robots_url)
+        if len(self._cache) > self._max_cache:
+            self._cache.popitem(last=False)
+        event = self._events.pop(robots_url)
+        event.set()
         return robots
 
     def _get_robots_url(self, url):
@@ -141,20 +158,24 @@ class RobotsTxtManager:
 
         This preserves scheme, hostname, and port. It changes the path to
         'robots.txt' and removes the query string and fragment.
+
+        :param str url: An arbitrary URL.
+        :returns: The corresponding robots.txt URL.
+        :rtype: str
         '''
-        robots_url = urlparse(url)._replace(
-            path='robots.txt',
-            params=None,
-            query=None,
-            fragment=None
-        )
-        return urlunparse(robots_url)
+        return str(URL(url).with_path('robots.txt')
+                           .with_query(None)
+                           .with_fragment(None))
 
     async def _get_robots_from_db(self, robots_url):
         '''
         Get robots document from the database.
 
         Returns None if it doesn't exist in the database.
+
+        :param str robots_url: The URL of the robots.txt file.
+        :returns: A database document.
+        :rtype: dict
         '''
         query = r.table('robots_txt').get_all(robots_url, index='url').nth(0)
 
@@ -171,37 +192,48 @@ class RobotsTxtManager:
         Get robots.txt file from the network.
 
         Returns None if the file cannot be fetched (e.g. 404 error).
+
+        :param str robots_url: Fetch the robots.txt file at this URL.
+        :param starbelly.policy.Policy policy:
+        :returns: Contents of robotx.txt file or None if it couldn't be
+            downloaded.
+        :rtype: str
         '''
 
         logger.info('Fetching robots.txt: %s', robots_url)
-        # Bit of a hack here to work with rate DownloadRequest API: create a
-        # queue that we only use one time.
         robots_policy = policy.replace_mime_type_rules([
             {'match': 'MATCHES', 'pattern': '^text/plain$', 'save': True},
             {'save': False},
         ])
-        output_queue = asyncio.Queue()
         download_request = DownloadRequest(
-            job_id='robots_txt',
+            job_id=None,
+            method='GET',
             url=robots_url,
+            form_data=None,
             cost=0,
             policy=robots_policy,
-            output_queue=output_queue
+            cookie_jar=aiohttp.DummyCookieJar()
         )
-        await self._rate_limiter.push(download_request)
-        response = await output_queue.get()
+
+        await self._request_send.send(download_request)
+        response = await self._response_recv.receive()
 
         if response.status_code == 200 and response.body is not None:
-            try:
-                robots_file = response.body.decode('latin1')
-            except UnicodeDecodeError as ude:
-                logger.error('Robots.txt has invalid encoding: %s (%s)',
-                    robots_url, ude)
-                robots_file = None
+            # There are no invalid byte sequences in latin1 encoding, so this
+            # should always succed.
+            robots_file = response.body.decode('latin1')
         else:
             robots_file = None
 
         return robots_file
+
+    async def _save_robots_to_db(self, robots_doc):
+        async with self._db_pool.connection() as conn:
+            await (
+                r.table('robots_txt')
+                 .insert(robots_doc, conflict='update')
+                 .run(conn)
+            )
 
 
 class RobotsTxt:
@@ -217,15 +249,25 @@ class RobotsTxt:
         self._robots = RobotExclusionRulesParser()
 
         if robots_doc['file'] is not None:
-            try:
-                self._robots.parse(robots_doc['file'])
-            except:
-                pass
+            # The parser never throws an exception, it just ignores things that
+            # it doesn't understand.
+            self._robots.parse(robots_doc['file'])
 
     def is_allowed(self, user_agent, url):
-        ''' Return True if ``url`` is allowed by this robots.txt file. '''
+        '''
+        Return True if ``url`` is allowed by this robots.txt file.
+
+        :param str user_agent: The user agent that want to access the URL.
+        :param str url: The URL that the user agent wants to access.
+        :rtype: bool
+        '''
         return self._robots.is_allowed(user_agent, url)
 
     def is_older_than(self, age):
-        ''' Return True if this robots file is older than ``age``. '''
-        return (datetime.now(tzlocal()) - self._updated_at).seconds > age
+        '''
+        Return True if this robots file is older than ``age``.
+
+        :param datetime age: A timezone-aware datetime.
+        :rtype: bool
+        '''
+        return (datetime.now(timezone.utc) - self._updated_at).seconds >= age

@@ -86,7 +86,8 @@ crawling data but instead influence the behavior of other components.
         extractor [label="Extractor",href="#extractor"];
         resource_monitor [label="Resource Monitor", href="#resource-monitor"];
         scheduler [label="Scheduler",href="#scheduler"];
-        database [label="Database",href="#database"]
+        database [label="Database",href="#database"];
+        robots_txt [label="Robots.txt Manager",href="#robots-txt"];
 
         // Edges
         api_server -> crawl_manager [label="Manage crawls"];
@@ -94,6 +95,7 @@ crawling data but instead influence the behavior of other components.
         api_server -> database [label="View data"];
         scheduler -> crawl_manager [label="Start crawls"];
         crawl_manager -> rate_limiter [label="Download request"];
+        crawl_manager -> robots_txt;
         rate_limiter -> downloader [label="Download request"];
         downloader -> extractor [label="Extract URLs"];
         downloader -> database [label="Store downloads"];
@@ -120,7 +122,16 @@ sending them back to the crawl manager.
 
 .. currentmodule:: starbelly.downloader
 
+.. autoclass:: DownloadRequest
+    :members:
 
+.. autoclass:: DownloadResponse
+    :members:
+
+.. autoclass:: Downloader
+    :members:
+
+.. autoclass:: MimeNotAllowedError
 
 .. _extractor:
 
@@ -216,6 +227,22 @@ to keep track of consumption and usage of various resources, such as where items
 are in the crawling pipeline, CPU utilization, memory usage, etc.
 
 .. autoclass:: ResourceMonitor
+    :members:
+
+.. _robots_txt:
+
+Robots.txt Manager
+------------------
+
+.. currentmodule:: starbelly.robots
+
+The Robots.txt manager is responsible for deciding when to download a robots.txt
+file and for making enforcement decisions for robots.txt policy.
+
+.. autoclass:: RobotsTxtManager
+    :members:
+
+.. autoclass:: RobotsTxt
     :members:
 
 .. _scheduler:
