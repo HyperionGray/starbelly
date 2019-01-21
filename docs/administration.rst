@@ -38,7 +38,7 @@ state:
 
 .. code::
 
-    starbelly-dev-app:/starbelly# python3 -m starbelly.clear
+    starbelly-dev-app:/starbelly# python tools/clear.py
 
 Change Password
 ===============

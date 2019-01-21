@@ -104,14 +104,6 @@ crawling data but instead influence the behavior of other components.
 
 Each of these classes is documented below.
 
-.. _database:
-
-Database
---------
-
-TBD
-
-
 .. _downloader:
 
 Downloader

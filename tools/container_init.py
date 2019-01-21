@@ -3,6 +3,9 @@ An entry point for running inside a container, e.g. Docker.
 
 This initializes any external resources (such as config files and database
 tables), then it execs the command passed into it.
+
+This is also helpful in development environments if you want to initialize the
+database.
 '''
 
 import configparser
@@ -14,42 +17,44 @@ import string
 import sys
 import time
 
-import rethinkdb as r
+from rethinkdb import RethinkDB
+import trio
 
-from . import get_path
-from .config import get_config
+from starbelly.config import get_config, get_path
 
 
+r = RethinkDB()
+r.set_loop_type('trio')
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('container_init')
+logger = logging.getLogger('container_init.py')
 
 
 class ContainerInitException(Exception):
     ''' Indicates a failure to initalize the container. '''
 
 
-def connect_db(db_config):
+async def connect_db(db_config, nursery):
     '''
     Connect to database as admin (a.k.a. super user).
 
     Checks for default admin credentials and sets a password if no admin
     password exists.
     '''
-
     connects_remaining = 10
 
     while True:
         try:
-            conn = r.connect(
+            conn = await r.connect(
                 host=db_config['host'],
                 port=db_config['port'],
-                user='admin'
+                user='admin',
+                nursery=nursery
             )
 
             logger.info('Found default admin credentials: setting the admin'
                         ' password. (see conf/local.ini)')
 
-            result = (
+            result = await (
                 r.db('rethinkdb')
                  .table('users')
                  .get('admin')
@@ -57,7 +62,7 @@ def connect_db(db_config):
                  .run(conn)
             )
 
-            conn.close()
+            await conn.close()
         except r.ReqlAuthError:
             # Default credentials didn't work -- this is a good thing.
             break
@@ -67,18 +72,19 @@ def connect_db(db_config):
             if connects_remaining > 0:
                 logger.error('Will wait 5s and then try to connect again. ({}'
                     ' attempts remaining)'.format(connects_remaining))
-                time.sleep(5)
+                await trio.sleep(5)
             else:
                 raise ContainerInitException(
                     'Gave up trying to connect to RethinkDB.'
                 )
 
     try:
-        conn = r.connect(
+        conn = await r.connect(
             host=db_config['host'],
             port=db_config['port'],
             user=db_config['super_user'],
-            password=db_config['super_password']
+            password=db_config['super_password'],
+            nursery=nursery
         )
         conn.use(db_config['db'])
     except r.ReqlAuthError as e:
@@ -86,28 +92,29 @@ def connect_db(db_config):
             'RethinkDB authentication failure: {}'.format(e)
         )
 
-    time.sleep(5) # Hack to allow shards to become ready.
+    # Hack to allow database to finish initializing:
+    await trio.sleep(5)
     logger.info('Connected to RethinkDB.')
 
     return conn
 
 
-def ensure_db(conn, name):
+async def ensure_db(conn, name):
     ''' Create the named database, if it doesn't already exist. '''
-    if not r.db_list().contains(name).run(conn):
+    if not await r.db_list().contains(name).run(conn):
         logger.info('Creating DB: {}'.format(name))
-        r.db_create(name).run(conn)
+        await r.db_create(name).run(conn)
     conn.use(name)
 
 
-def ensure_db_fixtures(conn):
+async def ensure_db_fixtures(conn):
     ''' Create all fixtures. '''
     # Crawl policy fixtures.
     user_agent = 'Starbelly/{VERSION} ' \
         '(+https://github.com/hyperiongray/starbelly)'
 
-    if r.table('policy').count().run(conn) == 0:
-        r.table('policy').insert({
+    if await r.table('policy').count().run(conn) == 0:
+        await r.table('policy').insert({
             'created_at': r.now(),
             'updated_at': r.now(),
             'name': 'Broad Crawl',
@@ -138,7 +145,7 @@ def ensure_db_fixtures(conn):
             ]
         }).run(conn)
 
-        r.table('policy').insert({
+        await r.table('policy').insert({
             'created_at': r.now(),
             'updated_at': r.now(),
             'name': 'Deep Crawl',
@@ -174,7 +181,7 @@ def ensure_db_fixtures(conn):
     global_rate_limit_token = b'\x00' * 16
 
     try:
-        global_rate_limit = (
+        global_rate_limit = await (
             r.table('rate_limit')
              .get_all(global_rate_limit_token, index='token')
              .nth(0)
@@ -182,32 +189,35 @@ def ensure_db_fixtures(conn):
         )
     except r.ReqlNonExistenceError:
         logger.info('Creating global rate limit fixture.')
-        r.table('rate_limit').insert({
+        await r.table('rate_limit').insert({
             'delay': 5.0,
             'name': 'Global Limit',
             'token': global_rate_limit_token,
             'type': 'global',
         }).run(conn)
 
-def ensure_db_index(conn, table_name, index_name, index_cols=None):
+
+async def ensure_db_index(conn, table_name, index_name, index_cols=None):
     ''' Create the named index, if it doesn't already exist. '''
-    if not r.table(table_name).index_list().contains(index_name).run(conn):
+    check_index_query = r.table(table_name).index_list().contains(index_name)
+    if not await check_index_query.run(conn):
         logger.info('Creating index: {}.{}'.format(table_name, index_name))
         if index_cols is None:
-            r.table(table_name).index_create(index_name).run(conn)
+            await r.table(table_name).index_create(index_name).run(conn)
         else:
-            r.table(table_name).index_create(index_name, index_cols).run(conn)
+            await r.table(table_name).index_create(index_name, index_cols) \
+                   .run(conn)
 
 
-def ensure_db_table(conn, name, **options):
+async def ensure_db_table(conn, name, **options):
     ''' Create the named table, if it doesn't already exist. '''
     options = options or dict()
-    if not r.table_list().contains(name).run(conn):
+    if not await r.table_list().contains(name).run(conn):
         logger.info('Creating table: {}'.format(name))
-        r.table_create(name, **options).run(conn)
+        await r.table_create(name, **options).run(conn)
 
 
-def ensure_db_user(conn, db_name, user, password):
+async def ensure_db_user(conn, db_name, user, password):
     '''
     Create the named user with the specified password, if the user doesn't
     already exist.
@@ -215,7 +225,7 @@ def ensure_db_user(conn, db_name, user, password):
     The user is created with permissions necessary for the application. If the
     user does exist, the password argument is ignored.
     '''
-    user_count = (
+    user_count = await (
         r.db('rethinkdb')
          .table('users')
          .filter(r.row['id']==user)
@@ -225,7 +235,7 @@ def ensure_db_user(conn, db_name, user, password):
 
     if user_count == 0:
         logger.info('Creating RethinkDB user: {}'.format(user))
-        result = (
+        result = await (
             r.db('rethinkdb')
              .table('users')
              .insert({
@@ -235,7 +245,7 @@ def ensure_db_user(conn, db_name, user, password):
              .run(conn)
         )
 
-    result = (
+    result = await (
         r.db(db_name)
          .grant(user, {'read': True, 'write': True})
          .run(conn)
@@ -247,7 +257,7 @@ def init_config():
 
     local_ini_path = get_path('conf/local.ini')
 
-    if not os.path.exists(local_ini_path):
+    if not local_ini_path.exists():
         logger.info('Creating conf/local.ini')
         template_path = get_path('conf/local.ini.template')
         shutil.copyfile(template_path, local_ini_path)
@@ -256,105 +266,99 @@ def init_config():
         config.optionxform = str
         config.read([local_ini_path])
 
-        config['database']['host'] = 'db'
+        config['database']['host'] = 'starbelly-db'
         config['database']['db'] = 'starbelly'
         config['database']['user'] = 'starbelly-app'
-        config['database']['password'] = random_password(length=20)
+        config['database']['password'] = secrets.token_urlsafe(nbytes=15)
         config['database']['super_user'] = 'admin'
-        config['database']['super_password'] = random_password(length=20)
+        config['database']['super_password'] = secrets.token_urlsafe(nbytes=15)
 
         with open(local_ini_path, 'w') as local_ini:
             config.write(local_ini)
 
 
-def init_db(db_config):
+async def init_db(db_config):
     '''
     Make sure the database and required objects (users, tables, indices) all
     exist.
     '''
 
     logger.info('Connecting to RethinkDB: {}'.format(db_config['host']))
-    conn = connect_db(db_config)
+    async with trio.open_nursery() as nursery:
+        conn = await connect_db(db_config, nursery)
+        try:
+            await r.db_drop('test').run(conn)
+        except r.ReqlRuntimeError:
+            pass # Already deleted
 
-    try:
-        r.db_drop('test').run(conn)
-    except r.ReqlRuntimeError:
-        pass # Already deleted
-
-    db_name = db_config['db']
-    ensure_db(conn, db_name)
-    ensure_db_user(conn, db_name, db_config['user'], db_config['password'])
-    ensure_db_table(conn, 'captcha_solver')
-    ensure_db_table(conn, 'domain_login', primary_key='domain')
-    ensure_db_table(conn, 'frontier')
-    ensure_db_index(conn, 'frontier', 'cost_index',
-        [r.row['job_id'], r.row['cost']])
-    ensure_db_table(conn, 'extraction_queue')
-    ensure_db_index(conn, 'extraction_queue', 'cost_index',
-        [r.row['job_id'], r.row['cost']])
-    ensure_db_table(conn, 'job')
-    ensure_db_index(conn, 'job', 'started_at')
-    ensure_db_table(conn, 'job_schedule')
-    ensure_db_index(conn, 'job_schedule', 'schedule_name')
-    ensure_db_table(conn, 'policy')
-    ensure_db_index(conn, 'policy', 'name')
-    ensure_db_table(conn, 'rate_limit')
-    ensure_db_index(conn, 'rate_limit', 'name')
-    ensure_db_index(conn, 'rate_limit', 'token')
-    ensure_db_table(conn, 'response')
-    ensure_db_index(conn, 'response', 'sync_index',
-        [r.row['job_id'], r.row['insert_sequence']])
-    ensure_db_table(conn, 'response_body')
-    ensure_db_table(conn, 'robots_txt')
-    ensure_db_index(conn, 'robots_txt', 'url')
-    ensure_db_fixtures(conn)
-    upgrade_schema(conn)
-    conn.close()
+        db_name = db_config['db']
+        await ensure_db(conn, db_name)
+        await ensure_db_user(conn, db_name, db_config['user'],
+            db_config['password'])
+        await ensure_db_table(conn, 'captcha_solver')
+        await ensure_db_table(conn, 'domain_login', primary_key='domain')
+        await ensure_db_table(conn, 'frontier')
+        await ensure_db_index(conn, 'frontier', 'cost_index',
+            [r.row['job_id'], r.row['cost']])
+        await ensure_db_table(conn, 'extraction_queue')
+        await ensure_db_index(conn, 'extraction_queue', 'cost_index',
+            [r.row['job_id'], r.row['cost']])
+        await ensure_db_table(conn, 'job')
+        await ensure_db_index(conn, 'job', 'started_at')
+        await ensure_db_table(conn, 'job_schedule')
+        await ensure_db_index(conn, 'job_schedule', 'schedule_name')
+        await ensure_db_table(conn, 'policy')
+        await ensure_db_index(conn, 'policy', 'name')
+        await ensure_db_table(conn, 'rate_limit')
+        await ensure_db_index(conn, 'rate_limit', 'name')
+        await ensure_db_index(conn, 'rate_limit', 'token')
+        await ensure_db_table(conn, 'response')
+        await ensure_db_index(conn, 'response', 'sync_index',
+            [r.row['job_id'], r.row['insert_sequence']])
+        await ensure_db_table(conn, 'response_body')
+        await ensure_db_table(conn, 'robots_txt')
+        await ensure_db_index(conn, 'robots_txt', 'url')
+        await ensure_db_fixtures(conn)
+        await upgrade_schema(conn)
+        await conn.close()
 
 
-def main():
+async def main():
     logger.info('Initializing container...')
     init_config()
     config = get_config()
-    init_db(config['database'])
+    await init_db(config['database'])
     logger.info('Container initialization finished.')
 
     sys.argv.pop(0)
     if len(sys.argv) > 0:
         logger.info("Exec target process...")
         os.execvp(sys.argv[0], sys.argv)
-        print(cmd, sys.argv)
 
 
-def random_password(length):
-    ''' Create a random password. '''
-    alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for i in range(length))
-
-
-def upgrade_schema(conn):
+async def upgrade_schema(conn):
     ''' Make changes to the database schema. '''
-    upgrade_schema_url_normalization_policy(conn)
+    await upgrade_schema_url_normalization_policy(conn)
 
 
-def upgrade_schema_url_normalization_policy(conn):
+async def upgrade_schema_url_normalization_policy(conn):
     ''' Add URL normalization policy to policies. '''
-    (
+    await (
         r.table('policy')
-        .filter(lambda p: ~p.has_fields('url_normalization'))
-        .update({
-            'url_normalization': {
-                'enabled': True,
-                'strip_parameters': ['JSESSIONID', 'PHPSESSID', 'sid'],
-            },
-        })
-        .run(conn)
+         .filter(lambda p: ~p.has_fields('url_normalization'))
+         .update({
+             'url_normalization': {
+                 'enabled': True,
+                 'strip_parameters': ['JSESSIONID', 'PHPSESSID', 'sid'],
+             },
+         })
+         .run(conn)
     )
 
 
 if __name__ == '__main__':
     try:
-        main()
+        trio.run(main)
     except ContainerInitException as cie:
-        logging.error('Container initalization failed: {}'.format(cie))
+        logger.error('Container initalization failed: {}'.format(cie))
         sys.exit(1)

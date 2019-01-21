@@ -16,7 +16,7 @@ protobuf = "*"
 psutil = "*"
 python-dateutil = "*"
 python-mimeparse = "*"
-rethinkdb = "*"
+rethinkdb = {ref = "trio", git = "https://github.com/mehaase/rethinkdb-python.git"}
 robotexclusionrulesparser = "*"
 trio = "*"
 trio-websocket = "*"
@@ -43,6 +43,8 @@ trustme = "*"
 sphinx = "*"
 sphinx-rtd-theme = "*"
 coveralls = "*"
+ipython = "*"
+ipykernel = "*"
 
 [requires]
 python_version = "3.7"

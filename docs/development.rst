@@ -149,107 +149,56 @@ translate it into JavaScript.
 .. image:: rethinkdb_gui.png
    :alt: the RethinkDB GUI
 
-If you want to run a Python query, you can use the Starbelly Shell instead,
-but it is a bit less pretty than the GUI:
-
-.. code::
-
-    >>> query = r.table('policy').pluck('name')
-    >>> cursor = qrun(query)
-    >>> qshow(cursor)
-    RethinkDB Cursor: [
-        {'name': 'Deep Crawl'},
-        {'name': 'Broad Crawl'},
-    ]
-
-The "Starbelly Shell" section contains more details about the shell.
-
-Notebook
---------
-
-A `Jupyter server <http://jupyter.org/>`__ is included in the developer Docker
-images to make it easy to build a notebook for experiments and prototypes. A
-notebook can also be a slightly easier way to use the Starbelly Shell (see
-below).
-
-Begin by running the Jupyter server:
-
-.. code::
-
-    starbelly-dev-app:/starbelly# jupyter notebook --allow-root --ip 0.0.0.0 --NotebookApp.token=''
-    [W 20:44:35.840 NotebookApp] All authentication is disabled.  Anyone who can connect to this server will be able to run code.
-    [I 20:44:35.850 NotebookApp] Serving notebooks from local directory: /starbelly
-    [I 20:44:35.850 NotebookApp] 0 active kernels
-    [I 20:44:35.850 NotebookApp] The Jupyter Notebook is running at:
-    [I 20:44:35.850 NotebookApp] http://0.0.0.0:8888/
-    [I 20:44:35.850 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
-
-Now access the Jupyter server by going to ``localhost:8001`` in your browser.
-
-.. image:: jupyter_notebook.png
-   :alt: the Jupyter notebook GUI
-
-You can create and manage your notebooks here. In each notebook, you'll probably
-want to begin by importing the shell functions:
-
-.. code::
-
-    from starbelly.shell import *
-
-Then you can run commands inside the notebook just like you can from the
-Starbelly Shell:
-
-.. image:: jupyter_notebook2.png
-   :alt: the Jupyter notebook GUI
-
-When you are done, type <Ctrl>+C on the command line to shut down the Jupyter
-server. An `example notebook <https://github.com/HyperionGray/starbelly/blob/mas
-ter/notebooks/Frontier%20Reloading.ipynb>`__ is included in the repository.
+If you want to run a query using the Python API, you can use the Starbelly shell
+instead.
 
 Starbelly Shell
 ---------------
 
-The Starbelly shell is an interactive Python interpreter that offers quick
-access to Starbelly's internal API, and it is a good place to debug little bits
-of code. The Shell cannot directly access the server's internal state at
-runtime, but it does use the same exact code paths as the server to do things
-like parsing configuration files and connecting to a database.
-
-To start the shell:
+The Starbelly shell offers an interpreter with quick access to Starbelly's
+internal API, and it is a good place to debug little bits of code. The shell
+cannot directly access the server's internal state at runtime, but it is useful
+for things like inspecting config files or running ad hoc database queries.
 
 .. code::
 
-    starbelly-dev-app:/starbelly# python3 -im starbelly.shell
-    20:03:42 [starbelly.shell] INFO: Starbelly Shell v1.1.0
-    >>>
+    $ python tools/shell.py
+    IPython Shell: Starbelly v2.0.0-dev
+    In [1]:
 
-This Python prompt has a lot of additions to the global namespace and helpers
-for debugging code. For example, you can view the configuration:
-
-.. code::
-
-    >>> config['database']['user']
-    'starbelly-app'
-
-Note that the name ``config`` (and many others) have already been imported into
-the shell's namespace.
-
-You can run arbitrary coroutines with ``crun()``:
+The shell initializes some global variables and then presents you with an
+`IPython prompt <https://ipython.org/>`__. You can access the ``config`` and
+``logger`` objects here.
 
 .. code::
 
-    >>> async def foo():
-    ...   await asyncio.sleep(0.1)
-    ...   print('done!')
-    ...
-    >>> crun(foo())
-    done!
+    In [1]: config['database']['user']
+    Out[1]: 'starbelly-app'
 
-You can run a query against RethinkDB:
+    In [2]: logger.info('Hello, world!')
+    12:52:17 [tools.shell] INFO: Hello, world!
 
-    >>> query = r.table('policy').pluck('name')
-    >>> cursor = qrun(query)
-    >>> qshow(cursor)
+The shell imports the ``trio`` package for you and is setup to handle async
+functions. The following snippet defines an async function and shows two
+equivalent ways of running it.
+
+.. code::
+
+    In [3]: async def foo(): await trio.sleep(1)
+
+    In [4]: await foo()
+
+    In [5]: trio.run(foo)
+
+You can also run a query and display the results.
+
+.. code::
+
+    In [6]: policy_query = r.table('policy').pluck('name')
+
+    In [7]: policy_results = run_query(policy_query)
+
+    In [8]: print_results(policy_results)
     RethinkDB Cursor: [
         {'name': 'Deep Crawl'},
         {'name': 'Broad Crawl'},
@@ -257,19 +206,71 @@ You can run a query against RethinkDB:
 
 .. warning::
 
-    Showing the results of a query will exhaust the cursor object! If you
+    Printing the results of a query will exhaust the cursor object! If you
     try to do anything else with the cursor, you will find that it has no more
-    data. You need to ``qrun()`` the query again to get a fresh cursor.
+    data. You need to run the query again to get a new cursor.
 
-You can also run a callback on each row of a cursor to transform the data.
+Jupyter Notebook
+----------------
 
-    >>> def lower(row):
-    ...   return {k:v.lower() for k,v in row.items()}
-    ...
-    >>> query = r.table('policy').pluck('name')
-    >>> cursor = qrun(query)
-    >>> qiter(cursor, lower)
-    [{'name': 'deep crawl'}, {'name': 'broad crawl'}]
+The Starbelly shell is also compatible with Jupyter Notebook, which may be a
+more user-friendly way to access the shell. If you haven't used it before,
+Jupyter Notebook is a great way to experiment and prototype code. (The
+``notebooks`` directory of the repository contains some examples that you can
+view directly on GitHub.)
 
-You can also use the Starbelly Shell functions inside of a Notebook. See the
-"Notebook" section above.
+If you haven't installed Jupyter before, you'll need to install it. (It is not
+installed with the Starbelly developer installation.) It does not need to be
+installed within the virtual environment. In fact, if you want to use it with
+other projects, it works quite well installed into your global Python packages.
+It can be installed with Python 2 or 3, but we recommend Python 3.
+
+.. code::
+
+    $ sudo pip3 -H install jupyter
+
+You will want to make sure that you have a Python 3.7 IPython kernel installed.
+Run the following command inside your virtual environment
+
+.. code::
+
+    (starbelly) $ python -m ipykernel install --user --name starbelly \
+                         --display-name "Python 3.7 (starbelly)"
+
+After doing this one-time step, you can start a notebook server by running the
+following command from the project root.
+
+.. code::
+
+    (starbelly) $ jupyter notebook
+    [I 12:58:37.849 NotebookApp] Serving notebooks from local directory: /home/mhaase/code/starbelly
+    [I 12:58:37.849 NotebookApp] The Jupyter Notebook is running at:
+    [I 12:58:37.849 NotebookApp] http://localhost:8888/?token=d607f8171694c628db8e7877570e4968f59267120fb49c3e
+    [I 12:58:37.849 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+    [C 12:58:37.874 NotebookApp]
+
+Now access the Jupyter server by going to `localhost:8888
+<http://localhost:8888>`__ in your browser. If you installed the IPython kernel
+correctly, you should see a "Python 3.7 (starbelly)" option when you go to
+create a new notebook. You should choose this option when you wish to interact
+with the Starbelly shell.
+
+.. image:: jupyter_new_notebook.png
+   :alt: when creating a new notebook, you should see an option for starbelly
+
+In the first cell of your new notebook, you should run the following commands:
+
+.. code::
+
+    %autoawait trio
+    from pathlib import Path
+    from sys import path
+    path.append(str(Path().resolve().parent))
+    from tools.shell import *
+
+These commands assume that you create your notebook in the ``notebooks``
+directory, so you may need to adjust if you create them elsewhere. After that,
+you have access to everything in the IPython shell described above.
+
+.. image:: jupyter_notebook.png
+   :alt: example of notebook usage

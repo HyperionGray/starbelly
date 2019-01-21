@@ -68,8 +68,8 @@ author = 'Mark E. Haase'
 # built documents.
 #
 # The short X.Y version.
-import starbelly
-version = starbelly.__version__
+import starbelly.version
+version = starbelly.version.__version__
 # The full version, including alpha/beta/rc tags.
 release = version
 

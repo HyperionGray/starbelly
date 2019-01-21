@@ -1,7 +1,5 @@
 '''
-This module contains integration tests.
-
-These tests rely on a RethinkDB server running on localhost 28015.
+This package contains some tools for interacting with starbelly.
 '''
 
 # Add this project to the Python path:

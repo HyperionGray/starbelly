@@ -12,9 +12,7 @@ import rethinkdb as r
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from . import cancel_futures, daemon_task, get_path
-from .db import AsyncRethinkPool
-from .config import get_config
+from .config import get_config, get_path
 from .crawl import CrawlManager
 from .downloader import Downloader
 from .policy import PolicyManager
@@ -25,41 +23,6 @@ from .schedule import Scheduler
 from .server import Server
 from .subscription import SubscriptionManager
 from .tracker import Tracker
-
-
-def async_excepthook(type_, exc, tb):
-    '''
-    A custom exception hook that omits asyncio internals from stack traces.
-    '''
-    cause_exc = None
-    cause_str = None
-
-    if exc.__cause__ is not None:
-        cause_exc = exc.__cause__
-        cause_str = 'The above exception was the direct cause ' \
-                    'of the following exception:'
-    elif exc.__context__ is not None and not exc.__suppress_context__:
-        cause_exc = exc.__context__
-        cause_str = 'During handling of the above exception, ' \
-                    'another exception occurred:'
-
-    if cause_exc:
-        async_excepthook(type(cause_exc), cause_exc, cause_exc.__traceback__)
-
-    if cause_str:
-        print('\n{}\n'.format(cause_str))
-
-    print('Async Traceback (most recent call last):')
-    for frame in traceback.extract_tb(tb):
-        head, tail = os.path.split(frame.filename)
-        if (head.endswith('asyncio') or tail == 'traceback.py' or tail == 'coroutines.py') and \
-           (frame.name.startswith('_') or frame.name == 'throw'):
-            print('  ...')
-            continue
-        print('  File "{}", line {}, in {}'
-            .format(frame.filename, frame.lineno, frame.name))
-        print('    {}'.format(frame.line))
-    print('{}: {}'.format(type_.__name__, exc))
 
 
 class ProcessWatchdog(FileSystemEventHandler):
@@ -131,7 +94,7 @@ class Reloader:
 
         self._observer = Observer()
         self._observer.schedule(
-            self._watchdog, get_path('starbelly'), recursive=True)
+            self._watchdog, str(get_path('starbelly')), recursive=True)
         self._observer.start()
 
         while True:
@@ -254,7 +217,6 @@ class Starbelly:
         ''' Start the event loop. '''
         self._logger.info('Starbelly is starting...')
         r.set_loop_type('asyncio')
-        sys.excepthook = async_excepthook
         loop = asyncio.get_event_loop()
         self._main_task = asyncio.ensure_future(self.run())
         loop.run_until_complete(self._main_task)
