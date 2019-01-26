@@ -151,9 +151,6 @@ Crawl Manager
     Controls the crawling schedule. When a job needs
     to run, the scheduler will automatically start it.
 
-Storage
-    TODO
-
 .. _api_server:
 
 API Server
@@ -163,9 +160,19 @@ The main interaction point for Starbelly is through its WebSocket API.
 
 TODO
 
-Subscriptions are implemented in a separate module.
-
 .. currentmodule:: starbelly.subscription
+
+The API supports multiple types of subscriptions. Unlike the rest of the API,
+which consists of a simple request → response model, subscriptions push data to
+the client. Some subscriptions can be paused and resumed using a "sync token".
+
+.. autoclass:: SyncTokenError
+    :members:
+
+.. autoclass:: SyncTokenInt
+    :members:
+
+The following classes implement subscription behavior.
 
 .. autoclass:: CrawlSyncSubscription
     :members:
@@ -177,14 +184,6 @@ Subscriptions are implemented in a separate module.
     :members:
 
 .. autoclass:: TaskMonitorSubscription
-    :members:
-
-For subscriptions that support pausing and resuming, a "token" is used.
-
-.. autoclass:: SyncTokenError
-    :members:
-
-.. autoclass:: SyncTokenInt
     :members:
 
 .. _downloader:
@@ -346,4 +345,4 @@ The following model classes are used by the Scheduler.
 
 .. autoclass:: ScheduleValidationError
 
-.. _subscriptions:
+.. _subscription:

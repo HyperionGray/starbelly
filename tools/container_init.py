@@ -209,7 +209,7 @@ async def ensure_db_index(conn, table_name, index_name, index_cols=None):
         else:
             await r.table(table_name).index_create(index_name, index_cols) \
                    .run(conn)
-        await r.table(table_name).index_wait(index_name)
+        await r.table(table_name).index_wait(index_name).run(conn)
 
 async def ensure_db_table(conn, name, **options):
     ''' Create the named table, if it doesn't already exist. '''

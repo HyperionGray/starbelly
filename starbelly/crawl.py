@@ -171,6 +171,13 @@ class JobStatusNotification:
     datetime: datetime
 
 
+@dataclass
+class JobStateEvent:
+    ''' Indicates a change in a job's run_state. '''
+    job_id: bytes
+    run_state: str
+
+
 class CrawlStateProxy:
     ''' A proxy object that exposes the state of crawl jobs. '''
     def __init__(self, job_states):

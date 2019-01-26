@@ -54,7 +54,7 @@ async def db_pool(nursery):
     async with db_pool.connection() as conn:
         await r.table_create('robots_txt').run(conn)
         await r.table('robots_txt').index_create('url').run(conn)
-        await r.table('robots_txt').index_wait('url')
+        await r.table('robots_txt').index_wait('url').run(conn)
     yield db_pool
     async with db_pool.connection() as conn:
         await r.table_drop('robots_txt').run(conn)

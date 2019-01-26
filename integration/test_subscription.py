@@ -8,7 +8,7 @@ from rethinkdb import RethinkDB
 import trio
 
 from protobuf.server_pb2 import ServerMessage, SubscriptionClosed
-from starbelly.crawl import JobState
+from starbelly.crawl import JobStateEvent
 from starbelly.subscription import (
     CrawlSyncSubscription,
 )
@@ -38,8 +38,9 @@ async def job_table(db_pool):
 async def response_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create('response').run(conn)
-        await r.table('response').index_create('sequence').run(conn)
-        await r.table('response').index_wait('sequence')
+        await r.table('response').index_create('job_sync',
+            [r.row['job_id'], r.row['sequence']]).run(conn)
+        await r.table('response').index_wait('job_sync').run(conn)
     yield r.table('response')
     await r.table_drop('response').run(conn)
 
@@ -62,8 +63,7 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
     async with db_pool.connection() as conn:
         await r.table('job').insert({
             'id': job_id,
-            'min_sequence': 1,
-            'max_sequence': 5,
+            'run_state': 'COMPLETED',
         }).run(conn)
 
         await r.table('response_body').insert({
@@ -198,34 +198,39 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
     assert repr(subscription) == '<CrawlSyncSubscription id=2 job_id=aaaaaaaa>'
     nursery.start_soon(subscription.run)
 
-    # The next message will be a repeat of the previous, since we "interrupted"
-    # the sync before the previous item finished.
-    data = await receive_stream.receive_some(4096)
-    message3 = ServerMessage.FromString(data).event
-    assert message3.subscription_id == 2
-    item3 = message3.sync_item.item
-    assert item3.url == 'https://www.example/foo'
+    import logging
+    with trio.fail_after(3):
+        # The next message will be a repeat of the previous, since we "interrupted"
+        # the sync before the previous item finished.
+        data = await receive_stream.receive_some(4096)
+        logging.debug('message3')
+        message3 = ServerMessage.FromString(data).event
+        assert message3.subscription_id == 2
+        item3 = message3.sync_item.item
+        assert item3.url == 'https://www.example/foo'
 
-    data = await receive_stream.receive_some(4096)
-    message4 = ServerMessage.FromString(data).event
-    assert message4.subscription_id == 2
-    item4 = message4.sync_item.item
-    assert item4.job_id == job_id
-    assert item4.url     == 'https://www.example/bar'
-    assert item4.url_can == 'https://www.example/bar'
-    assert item4.started_at   == '2019-01-01T01:01:04+00:00'
-    assert item4.completed_at == '2019-01-01T01:01:05+00:00'
-    assert item4.cost == 2.0
-    assert item4.duration == 1.0
-    assert item4.status_code == 200
-    assert item4.is_success
-    assert item4.is_compressed
-    assert gzip.decompress(item4.body) == b'Test document #2'
+        data = await receive_stream.receive_some(4096)
+        message4 = ServerMessage.FromString(data).event
+        logging.debug('message4')
+        assert message4.subscription_id == 2
+        item4 = message4.sync_item.item
+        assert item4.job_id == job_id
+        assert item4.url     == 'https://www.example/bar'
+        assert item4.url_can == 'https://www.example/bar'
+        assert item4.started_at   == '2019-01-01T01:01:04+00:00'
+        assert item4.completed_at == '2019-01-01T01:01:05+00:00'
+        assert item4.cost == 2.0
+        assert item4.duration == 1.0
+        assert item4.status_code == 200
+        assert item4.is_success
+        assert item4.is_compressed
+        assert gzip.decompress(item4.body) == b'Test document #2'
 
-    data = await receive_stream.receive_some(4096)
-    message5 = ServerMessage.FromString(data).event
-    assert message5.subscription_id == 2
-    assert message5.subscription_closed.reason == SubscriptionClosed.COMPLETE
+        data = await receive_stream.receive_some(4096)
+        message5 = ServerMessage.FromString(data).event
+        logging.debug('message5')
+        assert message5.subscription_id == 2
+        assert message5.subscription_closed.reason == SubscriptionClosed.COMPLETE
 
 
 async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
@@ -237,8 +242,7 @@ async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
     async with db_pool.connection() as conn:
         await r.table('job').insert({
             'id': job_id,
-            'min_sequence': 1,
-            'max_sequence': 1,
+            'run_state': 'COMPLETED',
         }).run(conn)
 
         await r.table('response_body').insert({
@@ -308,8 +312,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
     async with db_pool.connection() as conn:
         await r.table('job').insert({
             'id': job_id,
-            'min_sequence': 1,
-            'max_sequence': None,
+            'run_state': 'RUNNING',
         }).run(conn)
 
         await r.table('response_body').insert({
@@ -374,7 +377,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
         with trio.fail_after(1) as cancel_scope:
             data = await receive_stream.receive_some(4096)
 
-    # Now add second result:
+    # Now add second result and mark the crawl as completed:
     async with db_pool.connection() as conn:
         await r.table('response_body').insert({
             'id': b'\x02' * 32,
@@ -398,31 +401,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
             'content_type': 'text/plain',
             'headers': []
         }).run(conn)
-    job_state = JobState(
-        job_id=job_id, name='Test', seeds=[], tags=[],
-        run_state='COMPLETED',
-        started_at=datetime(2019, 1, 1, 1, 1, 0, tzinfo=timezone.utc),
-        completed_at=datetime(2019, 1, 1, 1, 1, 1, tzinfo=timezone.utc),
-        item_count=2, http_success_count=2, http_error_count=0,
-        exception_count=0, http_status_counts={200: 2},
-        min_sequence=1, max_sequence=5
-    )
-    await job_send.send(job_state)
-
-    job_id: bytes
-    name: str
-    seeds: list[str]
-    tags: list[str]
-    run_state: str
-    started_at: datetime
-    completed_at: datetime
-    item_count: int
-    http_success_count: int
-    http_error_count: int
-    exception_count: int
-    http_status_counts: dict
-    min_sequence: int
-    max_sequence: int
+    await job_send.send(JobStateEvent(job_id, 'COMPLETED'))
 
     # Now wait to receive the second result
     data = await receive_stream.receive_some(4096)

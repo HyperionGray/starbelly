@@ -25,15 +25,34 @@ logger = logging.getLogger(__name__)
 
 
 class ExponentialBackoff:
+    ''' An experimental class: this makes it simple to write loops that poll
+    a resource and backoff when the resource is not ready.
+
+    For example, if you are polling the database for some new records, you might
+    wait 1 second and then try again. If there are still no records, then you
+    wait 2 seconds before trying again, then 4 seconds, then 8, etc.
+
+    This is written as an async iterator, so you can just loop over it and it
+    will automatically delay in between loop iterations.
+    '''
     def __init__(self, start=1, max_=math.inf):
+        '''
+        Constructor.
+
+        :param int start: The initial delay between loop iterations.
+        :param int max_: The maximum delay.
+        '''
         self._backoff = start
         self._initial = True
         self._max = max_
 
     def __aiter__(self):
+        ''' This instance is an async iterator. '''
         return self
 
     async def __anext__(self):
+        ''' Add a delay in between loop iterations. (No delay for the first
+        iteration. '''
         if self._initial:
             backoff = 0
             self._initial = False
@@ -43,10 +62,13 @@ class ExponentialBackoff:
         return backoff
 
     def increase(self):
+        ''' Double the current backoff, but not if it would exceed this
+        instance's max value. '''
         if self._backoff <= self._max // 2:
             self._backoff *= 2
 
     def decrease(self):
+        ''' Halve the current backoff, not if would be less than 1. '''
         if self._backoff >= 2:
             self._backoff //= 2
 
@@ -127,15 +149,14 @@ class CrawlSyncSubscription:
         self._job_id = job_id
         self._compression_ok = compression_ok
         self._job_state_recv = job_state_recv
-        self._min_sequence = None
-        self._max_sequence = None
-        self._last_sequence = None
+        self._current_sequence = 0
         self._cancel_scope = None
+        self._job_completed = None
 
         if sync_token:
-            min_seq = SyncTokenInt.decode(sync_token) + 1
-            logging.debug('%r Setting min_sequence to %d', self, min_seq)
-            self._min_sequence = min_seq
+            self._current_sequence = SyncTokenInt.decode(sync_token)
+            logging.debug('%r Setting current sequence to %d', self,
+                self._current_sequence)
 
     def __repr__(self):
         ''' For debugging purposes, put the subscription ID and part of the job
@@ -205,11 +226,11 @@ class CrawlSyncSubscription:
                 )
             }
 
-        max_sequence = self._max_sequence or r.maxval
         query = (
             r.table('response')
-             .order_by(index='sequence')
-             .between(self._min_sequence, max_sequence, right_bound='closed')
+             .order_by(index='job_sync')
+             .between([self._job_id, self._current_sequence],
+                      [self._job_id, r.maxval], left_bound='open')
              .merge(get_body)
         )
 
@@ -224,7 +245,9 @@ class CrawlSyncSubscription:
         '''
         async for job_state in self._job_state_recv:
             if job_state.job_id == self._job_id:
-                self._max_sequence = job_state.max_sequence
+                if job_state.run_state in ('COMPLETED', 'CANCELLED'):
+                    logger.debug('%r Job status: %s', self, job_state.run_state)
+                    self._job_completed = True
 
     async def _run_sync(self):
         '''
@@ -241,12 +264,11 @@ class CrawlSyncSubscription:
                     async for item in cursor:
                         item_count += 1
                         await self._send_item(item)
-                        self._min_sequence = item['sequence'] + 1
-
-            if self._max_sequence and self._min_sequence > self._max_sequence:
-                break
+                        self._current_sequence = item['sequence'] + 1
 
             if item_count == 0:
+                if self._job_completed:
+                    break
                 backoff.increase()
             else:
                 backoff.decrease()
@@ -304,18 +326,13 @@ class CrawlSyncSubscription:
                 await self._stream.send_all(message.SerializeToString())
 
     async def _set_initial_job_status(self):
-        ''' Query database for initial job status. '''
-        query = (
-            r.table('job')
-             .get(self._job_id)
-             .pluck('run_state', 'min_sequence', 'max_sequence')
-        )
+        ''' Query database for initial job status and update internal state. '''
+        query = r.table('job').get(self._job_id).pluck('run_state')
         async with self._db_pool.connection() as conn:
             result = await query.run(conn)
             logging.debug('%r Initial job state: %r', self, result)
-            if not self._min_sequence:
-                self._min_sequence = result['min_sequence']
-            self._max_sequence = result['max_sequence']
+            self._job_completed = result['run_state'] in \
+                ('COMPLETED', 'CANCELLED')
 
 
 class JobStatusSubscription:
@@ -578,7 +595,11 @@ class TaskMonitorSubscription:
                 await trio.sleep(self._period)
 
     def _make_event(self):
-        ''' Make an event containing task monitor data. '''
+        '''
+        Make an event containing task monitor data.
+
+        :rtype: protobuf.server_pb2.ServerMessage
+        '''
         message = ServerMessage()
         message.event.subscription_id = self._id
         root = message.event.task_tree
@@ -607,4 +628,3 @@ class TaskMonitorSubscription:
         async with self._stream_lock:
             with trio.open_cancel_scope(shield=True):
                 await self._stream.send_all(event.SerializeToString())
-
