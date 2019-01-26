@@ -20,6 +20,8 @@ import time
 from rethinkdb import RethinkDB
 import trio
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from starbelly.config import get_config, get_path
 
 
@@ -207,7 +209,7 @@ async def ensure_db_index(conn, table_name, index_name, index_cols=None):
         else:
             await r.table(table_name).index_create(index_name, index_cols) \
                    .run(conn)
-
+        await r.table(table_name).index_wait(index_name)
 
 async def ensure_db_table(conn, name, **options):
     ''' Create the named table, if it doesn't already exist. '''
@@ -313,8 +315,8 @@ async def init_db(db_config):
         await ensure_db_index(conn, 'rate_limit', 'name')
         await ensure_db_index(conn, 'rate_limit', 'token')
         await ensure_db_table(conn, 'response')
-        await ensure_db_index(conn, 'response', 'sync_index',
-            [r.row['job_id'], r.row['insert_sequence']])
+        await ensure_db_index(conn, 'response', 'job_sync',
+                [r.row['job_id'], r.row['sequence']])
         await ensure_db_table(conn, 'response_body')
         await ensure_db_table(conn, 'robots_txt')
         await ensure_db_index(conn, 'robots_txt', 'url')

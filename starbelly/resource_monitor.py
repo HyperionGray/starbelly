@@ -19,12 +19,7 @@ class ResourceMonitor:
     '''
     Keep track of consumption and usage statistics for various resources.
     '''
-
-    # The number of frames to buffer. At one frame per second, this buffers 5
-    # minutes of resource data.
-    FRAME_BUFFER = 300
-
-    def __init__(self, interval, buffer_size, crawl_manager, rate_limiter):
+    def __init__(self, interval, buffer_size, crawl_resources, rate_limiter):
         '''
         Constructor.
 
@@ -32,11 +27,12 @@ class ResourceMonitor:
             measurements.
         :param int buffer_size: The number of measurements to store in the
             internal buffer.
-        :param crawl_manager:
+        :param CrawlStateProxy crawl_resources: An object that exposes resource
+            usage for each crawl job.
         :param starbelly.rate_limiter.RateLimiter rate_limiter:
         '''
         self._interval = interval
-        # self._crawl_manager = crawl_manager
+        self._crawl_resources = crawl_resources
         self._rate_limiter = rate_limiter
         self._measurements = deque(maxlen=buffer_size)
         self._channels = list()
@@ -60,19 +56,19 @@ class ResourceMonitor:
 
     def history(self, n=None):
         '''
-        A generator that yields the most recent ``n`` measurements.
+        Return the most recent ``n`` measurements.
 
         :param int n: The number of measurements to retrieve. If ``n`` is None
             or there are fewer than ``n`` measurements, return all measurements.
-        :returns: A generator.
+        :rtype: list
         '''
-        history_iter = iter(self._measurements)
         # A deque can't be sliced, so we have to do some extra work to return
-        # measurements from the end.
+        # the <n> most recent measurements from the end.
+        history_iter = iter(self._measurements)
         if n is not None:
             for _ in range(len(self._measurements) - n):
                 next(history_iter)
-        yield from history_iter
+        return list(history_iter)
 
     async def run(self):
         '''
@@ -100,9 +96,8 @@ class ResourceMonitor:
 
     def _measure(self):
         '''
-        TODO uncomment crawl
+        Record one set of measurements.
 
-        :returns: A set of measurements.
         :rtype: dict
         '''
         measurement = dict()
@@ -136,16 +131,13 @@ class ResourceMonitor:
             measurement['networks'].append(net)
 
         # Crawls
-        # measurement['crawls'] = list()
-        # for crawl_stat in self._crawl_manager.get_stats():
-        #     crawl = dict()
-        #     crawl['job_id'] = UUID(crawl_stat.job_id).bytes
-        #     crawl['frontier'] = crawl_stat.frontier
-        #     crawl['pending'] = crawl_stat.pending
-        #     crawl['extraction'] = crawl_stat.extraction
-        #     measurement['crawls'].append(crawl)
+        measurement['crawls'] = list()
+        for job_id, job_resources in self._crawl_resources:
+            crawl = job_resources.copy()
+            crawl['job_id'] = job_id
+            measurement['crawls'].append(crawl)
 
         # Rate limiter
-        measurement['rate_limiter_count'] = self._rate_limiter.item_count
+        measurement['rate_limiter'] = self._rate_limiter.item_count
 
         return measurement

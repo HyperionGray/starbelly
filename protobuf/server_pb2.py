@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/server.proto',
   package='starbelly',
   syntax='proto2',
-  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xd5\x02\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12&\n\x08job_list\x18\x02 \x01(\x0b\x32\x12.starbelly.JobListH\x00\x12\x37\n\x11job_schedule_list\x18\x07 \x01(\x0b\x32\x1a.starbelly.JobScheduleListH\x00\x12\x32\n\x0eresource_frame\x18\x03 \x01(\x0b\x32\x18.starbelly.ResourceFrameH\x00\x12<\n\x13subscription_closed\x18\x04 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x12(\n\tsync_item\x18\x05 \x01(\x0b\x32\x13.starbelly.SyncItemH\x00\x12.\n\x0ctask_monitor\x18\x06 \x01(\x0b\x32\x16.starbelly.TaskMonitorH\x00\x42\x06\n\x04\x42ody\"\xaa\x01\n\x1aPerformanceProfileFunction\x12\x0c\n\x04\x66ile\x18\x01 \x01(\t\x12\x13\n\x0bline_number\x18\x02 \x01(\x05\x12\x10\n\x08\x66unction\x18\x03 \x01(\t\x12\r\n\x05\x63\x61lls\x18\x04 \x01(\x05\x12\x1b\n\x13non_recursive_calls\x18\x05 \x01(\x05\x12\x12\n\ntotal_time\x18\x06 \x01(\x01\x12\x17\n\x0f\x63umulative_time\x18\x07 \x01(\x01\"\xff\x02\n\rResourceFrame\x12\x11\n\ttimestamp\x18\x01 \x01(\t\x12)\n\x04\x63pus\x18\x02 \x03(\x0b\x32\x1b.starbelly.ResourceFrameCpu\x12.\n\x06memory\x18\x03 \x01(\x0b\x32\x1e.starbelly.ResourceFrameMemory\x12+\n\x05\x64isks\x18\x04 \x03(\x0b\x32\x1c.starbelly.ResourceFrameDisk\x12\x31\n\x08networks\x18\x05 \x03(\x0b\x32\x1f.starbelly.ResourceFrameNetwork\x12-\n\x06\x63rawls\x18\x06 \x03(\x0b\x32\x1d.starbelly.ResourceFrameCrawl\x12\x39\n\x0crate_limiter\x18\x07 \x01(\x0b\x32#.starbelly.ResourceFrameRateLimiter\x12\x36\n\ndownloader\x18\x08 \x01(\x0b\x32\".starbelly.ResourceFrameDownloader\"!\n\x10ResourceFrameCpu\x12\r\n\x05usage\x18\x01 \x01(\x01\"[\n\x12ResourceFrameCrawl\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x10\n\x08\x66rontier\x18\x02 \x01(\x05\x12\x0f\n\x07pending\x18\x03 \x01(\x05\x12\x12\n\nextraction\x18\x04 \x01(\x05\"?\n\x11ResourceFrameDisk\x12\r\n\x05mount\x18\x01 \x01(\t\x12\x0c\n\x04used\x18\x02 \x01(\x03\x12\r\n\x05total\x18\x03 \x01(\x03\"(\n\x17ResourceFrameDownloader\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\"2\n\x13ResourceFrameMemory\x12\x0c\n\x04used\x18\x01 \x01(\x03\x12\r\n\x05total\x18\x02 \x01(\x03\"D\n\x14ResourceFrameNetwork\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04sent\x18\x02 \x01(\x03\x12\x10\n\x08received\x18\x03 \x01(\x03\")\n\x18ResourceFrameRateLimiter\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\"\x91\t\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12*\n\x06solver\x18\x16 \x01(\x0b\x32\x18.starbelly.CaptchaSolverH\x00\x12.\n\x0c\x64omain_login\x18\x05 \x01(\x0b\x32\x16.starbelly.DomainLoginH\x00\x12\x37\n\x11\x64omain_login_user\x18\x06 \x01(\x0b\x32\x1a.starbelly.DomainLoginUserH\x00\x12\x1d\n\x03job\x18\x07 \x01(\x0b\x32\x0e.starbelly.JobH\x00\x12.\n\x0cjob_schedule\x18\x13 \x01(\x0b\x32\x16.starbelly.JobScheduleH\x00\x12#\n\x06policy\x18\x08 \x01(\x0b\x32\x11.starbelly.PolicyH\x00\x12\x45\n\x14list_captcha_solvers\x18\x17 \x01(\x0b\x32%.starbelly.ResponseListCaptchaSolversH\x00\x12\x41\n\x12list_domain_logins\x18\t \x01(\x0b\x32#.starbelly.ResponseListDomainLoginsH\x00\x12\x32\n\nlist_items\x18\n \x01(\x0b\x32\x1c.starbelly.ResponseListItemsH\x00\x12\x30\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12\x41\n\x12list_job_schedules\x18\x14 \x01(\x0b\x32#.starbelly.ResponseListJobSchedulesH\x00\x12\x38\n\rlist_policies\x18\x0c \x01(\x0b\x32\x1f.starbelly.ResponseListPoliciesH\x00\x12=\n\x10list_rate_limits\x18\r \x01(\x0b\x32!.starbelly.ResponseListRateLimitsH\x00\x12\x39\n\nnew_solver\x18\x18 \x01(\x0b\x32#.starbelly.ResponseNewCaptchaSolverH\x00\x12,\n\x07new_job\x18\x0e \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12=\n\x10new_job_schedule\x18\x15 \x01(\x0b\x32!.starbelly.ResponseNewJobScheduleH\x00\x12\x32\n\nnew_policy\x18\x0f \x01(\x0b\x32\x1c.starbelly.ResponseNewPolicyH\x00\x12>\n\x10new_subscription\x18\x10 \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\x44\n\x13performance_profile\x18\x11 \x01(\x0b\x32%.starbelly.ResponsePerformanceProfileH\x00\x12\'\n\x04ping\x18\x12 \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"V\n\x1aResponseListCaptchaSolvers\x12)\n\x07solvers\x18\x01 \x03(\x0b\x32\x18.starbelly.CaptchaSolver\x12\r\n\x05total\x18\x02 \x01(\x05\"Q\n\x18ResponseListDomainLogins\x12&\n\x06logins\x18\x01 \x03(\x0b\x32\x16.starbelly.DomainLogin\x12\r\n\x05total\x18\x02 \x01(\x05\"K\n\x11ResponseListItems\x12\'\n\x05items\x18\x01 \x03(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"?\n\x10ResponseListJobs\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"X\n\x18ResponseListJobSchedules\x12-\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x16.starbelly.JobSchedule\x12\r\n\x05total\x18\x02 \x01(\x05\"J\n\x14ResponseListPolicies\x12#\n\x08policies\x18\x01 \x03(\x0b\x32\x11.starbelly.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"R\n\x16ResponseListRateLimits\x12)\n\x0brate_limits\x18\x01 \x03(\x0b\x32\x14.starbelly.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\"-\n\x18ResponseNewCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x02(\x0c\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"-\n\x16ResponseNewJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x7f\n\x1aResponsePerformanceProfile\x12\x13\n\x0btotal_calls\x18\x01 \x01(\x05\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12\x38\n\tfunctions\x18\x03 \x03(\x0b\x32%.starbelly.PerformanceProfileFunction\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"A\n\x08SyncItem\x12&\n\x04item\x18\x01 \x02(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05token\x18\x02 \x02(\x0c\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"~\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\"!\n\x06Reason\x12\x0c\n\x08\x43OMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\"#\n\x04Task\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\"<\n\x0bTaskMonitor\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\x12\x1e\n\x05tasks\x18\x02 \x03(\x0b\x32\x0f.starbelly.Task')
+  serialized_pb=_b('\n\x15protobuf/server.proto\x12\tstarbelly\x1a\x15protobuf/shared.proto\"\xcf\x02\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12&\n\x08job_list\x18\x02 \x01(\x0b\x32\x12.starbelly.JobListH\x00\x12\x37\n\x11job_schedule_list\x18\x07 \x01(\x0b\x32\x1a.starbelly.JobScheduleListH\x00\x12\x32\n\x0eresource_frame\x18\x03 \x01(\x0b\x32\x18.starbelly.ResourceFrameH\x00\x12<\n\x13subscription_closed\x18\x04 \x01(\x0b\x32\x1d.starbelly.SubscriptionClosedH\x00\x12(\n\tsync_item\x18\x05 \x01(\x0b\x32\x13.starbelly.SyncItemH\x00\x12(\n\ttask_tree\x18\x06 \x01(\x0b\x32\x13.starbelly.TaskTreeH\x00\x42\x06\n\x04\x42ody\"\xaa\x01\n\x1aPerformanceProfileFunction\x12\x0c\n\x04\x66ile\x18\x01 \x01(\t\x12\x13\n\x0bline_number\x18\x02 \x01(\x05\x12\x10\n\x08\x66unction\x18\x03 \x01(\t\x12\r\n\x05\x63\x61lls\x18\x04 \x01(\x05\x12\x1b\n\x13non_recursive_calls\x18\x05 \x01(\x05\x12\x12\n\ntotal_time\x18\x06 \x01(\x01\x12\x17\n\x0f\x63umulative_time\x18\x07 \x01(\x01\"\xc7\x02\n\rResourceFrame\x12\x11\n\ttimestamp\x18\x01 \x01(\t\x12)\n\x04\x63pus\x18\x02 \x03(\x0b\x32\x1b.starbelly.ResourceFrameCpu\x12.\n\x06memory\x18\x03 \x01(\x0b\x32\x1e.starbelly.ResourceFrameMemory\x12+\n\x05\x64isks\x18\x04 \x03(\x0b\x32\x1c.starbelly.ResourceFrameDisk\x12\x31\n\x08networks\x18\x05 \x03(\x0b\x32\x1f.starbelly.ResourceFrameNetwork\x12-\n\x06\x63rawls\x18\x06 \x03(\x0b\x32\x1d.starbelly.ResourceFrameCrawl\x12\x39\n\x0crate_limiter\x18\x07 \x01(\x0b\x32#.starbelly.ResourceFrameRateLimiter\"!\n\x10ResourceFrameCpu\x12\r\n\x05usage\x18\x01 \x01(\x01\"o\n\x12ResourceFrameCrawl\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x10\n\x08\x66rontier\x18\x02 \x01(\x05\x12\x0f\n\x07pending\x18\x03 \x01(\x05\x12\x12\n\nextraction\x18\x04 \x01(\x05\x12\x12\n\ndownloader\x18\x05 \x01(\x05\"?\n\x11ResourceFrameDisk\x12\r\n\x05mount\x18\x01 \x01(\t\x12\x0c\n\x04used\x18\x02 \x01(\x03\x12\r\n\x05total\x18\x03 \x01(\x03\"2\n\x13ResourceFrameMemory\x12\x0c\n\x04used\x18\x01 \x01(\x03\x12\r\n\x05total\x18\x02 \x01(\x03\"D\n\x14ResourceFrameNetwork\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04sent\x18\x02 \x01(\x03\x12\x10\n\x08received\x18\x03 \x01(\x03\")\n\x18ResourceFrameRateLimiter\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\"\x91\t\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12*\n\x06solver\x18\x16 \x01(\x0b\x32\x18.starbelly.CaptchaSolverH\x00\x12.\n\x0c\x64omain_login\x18\x05 \x01(\x0b\x32\x16.starbelly.DomainLoginH\x00\x12\x37\n\x11\x64omain_login_user\x18\x06 \x01(\x0b\x32\x1a.starbelly.DomainLoginUserH\x00\x12\x1d\n\x03job\x18\x07 \x01(\x0b\x32\x0e.starbelly.JobH\x00\x12.\n\x0cjob_schedule\x18\x13 \x01(\x0b\x32\x16.starbelly.JobScheduleH\x00\x12#\n\x06policy\x18\x08 \x01(\x0b\x32\x11.starbelly.PolicyH\x00\x12\x45\n\x14list_captcha_solvers\x18\x17 \x01(\x0b\x32%.starbelly.ResponseListCaptchaSolversH\x00\x12\x41\n\x12list_domain_logins\x18\t \x01(\x0b\x32#.starbelly.ResponseListDomainLoginsH\x00\x12\x32\n\nlist_items\x18\n \x01(\x0b\x32\x1c.starbelly.ResponseListItemsH\x00\x12\x30\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x1b.starbelly.ResponseListJobsH\x00\x12\x41\n\x12list_job_schedules\x18\x14 \x01(\x0b\x32#.starbelly.ResponseListJobSchedulesH\x00\x12\x38\n\rlist_policies\x18\x0c \x01(\x0b\x32\x1f.starbelly.ResponseListPoliciesH\x00\x12=\n\x10list_rate_limits\x18\r \x01(\x0b\x32!.starbelly.ResponseListRateLimitsH\x00\x12\x39\n\nnew_solver\x18\x18 \x01(\x0b\x32#.starbelly.ResponseNewCaptchaSolverH\x00\x12,\n\x07new_job\x18\x0e \x01(\x0b\x32\x19.starbelly.ResponseNewJobH\x00\x12=\n\x10new_job_schedule\x18\x15 \x01(\x0b\x32!.starbelly.ResponseNewJobScheduleH\x00\x12\x32\n\nnew_policy\x18\x0f \x01(\x0b\x32\x1c.starbelly.ResponseNewPolicyH\x00\x12>\n\x10new_subscription\x18\x10 \x01(\x0b\x32\".starbelly.ResponseNewSubscriptionH\x00\x12\x44\n\x13performance_profile\x18\x11 \x01(\x0b\x32%.starbelly.ResponsePerformanceProfileH\x00\x12\'\n\x04ping\x18\x12 \x01(\x0b\x32\x17.starbelly.ResponsePingH\x00\x42\x06\n\x04\x42ody\"V\n\x1aResponseListCaptchaSolvers\x12)\n\x07solvers\x18\x01 \x03(\x0b\x32\x18.starbelly.CaptchaSolver\x12\r\n\x05total\x18\x02 \x01(\x05\"Q\n\x18ResponseListDomainLogins\x12&\n\x06logins\x18\x01 \x03(\x0b\x32\x16.starbelly.DomainLogin\x12\r\n\x05total\x18\x02 \x01(\x05\"K\n\x11ResponseListItems\x12\'\n\x05items\x18\x01 \x03(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"?\n\x10ResponseListJobs\x12\x1c\n\x04jobs\x18\x01 \x03(\x0b\x32\x0e.starbelly.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"X\n\x18ResponseListJobSchedules\x12-\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x16.starbelly.JobSchedule\x12\r\n\x05total\x18\x02 \x01(\x05\"J\n\x14ResponseListPolicies\x12#\n\x08policies\x18\x01 \x03(\x0b\x32\x11.starbelly.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"R\n\x16ResponseListRateLimits\x12)\n\x0brate_limits\x18\x01 \x03(\x0b\x32\x14.starbelly.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\"-\n\x18ResponseNewCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x02(\x0c\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"-\n\x16ResponseNewJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"\x7f\n\x1aResponsePerformanceProfile\x12\x13\n\x0btotal_calls\x18\x01 \x01(\x05\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12\x38\n\tfunctions\x18\x03 \x03(\x0b\x32%.starbelly.PerformanceProfileFunction\"\x1c\n\x0cResponsePing\x12\x0c\n\x04pong\x18\x01 \x01(\t\"A\n\x08SyncItem\x12&\n\x04item\x18\x01 \x02(\x0b\x32\x18.starbelly.CrawlResponse\x12\r\n\x05token\x18\x02 \x02(\x0c\"j\n\rServerMessage\x12!\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x10.starbelly.EventH\x00\x12\'\n\x08response\x18\x02 \x01(\x0b\x32\x13.starbelly.ResponseH\x00\x42\r\n\x0bMessageType\"~\n\x12SubscriptionClosed\x12\x34\n\x06reason\x18\x01 \x02(\x0e\x32$.starbelly.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\"!\n\x06Reason\x12\x0c\n\x08\x43OMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\"?\n\x08TaskTree\x12\x0c\n\x04name\x18\x01 \x01(\t\x12%\n\x08subtasks\x18\x02 \x03(\x0b\x32\x13.starbelly.TaskTree')
   ,
   dependencies=[protobuf_dot_shared__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -44,8 +44,8 @@ _SUBSCRIPTIONCLOSED_REASON = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3744,
-  serialized_end=3777,
+  serialized_start=3660,
+  serialized_end=3693,
 )
 _sym_db.RegisterEnumDescriptor(_SUBSCRIPTIONCLOSED_REASON)
 
@@ -100,7 +100,7 @@ _EVENT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='task_monitor', full_name='starbelly.Event.task_monitor', index=6,
+      name='task_tree', full_name='starbelly.Event.task_tree', index=6,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -122,7 +122,7 @@ _EVENT = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=60,
-  serialized_end=401,
+  serialized_end=395,
 )
 
 
@@ -194,8 +194,8 @@ _PERFORMANCEPROFILEFUNCTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=404,
-  serialized_end=574,
+  serialized_start=398,
+  serialized_end=568,
 )
 
 
@@ -255,13 +255,6 @@ _RESOURCEFRAME = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
-    _descriptor.FieldDescriptor(
-      name='downloader', full_name='starbelly.ResourceFrame.downloader', index=7,
-      number=8, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
   ],
   extensions=[
   ],
@@ -274,8 +267,8 @@ _RESOURCEFRAME = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=577,
-  serialized_end=960,
+  serialized_start=571,
+  serialized_end=898,
 )
 
 
@@ -305,8 +298,8 @@ _RESOURCEFRAMECPU = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=962,
-  serialized_end=995,
+  serialized_start=900,
+  serialized_end=933,
 )
 
 
@@ -345,6 +338,13 @@ _RESOURCEFRAMECRAWL = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='downloader', full_name='starbelly.ResourceFrameCrawl.downloader', index=4,
+      number=5, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -357,8 +357,8 @@ _RESOURCEFRAMECRAWL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=997,
-  serialized_end=1088,
+  serialized_start=935,
+  serialized_end=1046,
 )
 
 
@@ -402,39 +402,8 @@ _RESOURCEFRAMEDISK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1090,
-  serialized_end=1153,
-)
-
-
-_RESOURCEFRAMEDOWNLOADER = _descriptor.Descriptor(
-  name='ResourceFrameDownloader',
-  full_name='starbelly.ResourceFrameDownloader',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='count', full_name='starbelly.ResourceFrameDownloader.count', index=0,
-      number=1, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto2',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=1155,
-  serialized_end=1195,
+  serialized_start=1048,
+  serialized_end=1111,
 )
 
 
@@ -471,8 +440,8 @@ _RESOURCEFRAMEMEMORY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1197,
-  serialized_end=1247,
+  serialized_start=1113,
+  serialized_end=1163,
 )
 
 
@@ -516,8 +485,8 @@ _RESOURCEFRAMENETWORK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1249,
-  serialized_end=1317,
+  serialized_start=1165,
+  serialized_end=1233,
 )
 
 
@@ -547,8 +516,8 @@ _RESOURCEFRAMERATELIMITER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1319,
-  serialized_end=1360,
+  serialized_start=1235,
+  serialized_end=1276,
 )
 
 
@@ -735,8 +704,8 @@ _RESPONSE = _descriptor.Descriptor(
       name='Body', full_name='starbelly.Response.Body',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1363,
-  serialized_end=2532,
+  serialized_start=1279,
+  serialized_end=2448,
 )
 
 
@@ -773,8 +742,8 @@ _RESPONSELISTCAPTCHASOLVERS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2534,
-  serialized_end=2620,
+  serialized_start=2450,
+  serialized_end=2536,
 )
 
 
@@ -811,8 +780,8 @@ _RESPONSELISTDOMAINLOGINS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2622,
-  serialized_end=2703,
+  serialized_start=2538,
+  serialized_end=2619,
 )
 
 
@@ -849,8 +818,8 @@ _RESPONSELISTITEMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2705,
-  serialized_end=2780,
+  serialized_start=2621,
+  serialized_end=2696,
 )
 
 
@@ -887,8 +856,8 @@ _RESPONSELISTJOBS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2782,
-  serialized_end=2845,
+  serialized_start=2698,
+  serialized_end=2761,
 )
 
 
@@ -925,8 +894,8 @@ _RESPONSELISTJOBSCHEDULES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2847,
-  serialized_end=2935,
+  serialized_start=2763,
+  serialized_end=2851,
 )
 
 
@@ -963,8 +932,8 @@ _RESPONSELISTPOLICIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2937,
-  serialized_end=3011,
+  serialized_start=2853,
+  serialized_end=2927,
 )
 
 
@@ -1001,8 +970,8 @@ _RESPONSELISTRATELIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3013,
-  serialized_end=3095,
+  serialized_start=2929,
+  serialized_end=3011,
 )
 
 
@@ -1032,8 +1001,8 @@ _RESPONSENEWCAPTCHASOLVER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3097,
-  serialized_end=3142,
+  serialized_start=3013,
+  serialized_end=3058,
 )
 
 
@@ -1063,8 +1032,8 @@ _RESPONSENEWJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3144,
-  serialized_end=3176,
+  serialized_start=3060,
+  serialized_end=3092,
 )
 
 
@@ -1094,8 +1063,8 @@ _RESPONSENEWJOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3178,
-  serialized_end=3223,
+  serialized_start=3094,
+  serialized_end=3139,
 )
 
 
@@ -1125,8 +1094,8 @@ _RESPONSENEWPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3225,
-  serialized_end=3263,
+  serialized_start=3141,
+  serialized_end=3179,
 )
 
 
@@ -1156,8 +1125,8 @@ _RESPONSENEWSUBSCRIPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3265,
-  serialized_end=3315,
+  serialized_start=3181,
+  serialized_end=3231,
 )
 
 
@@ -1201,8 +1170,8 @@ _RESPONSEPERFORMANCEPROFILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3317,
-  serialized_end=3444,
+  serialized_start=3233,
+  serialized_end=3360,
 )
 
 
@@ -1232,8 +1201,8 @@ _RESPONSEPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3446,
-  serialized_end=3474,
+  serialized_start=3362,
+  serialized_end=3390,
 )
 
 
@@ -1270,8 +1239,8 @@ _SYNCITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3476,
-  serialized_end=3541,
+  serialized_start=3392,
+  serialized_end=3457,
 )
 
 
@@ -1311,8 +1280,8 @@ _SERVERMESSAGE = _descriptor.Descriptor(
       name='MessageType', full_name='starbelly.ServerMessage.MessageType',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3543,
-  serialized_end=3649,
+  serialized_start=3459,
+  serialized_end=3565,
 )
 
 
@@ -1350,65 +1319,27 @@ _SUBSCRIPTIONCLOSED = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3651,
-  serialized_end=3777,
+  serialized_start=3567,
+  serialized_end=3693,
 )
 
 
-_TASK = _descriptor.Descriptor(
-  name='Task',
-  full_name='starbelly.Task',
+_TASKTREE = _descriptor.Descriptor(
+  name='TaskTree',
+  full_name='starbelly.TaskTree',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='starbelly.Task.name', index=0,
+      name='name', full_name='starbelly.TaskTree.name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count', full_name='starbelly.Task.count', index=1,
-      number=2, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto2',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=3779,
-  serialized_end=3814,
-)
-
-
-_TASKMONITOR = _descriptor.Descriptor(
-  name='TaskMonitor',
-  full_name='starbelly.TaskMonitor',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='count', full_name='starbelly.TaskMonitor.count', index=0,
-      number=1, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='tasks', full_name='starbelly.TaskMonitor.tasks', index=1,
+      name='subtasks', full_name='starbelly.TaskTree.subtasks', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1426,8 +1357,8 @@ _TASKMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3816,
-  serialized_end=3876,
+  serialized_start=3695,
+  serialized_end=3758,
 )
 
 _EVENT.fields_by_name['job_list'].message_type = protobuf_dot_shared__pb2._JOBLIST
@@ -1435,7 +1366,7 @@ _EVENT.fields_by_name['job_schedule_list'].message_type = protobuf_dot_shared__p
 _EVENT.fields_by_name['resource_frame'].message_type = _RESOURCEFRAME
 _EVENT.fields_by_name['subscription_closed'].message_type = _SUBSCRIPTIONCLOSED
 _EVENT.fields_by_name['sync_item'].message_type = _SYNCITEM
-_EVENT.fields_by_name['task_monitor'].message_type = _TASKMONITOR
+_EVENT.fields_by_name['task_tree'].message_type = _TASKTREE
 _EVENT.oneofs_by_name['Body'].fields.append(
   _EVENT.fields_by_name['job_list'])
 _EVENT.fields_by_name['job_list'].containing_oneof = _EVENT.oneofs_by_name['Body']
@@ -1452,15 +1383,14 @@ _EVENT.oneofs_by_name['Body'].fields.append(
   _EVENT.fields_by_name['sync_item'])
 _EVENT.fields_by_name['sync_item'].containing_oneof = _EVENT.oneofs_by_name['Body']
 _EVENT.oneofs_by_name['Body'].fields.append(
-  _EVENT.fields_by_name['task_monitor'])
-_EVENT.fields_by_name['task_monitor'].containing_oneof = _EVENT.oneofs_by_name['Body']
+  _EVENT.fields_by_name['task_tree'])
+_EVENT.fields_by_name['task_tree'].containing_oneof = _EVENT.oneofs_by_name['Body']
 _RESOURCEFRAME.fields_by_name['cpus'].message_type = _RESOURCEFRAMECPU
 _RESOURCEFRAME.fields_by_name['memory'].message_type = _RESOURCEFRAMEMEMORY
 _RESOURCEFRAME.fields_by_name['disks'].message_type = _RESOURCEFRAMEDISK
 _RESOURCEFRAME.fields_by_name['networks'].message_type = _RESOURCEFRAMENETWORK
 _RESOURCEFRAME.fields_by_name['crawls'].message_type = _RESOURCEFRAMECRAWL
 _RESOURCEFRAME.fields_by_name['rate_limiter'].message_type = _RESOURCEFRAMERATELIMITER
-_RESOURCEFRAME.fields_by_name['downloader'].message_type = _RESOURCEFRAMEDOWNLOADER
 _RESPONSE.fields_by_name['solver'].message_type = protobuf_dot_shared__pb2._CAPTCHASOLVER
 _RESPONSE.fields_by_name['domain_login'].message_type = protobuf_dot_shared__pb2._DOMAINLOGIN
 _RESPONSE.fields_by_name['domain_login_user'].message_type = protobuf_dot_shared__pb2._DOMAINLOGINUSER
@@ -1560,14 +1490,13 @@ _SERVERMESSAGE.oneofs_by_name['MessageType'].fields.append(
 _SERVERMESSAGE.fields_by_name['response'].containing_oneof = _SERVERMESSAGE.oneofs_by_name['MessageType']
 _SUBSCRIPTIONCLOSED.fields_by_name['reason'].enum_type = _SUBSCRIPTIONCLOSED_REASON
 _SUBSCRIPTIONCLOSED_REASON.containing_type = _SUBSCRIPTIONCLOSED
-_TASKMONITOR.fields_by_name['tasks'].message_type = _TASK
+_TASKTREE.fields_by_name['subtasks'].message_type = _TASKTREE
 DESCRIPTOR.message_types_by_name['Event'] = _EVENT
 DESCRIPTOR.message_types_by_name['PerformanceProfileFunction'] = _PERFORMANCEPROFILEFUNCTION
 DESCRIPTOR.message_types_by_name['ResourceFrame'] = _RESOURCEFRAME
 DESCRIPTOR.message_types_by_name['ResourceFrameCpu'] = _RESOURCEFRAMECPU
 DESCRIPTOR.message_types_by_name['ResourceFrameCrawl'] = _RESOURCEFRAMECRAWL
 DESCRIPTOR.message_types_by_name['ResourceFrameDisk'] = _RESOURCEFRAMEDISK
-DESCRIPTOR.message_types_by_name['ResourceFrameDownloader'] = _RESOURCEFRAMEDOWNLOADER
 DESCRIPTOR.message_types_by_name['ResourceFrameMemory'] = _RESOURCEFRAMEMEMORY
 DESCRIPTOR.message_types_by_name['ResourceFrameNetwork'] = _RESOURCEFRAMENETWORK
 DESCRIPTOR.message_types_by_name['ResourceFrameRateLimiter'] = _RESOURCEFRAMERATELIMITER
@@ -1589,8 +1518,7 @@ DESCRIPTOR.message_types_by_name['ResponsePing'] = _RESPONSEPING
 DESCRIPTOR.message_types_by_name['SyncItem'] = _SYNCITEM
 DESCRIPTOR.message_types_by_name['ServerMessage'] = _SERVERMESSAGE
 DESCRIPTOR.message_types_by_name['SubscriptionClosed'] = _SUBSCRIPTIONCLOSED
-DESCRIPTOR.message_types_by_name['Task'] = _TASK
-DESCRIPTOR.message_types_by_name['TaskMonitor'] = _TASKMONITOR
+DESCRIPTOR.message_types_by_name['TaskTree'] = _TASKTREE
 
 Event = _reflection.GeneratedProtocolMessageType('Event', (_message.Message,), dict(
   DESCRIPTOR = _EVENT,
@@ -1633,13 +1561,6 @@ ResourceFrameDisk = _reflection.GeneratedProtocolMessageType('ResourceFrameDisk'
   # @@protoc_insertion_point(class_scope:starbelly.ResourceFrameDisk)
   ))
 _sym_db.RegisterMessage(ResourceFrameDisk)
-
-ResourceFrameDownloader = _reflection.GeneratedProtocolMessageType('ResourceFrameDownloader', (_message.Message,), dict(
-  DESCRIPTOR = _RESOURCEFRAMEDOWNLOADER,
-  __module__ = 'protobuf.server_pb2'
-  # @@protoc_insertion_point(class_scope:starbelly.ResourceFrameDownloader)
-  ))
-_sym_db.RegisterMessage(ResourceFrameDownloader)
 
 ResourceFrameMemory = _reflection.GeneratedProtocolMessageType('ResourceFrameMemory', (_message.Message,), dict(
   DESCRIPTOR = _RESOURCEFRAMEMEMORY,
@@ -1788,19 +1709,12 @@ SubscriptionClosed = _reflection.GeneratedProtocolMessageType('SubscriptionClose
   ))
 _sym_db.RegisterMessage(SubscriptionClosed)
 
-Task = _reflection.GeneratedProtocolMessageType('Task', (_message.Message,), dict(
-  DESCRIPTOR = _TASK,
+TaskTree = _reflection.GeneratedProtocolMessageType('TaskTree', (_message.Message,), dict(
+  DESCRIPTOR = _TASKTREE,
   __module__ = 'protobuf.server_pb2'
-  # @@protoc_insertion_point(class_scope:starbelly.Task)
+  # @@protoc_insertion_point(class_scope:starbelly.TaskTree)
   ))
-_sym_db.RegisterMessage(Task)
-
-TaskMonitor = _reflection.GeneratedProtocolMessageType('TaskMonitor', (_message.Message,), dict(
-  DESCRIPTOR = _TASKMONITOR,
-  __module__ = 'protobuf.server_pb2'
-  # @@protoc_insertion_point(class_scope:starbelly.TaskMonitor)
-  ))
-_sym_db.RegisterMessage(TaskMonitor)
+_sym_db.RegisterMessage(TaskTree)
 
 
 # @@protoc_insertion_point(module_scope)

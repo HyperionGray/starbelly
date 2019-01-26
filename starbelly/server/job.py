@@ -57,13 +57,13 @@ async def get_job_items(self, command, socket):
         item = response.list_items.items.add()
 
         if item_doc['join'] is None:
-            item.is_body_compressed = False
+            item.is_compressed = False
         elif item_doc['join']['is_compressed'] and not compression_ok:
             item.body = gzip.decompress(item_doc['join']['body'])
-            item.is_body_compressed = False
+            item.is_compressed = False
         else:
             item.body = item_doc['join']['body']
-            item.is_body_compressed = item_doc['join']['is_compressed']
+            item.is_compressed = item_doc['join']['is_compressed']
         if 'content_type' in item_doc:
             item.content_type = item_doc['content_type']
         if 'exception' in item_doc:

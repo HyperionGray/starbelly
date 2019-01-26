@@ -171,13 +171,45 @@ class JobStatusNotification:
     datetime: datetime
 
 
-@dataclass
-class CrawlStats:
-    ''' Contains statistics about a crawl job. '''
-    job_id: bytes
-    frontier: int
-    pending: int
-    extraction: int
+class CrawlStateProxy:
+    ''' A proxy object that exposes the state of crawl jobs. '''
+    def __init__(self, job_states):
+        '''
+        Constructor
+
+        :param dict job_states: A dictionary keyed by job_id where each
+            value is dictionary containing state for one job.
+        '''
+        self._job_states = job_states
+
+    def __getitem__(self, job_id):
+        '''
+        Return a copy of job state for a given job ID.
+
+        :param bytes job_id:
+        '''
+        return self._job_states[job_id].copy()
+
+    def __iter__(self):
+        return _CrawlStateProxyIter(self._job_states)
+
+
+class _CrawlStateProxyIter:
+    ''' An iterator for job states. '''
+    def __init__(self, job_states):
+        '''
+        Constructor
+
+        :param dict job_states: A dictionary keyed by job_id where each
+            value is dictionary containing state for one job.
+        '''
+        self._job_states = job_states
+        self._iter = iter(self._job_states.items())
+
+    def __next__(self):
+        ''' Get next job state. '''
+        job_id, job_dict = next(self._iter)
+        return job_id, job_dict.copy()
 
 
 class CrawlManager:
@@ -422,6 +454,11 @@ class CrawlManager:
     async def startup_check(self):
         ''' Do some sanity checks at startup. '''
 
+        # TODO
+        # at startup, get the maximum sequence number and store it in the crawl
+        # manager.
+
+
         logger.info('Doing startup check...')
 
         # If the server was previously killed, then some jobs may still be in
@@ -519,6 +556,8 @@ class _CrawlJob:
         self._frontier_task = None
         self._limits_task = None
         self._login_manager = LoginManager(policy, rate_limiter)
+        # TODO insert item sequence should be global across all crawls in order
+        # to eventually support other sync modes like tag or schedule
         self._insert_item_sequence = 0
         self._pending_count = 0
         self._rate_limiter = rate_limiter
@@ -574,6 +613,8 @@ class _CrawlJob:
 
     def get_stats(self):
         ''' Return resource stats for this job. '''
+        # TODO FIX ME OR DELETE? SEND THIS OVER CHANNEL?
+        # NEed to change CrawlStats to CrawlStateProxy
         return CrawlStats(self.id, self._frontier_size, self._pending_count,
             self._extraction_size)
 
@@ -629,6 +670,8 @@ class _CrawlJob:
         '''
         This task fetches items from the extraction queue and finds links to
         follow.
+
+        TODO move this into a separate module, probably the extractor module.
         '''
         def delete(item):
             ''' Query helper for deleting an extract item. '''
@@ -709,6 +752,8 @@ class _CrawlJob:
 
         This task can't cancel itself, so we use ``daemon_task`` to spawn a new
         task to cancel the crawler's tasks.
+
+        TODO use trio cancel scope here
         '''
 
         while True:
@@ -727,6 +772,14 @@ class _CrawlJob:
         '''
         This task takes items off the save queue, loads them into the database,
         and pushes responses bodies to the extraction queue.
+
+        TODO this should go into a separate module. in fact maybe this whole
+        crawl module needs to be broken up?
+
+        1. frontier
+        2. job limits
+        3. extractor
+        4. persister
         '''
         while True:
             response = await self._save_queue.get()
@@ -933,6 +986,9 @@ class _CrawlJob:
             'completed_at': response.completed_at,
             'cost': response.cost,
             'duration': response.duration.total_seconds(),
+            # TODO
+            # Change `insert_sequence` to just `sequence` and make it global to
+            # all crawls. Change `sync_index` to only use this one field.
             'insert_sequence': self._insert_item_sequence,
             'job_id': self.id,
             'started_at': response.started_at,

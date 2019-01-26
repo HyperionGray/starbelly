@@ -1,11 +1,40 @@
+from .handler import handler
 from ..subscription import (
     CrawlSyncSubscription,
     JobStatusSubscription,
     ResourceMonitorSubscription,
     TaskMonitorSubscription
 )
-from .handler import handler
 
+
+# TODO move this code from subscription.py to here
+# def subscribe(self, stream, type_, *args, **kwargs):
+#     '''
+#     Create a subscription of the given type for the given socket. The caller
+#     is expected to call the subscription's ``run()`` method.
+
+#     :param trio.abc.Stream stream: The stream to send events to.
+#     :param class type_: The type of subscription to instantiate.
+#     :param args: Passed through to subscription constructor.
+#     :param kwargs: Passed through to subscription constructor.
+#     :rtype: BaseSubscription
+#     '''
+#     next_id = self._next_id[stream]
+#     self._next_id[stream] += 1
+
+#     if self._closed:
+#         raise Exception('The subscription manager is closed.')
+#     elif stream in self._closing:
+#         raise Exception(
+#             'Cannot add subscription: the stream is being closed.')
+
+#     subscription = type_(next_id, stream, *args, **kargs)
+#     self._subscriptions[stream][next_id] = task
+
+# ALSO NEED TO WRITE methods to:
+#  * close 1 subscription
+#  * close all subscriptions on socket
+#  * close all subscriptions (this is probably an implicit part of shutting down a socket?)
 
 @handler
 async def subscribe_crawl_sync(self, command, socket):

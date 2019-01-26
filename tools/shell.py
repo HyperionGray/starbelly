@@ -19,13 +19,14 @@ sections of Starbelly without running the entire server.
 
 import functools
 import logging
+import os
 import sys
 
-# import IPython
-# from IPython import embed
 from IPython.terminal.embed import InteractiveShellEmbed
 from rethinkdb import RethinkDB
 import trio
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 import starbelly.config
 from starbelly.version import __version__

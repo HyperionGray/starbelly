@@ -514,7 +514,7 @@ async def show_job(args, socket):
                 completed_at = dateutil.parser.parse(item.completed_at) \
                     .strftime(DATE_FMT)
                 if item.HasField('body'):
-                    if item.is_body_compressed:
+                    if item.is_compressed:
                         body = gzip.decompress(item.body)
                     else:
                         body = item.body

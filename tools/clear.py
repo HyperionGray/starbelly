@@ -3,10 +3,15 @@ Clears data from the database. Only intended for developers who want to clear
 their environment and start from scratch.
 '''
 import logging
+import os
+import sys
 
 from rethinkdb import RethinkDB
 import trio
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+import tools
 from starbelly.config import get_config
 
 

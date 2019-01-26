@@ -22,7 +22,7 @@ async def asyncio_loop():
 
 
 @contextmanager
-def assert_min_elapsed(seconds=None):
+def assert_min_elapsed(seconds):
     '''
     Fail the test if the execution of a block takes less than ``seconds``.
     '''
@@ -33,7 +33,7 @@ def assert_min_elapsed(seconds=None):
 
 
 @contextmanager
-def assert_max_elapsed(seconds=None):
+def assert_max_elapsed(seconds):
     '''
     Fail the test if the execution of a block takes longer than ``seconds``.
     '''
@@ -42,3 +42,13 @@ def assert_max_elapsed(seconds=None):
             yield
     except trio.TooSlowError:
         pytest.fail('Failed to complete within {} seconds'.format(seconds))
+
+
+@contextmanager
+def assert_elapsed(seconds, delta=0.1):
+    '''
+    Fail the test if the execution of a block takes more than seconds+delta time
+    or less than seconds-delta time.
+    '''
+    with assert_min_elapsed(seconds-delta), assert_max_elapsed(seconds+delta):
+        yield

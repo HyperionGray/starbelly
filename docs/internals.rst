@@ -10,7 +10,7 @@ This diagram shows the components used to deploy Starbelly.
 
 .. graphviz::
 
-    graph system_diagram {
+    graph service_diagram {
         graph [bgcolor=transparent];
         node [shape=box];
         edge [fontsize=10];
@@ -57,52 +57,135 @@ the `trio-asyncio bridge <https://trio-asyncio.readthedocs.io/>`__:
 - The downloader uses ``aiohttp`` and ``aiosocks``, because there is not a
   mature Trio library for HTTP that supports SOCKS proxies.
 
-Crawler Architecture
---------------------
+Crawling Pipeline
+-----------------
 
-Within the Starbelly server, the implementation is divided into multiple classes
-that handle separate concerns. This diagram shows the relationships between
-these classes with a focus on the flow of data through the crawling pipeline.
-Note that some components, such as the Policy Manager, do not directly handle
-crawling data but instead influence the behavior of other components.
+Starbelly's crawling operations consist of a pipeline of various components. The
+*frontier* is a component that keeps track of which URLs remain to be crawled.
+These URLs are fed to a *rate limiter* which acts as a bottleneck that prevents
+crawling sites too fast. The downloader fetches URLs from the rate limiter and
+downloads them over the network. The storage component saves the downloaded
+items in the database. The extractor finds URLs in the downloaded items and
+sends them back to the frontier so those URLs can be crawled, too.
 
-.. note::
-
-    Click on a component to jump to that section of the documentation.
+Each crawl job creates its own crawling components (frontier, downloader,
+storage, extractor) and they run concurrently with all other jobs. The rate
+limiter is shared across all jobs to ensure that rate limits are enforced
+correctly even when two different jobs are crawling the same domain.
 
 .. graphviz::
 
-    digraph system_diagram {
+    digraph crawl_pipeline {
         graph [bgcolor=transparent];
-        node [shape=box];
-        edge [fontsize=10];
+        node [shape=box, style=filled];
 
-        // Nodes
-        api_server;
-        crawl_manager [label="Crawl Manager"];
-        policy_manager [label="Policy Manager",href="#policy"];
-        rate_limiter [label="Rate Limiter",href="#rate-limiter"];
-        downloader [label="Downloader",href="#downloader"];
-        extractor [label="Extractor",href="#extractor"];
-        resource_monitor [label="Resource Monitor", href="#resource-monitor"];
-        scheduler [label="Scheduler",href="#scheduler"];
-        database [label="Database",href="#database"];
-        robots_txt [label="Robots.txt Manager",href="#robots-txt"];
+        frontier1 [label="Job #1 Frontier", fillcolor="#9ac2f9"]
+        downloader1 [label="Downloader", fillcolor="#9ac2f9"]
+        extractor1 [label="Extractor", fillcolor="#9ac2f9"]
+        storage1 [label="Storage", fillcolor="#9ac2f9"]
 
-        // Edges
-        api_server -> crawl_manager [label="Manage crawls"];
-        api_server -> scheduler [label="Configure"];
-        api_server -> database [label="View data"];
-        scheduler -> crawl_manager [label="Start crawls"];
-        crawl_manager -> rate_limiter [label="Download request"];
-        crawl_manager -> robots_txt;
-        rate_limiter -> downloader [label="Download request"];
-        downloader -> extractor [label="Extract URLs"];
-        downloader -> database [label="Store downloads"];
-        extractor -> crawl_manager [label="Queue URLs"];
+        frontier2 [label="Job #2 Frontier", fillcolor="#9af9ad"];
+        downloader2 [label="Downloader", fillcolor="#9af9ad"];
+        extractor2 [label="Extractor", fillcolor="#9af9ad"];
+        storage2 [label="Storage", fillcolor="#9af9ad"];
+
+        rate_limiter [label="Rate Limiter", fillcolor=grey];
+
+        frontier1 -> rate_limiter -> downloader1 -> storage1 -> extractor1;
+        frontier2 -> rate_limiter -> downloader2 -> storage2 -> extractor2;
+        frontier1 -> extractor1 [dir=back, style=dashed];
+        frontier2 -> extractor2 [dir=back, style=dashed];
     }
 
-Each of these classes is documented below.
+This diagram depicts the crawling pipeline for two concurrent jobs: Job #1 in
+blue and Job #2 in green.
+
+System Components
+-----------------
+
+Starbelly doesn't just contain crawling components: it also contains components
+that provide management and introspection for the crawling system. This section
+briefly explains each high-level component, and the subsequent sections provide
+low-level details for each component.
+
+:ref:`api_server`
+    The API server allows clients to interact with Starbelly by
+    sending protobuf messages over a WebSocket connection. The server uses a
+    simple request/response model for most API calls, and also has a
+    subscription/event model when the client wants push updates.
+
+Crawl Manager
+    TODO
+
+:ref:`downloader`
+    Responsible for fetching items from the network. Although
+    this is a seemingly simple responsibility, the downloader is responsible for
+    significant portions of the crawling policy, such as enforcing proxy policy
+    and MIME type rules.
+
+:ref:`extractor`
+    Parses response bodies to discover new URLs that may be
+    added to the crawl frontier.
+
+:ref:`policy`
+    Controls the crawler's decision making, for example how to handle
+    robots.txt exclusion rules, how to prioritize URLs, how long to run the
+    crawl, etc.
+
+:ref:`rate-limiter`
+    Acts a bottleneck between the jobs' crawl
+    frontiers and the jobs' downloaders. It prevents sites from being crawled
+    too quickly, even when multiple jobs are crawling the same domain.
+
+:ref:`resource_monitor`
+    Provides introspection into other
+    components to track things like how many items are currently being download,
+    how many items are queued in the rate limiter, etc.
+
+:ref:`robots_txt`
+    Responsible for fetching robots.txt files as necessary,
+    maintaining a local cache of robots.txt files, and making access control
+    decisions, such as, "is job X allowed to access URL Y?"
+
+:ref:`scheduler`
+    Controls the crawling schedule. When a job needs
+    to run, the scheduler will automatically start it.
+
+Storage
+    TODO
+
+.. _api_server:
+
+API Server
+----------
+
+The main interaction point for Starbelly is through its WebSocket API.
+
+TODO
+
+Subscriptions are implemented in a separate module.
+
+.. currentmodule:: starbelly.subscription
+
+.. autoclass:: CrawlSyncSubscription
+    :members:
+
+.. autoclass:: JobStatusSubscription
+    :members:
+
+.. autoclass:: ResourceMonitorSubscription
+    :members:
+
+.. autoclass:: TaskMonitorSubscription
+    :members:
+
+For subscriptions that support pausing and resuming, a "token" is used.
+
+.. autoclass:: SyncTokenError
+    :members:
+
+.. autoclass:: SyncTokenInt
+    :members:
 
 .. _downloader:
 
@@ -262,3 +345,5 @@ The following model classes are used by the Scheduler.
     :members:
 
 .. autoclass:: ScheduleValidationError
+
+.. _subscriptions:
