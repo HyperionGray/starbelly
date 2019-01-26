@@ -7,7 +7,11 @@ import protobuf.shared_pb2
 class CaptchaSolver:
     ''' An interface for a CAPTCHA solving service. '''
     def __init__(self, doc):
-        ''' Constructor. '''
+        '''
+        Constructor.
+
+        :param dict doc: A database document.
+        '''
         self.id = doc['id']
         self.name = doc['name']
         self.service_url = doc['service_url']
@@ -20,7 +24,13 @@ class CaptchaSolver:
         self.max_length = doc.get('max_length', 0)
 
     def get_command(self, img_data):
-        ''' Override in subclasses to return JSON API command. '''
+        '''
+        Return a JSON API command.
+
+        :param bytes img_data: The image data for the CAPTCHA.
+        :returns: A command that can be serialized to JSON.
+        :rtype: dict
+        '''
         img_b64 = base64.b64encode(img_data).decode('ascii')
 
         if self.characters == 'ALPHANUMERIC':
@@ -49,7 +59,12 @@ class CaptchaSolver:
 
 
 def captcha_doc_to_pb(doc):
-    ''' Convert CAPTCHA solver from database document to protobuf. '''
+    '''
+    Convert CAPTCHA solver from database document to protobuf.
+
+    :param dict doc: A database document.
+    :returns: A protobuf message.
+    '''
     pb = protobuf.shared_pb2.CaptchaSolver()
     pb.name = doc['name']
     pb.solver_id = UUID(doc['id']).bytes
@@ -64,7 +79,12 @@ def captcha_doc_to_pb(doc):
 
 
 def _antigate_doc_to_pb(doc):
-    ''' Convert Antigate CAPTCHA solver from database doc to protobuf. '''
+    '''
+    Convert Antigate CAPTCHA solver from database doc to protobuf.
+
+    :param dict doc: A database document.
+    :returns: A protobuf message.
+   '''
     pb = protobuf.shared_pb2.CaptchaSolverAntigate()
     pb.service_url = doc['service_url']
     pb.api_key = doc['api_key']
@@ -81,12 +101,18 @@ def _antigate_doc_to_pb(doc):
 
 
 def captcha_pb_to_doc(pb):
-    ''' Convert CAPTCHA solver from protobuf to database document. '''
+    '''
+    Convert CAPTCHA solver from protobuf to database document.
+
+    :param pb: A protobuf message.
+    :returns: A database document.
+    :rtype: dict
+    '''
     if pb.name.strip() == '':
         raise Exception('Name is required.')
     doc = {'name': pb.name}
     if pb.HasField('solver_id'):
-        doc['id'] = pb.solver_id
+        doc['id'] = str(UUID(bytes=pb.solver_id))
     type_ = pb.WhichOneof('SolverType')
     if type_ == 'antigate':
         doc.update(_antigate_pb_to_doc(pb))
@@ -96,7 +122,13 @@ def captcha_pb_to_doc(pb):
 
 
 def _antigate_pb_to_doc(pb):
-    ''' Convert Antigate CAPTCHA solver from database doc to protobuf. '''
+    '''
+    Convert Antigate CAPTCHA solver from database doc to protobuf.
+
+    :param pb: A protobuf message.
+    :returns: A database document.
+    :rtype: dict
+    '''
     antigate = pb.antigate
     doc = {
         'service_url': antigate.service_url,

@@ -8,4 +8,4 @@ init:
 	pipenv install --dev
 
 test:
-	pipenv run pytest --cov=starbelly
+	pipenv run pytest --cov=starbelly tests
