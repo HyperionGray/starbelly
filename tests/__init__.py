@@ -18,7 +18,7 @@ async def asyncio_loop():
     ''' Open an asyncio loop. Useful for things like aiohttp.CookieJar that
     require a global loop. '''
     async with trio_asyncio.open_loop() as loop:
-        yield
+        yield loop
 
 
 @contextmanager

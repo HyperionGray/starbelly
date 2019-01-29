@@ -135,6 +135,25 @@ class Downloader:
                 await self._semaphore.acquire()
                 nursery.start_soon(self._download, request)
 
+    async def download(self, request):
+        '''
+        Download a requested resource and return it.
+
+        Note: this is probably not the method you want! Most downloads should be
+        sent through the request channel. This method is only for unusual cases
+        where we want to download one item and return the response directly to
+        the caller, such as a robot.txt or a login page.
+
+        The caller should apply their own timeout here.
+
+        :param DownloadRequest request:
+        :rtype DownloadResponse:
+        '''
+        async with self._semaphore:
+            with trio.fail_after(20): # TODO make this part of policy
+                response = await self._download_asyncio(request)
+        return response
+
     async def _download(self, request):
         '''
         Download a requested resource and send the response to an output queue.
@@ -149,7 +168,7 @@ class Downloader:
             # self._rate_limiter.reset(request.url) # TODO how to reset rate limiter?
             self._semaphore.release()
 
-    @trio_asyncio.trio2aio
+    @trio_asyncio.aio_as_trio
     async def _download_asyncio(self, request):
         '''
         A helper for ``_download()`` that runs on the asyncio event loop. There

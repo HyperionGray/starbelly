@@ -56,6 +56,9 @@ the `trio-asyncio bridge <https://trio-asyncio.readthedocs.io/>`__:
 
 - The downloader uses ``aiohttp`` and ``aiosocks``, because there is not a
   mature Trio library for HTTP that supports SOCKS proxies.
+- The downloader users ``aiohttp``. It could be ported to ``asks`` but I didn't
+  want to mix two different HTTP clients into the same project. When the
+  downloader is updated, this can be updated as well.
 
 Crawling Pipeline
 -----------------
@@ -114,6 +117,9 @@ low-level details for each component.
     simple request/response model for most API calls, and also has a
     subscription/event model when the client wants push updates.
 
+:ref:`captcha`
+    Components that deal with CAPTCHA images.
+
 Crawl Manager
     TODO
 
@@ -126,6 +132,10 @@ Crawl Manager
 :ref:`extractor`
     Parses response bodies to discover new URLs that may be
     added to the crawl frontier.
+
+:ref:`login-manager`
+    Automates the process of logging in to a site to perform an authenticated
+    crawl.
 
 :ref:`policy`
     Controls the crawler's decision making, for example how to handle
@@ -186,6 +196,22 @@ The following classes implement subscription behavior.
 .. autoclass:: TaskMonitorSubscription
     :members:
 
+.. _captcha:
+
+CAPTCHA
+-------
+
+Starbelly supports passing CAPTCHA images to third-party solving services.
+
+.. currentmodule:: starbelly.captcha
+
+.. autoclass:: CaptchaSolver
+    :members:
+
+.. autofunction:: captcha_doc_to_pb
+
+.. autofunction:: captcha_pb_to_doc
+
 .. _downloader:
 
 Downloader
@@ -219,6 +245,24 @@ URLs from the resource that the crawler can follow.
 
 .. autofunction:: extract_urls
 
+.. _login-manager:
+
+Login Manager
+-------------
+
+The login manager uses the `Formasaurus
+<https://github.com/TeamHG-Memex/Formasaurus/>`__ library to find a login form
+on a page, fill it out, and submit it to get session cookies for authenticated
+crawling. Under the hood, Formasaurus uses a pre-built machine learning model (a
+conditional random field) to classify types of forms on a page and to classify
+the types of inputs in each form. If necessary, the login manager will also
+request a CAPTCHA solution from a CAPTCHA solver.
+
+.. currentmodule:: starbelly.login
+
+.. autofunction:: get_login_form
+
+.. autofunction:: solve_captcha_asyncio
 
 .. _policy:
 
