@@ -8,7 +8,6 @@ import operator
 import pstats
 from time import time
 from urllib.parse import urlparse
-from uuid import UUID
 
 import dateutil.parser
 from dateutil.tz import tzlocal

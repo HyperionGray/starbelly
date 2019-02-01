@@ -205,16 +205,8 @@ class RobotsTxtManager:
             {'match': 'MATCHES', 'pattern': '^text/plain$', 'save': True},
             {'save': False},
         ])
-        download_request = DownloadRequest(
-            job_id=None,
-            method='GET',
-            url=robots_url,
-            form_data=None,
-            cost=0,
-            policy=robots_policy,
-            cookie_jar=aiohttp.DummyCookieJar()
-        )
-
+        download_request = DownloadRequest(frontier_id=None, job_id=None,
+            method='GET', url=robots_url, form_data=None, cost=0)
         await self._request_send.send(download_request)
         response = await self._response_recv.receive()
 

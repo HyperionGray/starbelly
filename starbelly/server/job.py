@@ -1,5 +1,174 @@
 from .handler import handler
 
+# TODO: i moved thsi code from crawl manager to here. these methods don't act
+# on internal crawl state, so it makes more sense to put them here
+
+    # async def delete_job(self, job_id):
+    #     '''
+    #     Delete a job, including all of its responses.
+
+    #     Note that response _bodies_ are deduplicated and stored in a separate
+    #     table. Those bodies are periodically cleaned up and removed by a
+    #     a separate task.
+
+    #     :param bytes job_id: The ID of the job to delete.
+    #     '''
+    #     job_query = r.table('job').get(job_id).pluck('run_state')
+    #     delete_job_query = r.table('job').get(job_id).delete()
+    #     delete_items_query = (
+    #         r.table('response')
+    #          .between((job_id, r.minval),
+    #                   (job_id, r.maxval),
+    #                   index='sync_index')
+    #          .delete()
+    #     )
+
+    #     async with self._db_pool.connection() as conn:
+    #         job = await job_query.run(conn)
+
+    #         if job['run_state'] not in ('completed', 'cancelled'):
+    #             raise Exception('Can only delete cancelled or completed jobs.')
+
+    #         await delete_items_query.run(conn)
+    #         await delete_job_query.run(conn)
+
+    # async def get_job(self, job_id):
+    #     '''
+    #     Get data for the specified job.
+
+    #     :param bytes job_id: The ID of the job to get.
+    #     :returns: Database document.
+    #     :rtype: dict or None
+    #     '''
+    #     query = r.table('job').get(job_id).without('frontier_seen')
+    #     async with self._db_pool.connection() as conn:
+    #         try:
+    #             job = await query.run(conn)
+    #         except rethinkdb.errors.ReqlNonExistenceError:
+    #             job = None
+    #     return job
+
+    # async def get_job_items(self, job_id, include_success, include_error,
+    #                         include_exception, limit, offset):
+    #     '''
+    #     List the items downloaded by a job.
+
+    #     :param bytes job_id: The ID of the job to list.
+    #     :param bool include_success: If True, include items that were
+    #         successfully downloaded.
+    #     :param bool include_error: If True, include items that resulted in an
+    #         HTTP error.
+    #     :param bool include_exception: If True, include items that resulted in
+    #         an exception.
+    #     :param int limit: The maximum number of items to return.
+    #     :param int offeset: The number of rows to skip.
+    #     :returns: (total count, item list)
+    #     :rtype: tuple
+    #     '''
+    #     items = list()
+    #     filters = []
+
+    #     if include_success:
+    #         filters.append(r.row['is_success'] == True)
+
+    #     if include_error:
+    #         filters.append((r.row['is_success'] == False) &
+    #                        (~r.row.has_fields('exception')))
+
+    #     if include_exception:
+    #         filters.append((r.row['is_success'] == False) &
+    #                        (r.row.has_fields('exception')))
+
+    #     if len(filters) == 0:
+    #         raise Exception('You must set at least one include_* flag to true.')
+
+    #     def get_body(item):
+    #         return {
+    #             'join': r.branch(
+    #                 item.has_fields('body_id'),
+    #                 r.table('response_body').get(item['body_id']),
+    #                 None
+    #             )
+    #         }
+
+    #     base_query = (
+    #         r.table('response')
+    #          .order_by(index='job_sync')
+    #          .between((job_id, r.minval),
+    #                   (job_id, r.maxval))
+    #          .filter(r.or_(*filters))
+    #     )
+
+    #     query = (
+    #          base_query
+    #          .skip(offset)
+    #          .limit(limit)
+    #          .merge(get_body)
+    #          .without('body_id')
+    #     )
+
+    #     async with self._db_pool.connection() as conn:
+    #         total_count = await base_query.count().run(conn)
+    #         cursor = await query.run(conn)
+    #         async for item in cursor:
+    #             items.append(item)
+    #         await cursor.close()
+
+    #     return total_count, items
+
+    # async def list_jobs(self, limit, offset, started_after, tag, schedule_id):
+    #     '''
+    #     List up to `limit` jobs, starting at row number `offset`, ordered by
+    #     start date.
+    #     '''
+    #     query = r.table('job')
+
+    #     if started_after is not None:
+    #         query = query.between(started_after, r.maxval, index='started_at')
+
+    #     # Have to use order_by() before filter().
+    #     query = query.order_by(index=r.desc('started_at'))
+
+    #     if tag is not None:
+    #         query = query.filter(r.row['tags'].contains(tag))
+
+    #     if schedule_id is not None:
+    #         query = query.filter({'schedule_id': schedule_id})
+
+    #     async with self._db_pool.connection() as conn:
+    #         count = await query.count().run(conn)
+
+    #     query = (
+    #         query
+    #         .without('frontier_seen')
+    #         .skip(offset)
+    #         .limit(limit)
+    #     )
+
+    #     jobs = list()
+
+    #     async with self._db_pool.connection() as conn:
+    #         cursor = await query.run(conn)
+    #         async for job in cursor:
+    #             jobs.append(job)
+    #         await cursor.close()
+
+    #     return count, jobs
+
+    # async def update_job(self, job_id, name, tags):
+    #     ''' Update job metadata. '''
+    #     update = dict()
+
+    #     if name is not None:
+    #         update['name'] = name
+    #     if tags is not None:
+    #         update['tags'] = tags
+
+    #     if len(update) > 0:
+    #         async with self._db_pool.connection() as conn:
+    #             await r.table('job').get(job_id).update(update).run(conn)
+
+
 @handler
 async def delete_job(self, command, socket):
     ''' Delete a job. '''
@@ -133,6 +302,9 @@ async def list_jobs(self, command, socket):
 @handler
 async def set_job(self, command, socket):
     ''' Create or update job metadata. '''
+    #TODO
+    # Maybe should have separate commands like pause, cancel, start ?
+    # A littler clearer than just "set".
     if command.HasField('tag_list'):
         tags = [t.strip() for t in command.tag_list.tags]
     else:

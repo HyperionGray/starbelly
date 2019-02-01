@@ -19,58 +19,11 @@ from rethinkdb import RethinkDB
 import trio
 import websockets.exceptions
 
+from .backoff import ExponentialBackoff
+
 
 r = RethinkDB()
 logger = logging.getLogger(__name__)
-
-
-class ExponentialBackoff:
-    ''' An experimental class: this makes it simple to write loops that poll
-    a resource and backoff when the resource is not ready.
-
-    For example, if you are polling the database for some new records, you might
-    wait 1 second and then try again. If there are still no records, then you
-    wait 2 seconds before trying again, then 4 seconds, then 8, etc.
-
-    This is written as an async iterator, so you can just loop over it and it
-    will automatically delay in between loop iterations.
-    '''
-    def __init__(self, start=1, max_=math.inf):
-        '''
-        Constructor.
-
-        :param int start: The initial delay between loop iterations.
-        :param int max_: The maximum delay.
-        '''
-        self._backoff = start
-        self._initial = True
-        self._max = max_
-
-    def __aiter__(self):
-        ''' This instance is an async iterator. '''
-        return self
-
-    async def __anext__(self):
-        ''' Add a delay in between loop iterations. (No delay for the first
-        iteration. '''
-        if self._initial:
-            backoff = 0
-            self._initial = False
-        else:
-            backoff = self._backoff
-            await trio.sleep(backoff)
-        return backoff
-
-    def increase(self):
-        ''' Double the current backoff, but not if it would exceed this
-        instance's max value. '''
-        if self._backoff <= self._max // 2:
-            self._backoff *= 2
-
-    def decrease(self):
-        ''' Halve the current backoff, not if would be less than 1. '''
-        if self._backoff >= 2:
-            self._backoff //= 2
 
 
 class SyncTokenError(Exception):
@@ -162,7 +115,7 @@ class CrawlSyncSubscription:
         ''' For debugging purposes, put the subscription ID and part of the job
         ID in a string. '''
         return '<CrawlSyncSubscription id={} job_id={}>'.format(self._id,
-            hexlify(self._job_id)[:8].decode('ascii'))
+            self._job_id[:8])
 
     @property
     def id_(self):
@@ -294,7 +247,7 @@ class CrawlSyncSubscription:
         item.cost = item_doc['cost']
         item.duration = item_doc['duration']
         item.is_success = item_doc['is_success']
-        item.job_id = item_doc['job_id']
+        item.job_id = UUID(item_doc['job_id']).bytes
         item.started_at = item_doc['started_at'].isoformat()
         item.url = item_doc['url']
         item.url_can = item_doc['url_can']
@@ -406,7 +359,7 @@ class JobStatusSubscription:
                 # No change since last send. Ignore this job.
                 continue
             pb_job = message.event.job_list.jobs.add()
-            pb_job.job_id = job_id
+            pb_job.job_id = UUID(job_id).bytes
             pb_job.name = job_state['name']
             pb_job.item_count = job_state['item_count']
             pb_job.http_success_count = job_state['http_success_count']
@@ -526,7 +479,7 @@ class ResourceMonitorSubscription:
 
         for crawl_measure in measurement['crawls']:
             crawl = frame.crawls.add()
-            crawl.job_id = crawl_measure['job_id']
+            crawl.job_id = UUID(crawl_measure['job_id']).bytes
             crawl.frontier = crawl_measure['frontier']
             crawl.pending = crawl_measure['pending']
             crawl.extraction = crawl_measure['extraction']

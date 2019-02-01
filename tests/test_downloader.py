@@ -1,11 +1,11 @@
 from datetime import datetime
 from functools import partial
 from unittest.mock import Mock
-from uuid import UUID
 
 import aiohttp
 import pytest
 import trio
+from yarl import URL
 
 from . import asyncio_loop
 from starbelly.downloader import (
@@ -18,15 +18,14 @@ from starbelly.policy import Policy
 
 def make_request(url, method='GET', policy=None, form_data=None):
     ''' Make a request object for the given URL. '''
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     return DownloadRequest(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
         job_id=job_id,
         method=method,
         url=url,
         form_data=form_data,
-        cost=1.0,
-        policy=policy,
-        cookie_jar=None
+        cost=1.0
     )
 
 
@@ -72,7 +71,7 @@ def make_policy(proxy=None):
 
 def test_request():
     request = make_request('http://downloader.example/path1/path2?k2=v2&k1=v1')
-    assert request.job_id == UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    assert request.job_id == '123e4567-e89b-12d3-a456-426655440001'
     assert request.url.host == 'downloader.example'
     assert request.canonical_url == 'http://downloader.example/path1/' \
         'path2?k1=v1&k2=v2'
@@ -129,10 +128,11 @@ async def test_http_get(nursery, asyncio_loop):
     request_send, request_recv = trio.open_memory_channel(0)
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
-    dl = Downloader(request_recv, response_send, semaphore)
-    nursery.start_soon(dl.run)
+    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     policy = make_policy()
-    request = make_request('http://{}:{}/foo'.format(addr, port), policy=policy,
+    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    nursery.start_soon(dl.run)
+    request = make_request('http://{}:{}/foo'.format(addr, port),
         form_data={'user': 'john'})
     await request_send.send(request)
     response = await response_recv.receive()
@@ -169,11 +169,12 @@ async def test_http_post(nursery):
     request_send, request_recv = trio.open_memory_channel(0)
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
-    dl = Downloader(request_recv, response_send, semaphore)
-    nursery.start_soon(dl.run)
+    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     policy = make_policy()
+    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    nursery.start_soon(dl.run)
     request = make_request('http://{}:{}/foo'.format(addr, port), method='POST',
-        policy=policy, form_data={'user': 'john'})
+        form_data={'user': 'john'})
     await request_send.send(request)
     response = await response_recv.receive()
     nursery.cancel_scope.cancel()
@@ -182,7 +183,7 @@ async def test_http_post(nursery):
     assert response.body.startswith(b'<html>')
 
 
-async def test_http_proxy_get(nursery):
+async def test_http_proxy_get(asyncio_loop, nursery):
     # Create a server:
     async def handler(stream):
         request = await stream.receive_some(4096)
@@ -204,11 +205,12 @@ async def test_http_proxy_get(nursery):
     request_send, request_recv = trio.open_memory_channel(0)
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
-    dl = Downloader(request_recv, response_send, semaphore)
-    nursery.start_soon(dl.run)
+    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     policy = make_policy(proxy=[{
         'proxy_url': 'http://{}:{}'.format(addr, port),
     }])
+    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    nursery.start_soon(dl.run)
     request = make_request('http://test.example/foo', policy=policy)
     await request_send.send(request)
     response = await response_recv.receive()
@@ -218,7 +220,7 @@ async def test_http_proxy_get(nursery):
     assert response.body.startswith(b'<html>')
 
 
-async def test_socks_proxy_get(nursery):
+async def test_socks_proxy_get(asyncio_loop, nursery):
     # Create a server:
     async def handler(stream):
         # Negotiate SOCKS authentication (no auth)
@@ -250,11 +252,12 @@ async def test_socks_proxy_get(nursery):
     request_send, request_recv = trio.open_memory_channel(0)
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
-    dl = Downloader(request_recv, response_send, semaphore)
-    nursery.start_soon(dl.run)
+    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     policy = make_policy(proxy=[{
         'proxy_url': 'socks5://{}:{}'.format(addr, port),
     }])
+    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    nursery.start_soon(dl.run)
     request = make_request('http://127.0.0.1/foo', policy=policy)
     await request_send.send(request)
     response = await response_recv.receive()

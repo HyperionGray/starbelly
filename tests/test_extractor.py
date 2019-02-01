@@ -1,7 +1,9 @@
+from datetime import datetime, timezone
+
 import pytest
 
-from starbelly.crawl import ExtractItem
-from starbelly.url_extractor import extract_urls
+from starbelly.downloader import DownloadResponse
+from starbelly.extractor import extract_urls
 
 
 def test_atom():
@@ -30,7 +32,19 @@ def test_atom():
             <summary>Some more text.</summary>
           </entry>
         </feed>'''.encode('utf8')
-    item = ExtractItem(base_href, 1.0, 'application/atom+xml', atom_src)
+    item = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        cost=1.0,
+        url=base_href,
+        canonical_url=base_href,
+        content_type='application/atom+xml',
+        body=atom_src,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
     expected_links = set([
         'http://example.org/2003/12/13/test1',
         'http://example.org/2004/01/08/test2',
@@ -56,7 +70,19 @@ def test_html():
                 </p>
             </body>
         </html>'''.encode('utf8')
-    item = ExtractItem(base_href, 1.0, 'text/html', html_src)
+    item = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        cost=1.0,
+        url=base_href,
+        canonical_url=base_href,
+        content_type='text/html',
+        body=html_src,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
     expected_links = set([
         'http://computer.com/laptops/netbooks/',
         'http://computer.com/desktops/',
@@ -87,7 +113,19 @@ def test_html_base():
                 </p>
             </body>
         </html>'''.encode('utf8')
-    item = ExtractItem(base_href, 1.0, 'text/html', html_base_src)
+    item = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        cost=1.0,
+        url=base_href,
+        canonical_url=base_href,
+        content_type='text/html',
+        body=html_base_src,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
     expected_links = set([
         'http://basecomputer.com/foo/netbooks/',
         'http://basecomputer.com/desktops/',
@@ -122,7 +160,19 @@ def test_rss():
                 </item>
             </channel>
         </rss>'''.encode('utf8')
-    item = ExtractItem(base_href, 1.0, 'application/rss+xml', rss_src)
+    item = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        cost=1.0,
+        url=base_href,
+        canonical_url=base_href,
+        content_type='application/rss+xml',
+        body=rss_src,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
     expected_links = set([
         'http://example.org/2002/09/29/test1',
         'http://example.org/2002/10/01/test2',
@@ -148,7 +198,19 @@ def test_xhtml():
                 </p>
             </body>
         </html>'''.encode('utf8')
-    item = ExtractItem(base_href, 1.0, 'application/xhtml+xml', xhtml_src)
+    item = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        cost=1.0,
+        url=base_href,
+        canonical_url=base_href,
+        content_type='application/xhtml+xml',
+        body=xhtml_src,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
     expected_links = set([
         'http://computer.com/laptops/netbooks/',
         'http://computer.com/desktops/',
@@ -161,7 +223,19 @@ def test_xhtml():
 def test_unsupported_content_type():
     ''' Cannot extract links from an unsupported MIME type. '''
     base_href = 'http://computer.com/laptops/'
-    item = ExtractItem(base_href, 1.0, 'bogus/mime', b'')
+    item = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        cost=1.0,
+        url=base_href,
+        canonical_url=base_href,
+        content_type='bogus/mime',
+        body=b'',
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
     with pytest.raises(ValueError):
         extract_urls(item)
 
@@ -178,7 +252,19 @@ def test_skip_malformed_urls():
                 <a href='http://partner.computer.com'>Partners</a>
             </body>
         </html>'''.encode('utf8')
-    item = ExtractItem(base_href, 1.0, 'text/html', html_src)
+    item = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        cost=1.0,
+        url=base_href,
+        canonical_url=base_href,
+        content_type='text/html',
+        body=html_src,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
     expected_links = set([
         'http://partner.computer.com',
     ])

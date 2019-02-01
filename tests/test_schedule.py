@@ -11,7 +11,7 @@ from protobuf.shared_pb2 import (
 import pytest
 import trio
 
-from starbelly.crawl import JobStatusNotification
+from starbelly.job import JobStatusNotification
 from starbelly.schedule import (
     Schedule,
     Scheduler,
@@ -37,7 +37,7 @@ def make_schedule(num, timing='REGULAR_INTERVAL', num_units=3,
     time_unit='HOURS', enabled=True, seeds=None, tags=None):
     ''' Return a new schedule database document. '''
     return Schedule(
-        UUID('123e4567-e89b-12d3-a456-42665544000{}'.format(num)).bytes,
+        '123e4567-e89b-12d3-a456-42665544000{}'.format(num),
         'My Schedule {}'.format(num),
         enabled,
         datetime(2017, 11, 29, 15, 19, 50),
@@ -49,8 +49,8 @@ def make_schedule(num, timing='REGULAR_INTERVAL', num_units=3,
         0,
         seeds or ['http://one.example'],
         tags or ['tag1', 'tag2'],
-        UUID('123e4567-e89b-12d3-a456-426655448888').bytes,
-        UUID('123e4567-e89b-12d3-a456-426655449999').bytes
+        '123e4567-e89b-12d3-a456-426655448888',
+        '123e4567-e89b-12d3-a456-426655449999'
     )
 
 
@@ -66,8 +66,7 @@ async def test_event_due():
 
 def test_event_repr():
     r = repr(ScheduleEvent(make_schedule(1), 0))
-    assert r == 'ScheduleEvent<id=123e4567-e89b-12d3-a456-426655440001' \
-                ' name=My Schedule 1 due=0>'
+    assert r == 'ScheduleEvent<id=123e4567 name=My Schedule 1 due=0>'
 
 
 async def test_event_order():
@@ -85,7 +84,7 @@ async def test_event_order():
 
 def test_format_job_name():
     args = [
-        UUID('123e4567-e89b-12d3-a456-426655440001').bytes,
+        '123e4567-e89b-12d3-a456-426655440001',
         'Test Schedule',
         True,
         datetime(2018, 11, 29, 15, 19, 50),
@@ -97,8 +96,8 @@ def test_format_job_name():
         1,
         ['http://one.example'],
         ['tag1', 'tag2'],
-        UUID('123e4567-e89b-12d3-a456-426655440002').bytes,
-        UUID('123e4567-e89b-12d3-a456-426655440003').bytes
+        '123e4567-e89b-12d3-a456-426655440002',
+        '123e4567-e89b-12d3-a456-426655440003'
     ]
     time = 1541175331
     schedule = Schedule(*args)
@@ -112,8 +111,11 @@ def test_format_job_name():
 
 
 async def test_schedule_doc_to_pb():
+    schedule_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    policy_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
+    job_id = UUID('cccccccc-cccc-cccc-cccc-cccccccccccc')
     doc = {
-        'id': UUID('123e4567-e89b-12d3-a456-426655440001').bytes,
+        'id': str(schedule_id),
         'schedule_name': 'Test Schedule',
         'enabled': True,
         'created_at': datetime(2017, 11, 29, 15, 19, 50),
@@ -125,13 +127,13 @@ async def test_schedule_doc_to_pb():
         'job_count': 1,
         'seeds': ['http://one.example'],
         'tags': ['tag1', 'tag2'],
-        'policy_id': UUID('123e4567-e89b-12d3-a456-426655440002').bytes,
-        'latest_job_id': UUID('123e4567-e89b-12d3-a456-426655440003').bytes,
+        'policy_id': str(policy_id),
+        'latest_job_id': str(job_id),
     }
     pb = PbJobSchedule()
     schedule = Schedule.from_doc(doc)
     schedule.to_pb(pb)
-    assert pb.schedule_id == b'\x12>Eg\xe8\x9b\x12\xd3\xa4VBfUD\x00\x01'
+    assert pb.schedule_id == schedule_id.bytes
     assert pb.schedule_name == 'Test Schedule'
     assert pb.enabled
     assert pb.created_at == '2017-11-29T15:19:50'
@@ -144,8 +146,8 @@ async def test_schedule_doc_to_pb():
     assert pb.seeds[0] == 'http://one.example'
     assert pb.tag_list.tags[0] == 'tag1'
     assert pb.tag_list.tags[1] == 'tag2'
-    assert pb.policy_id == b'\x12>Eg\xe8\x9b\x12\xd3\xa4VBfUD\x00\x02'
-    assert pb.latest_job_id == b'\x12>Eg\xe8\x9b\x12\xd3\xa4VBfUD\x00\x03'
+    assert pb.policy_id == policy_id.bytes
+    assert pb.latest_job_id == job_id.bytes
 
 
 async def test_schedule_pb_to_doc():
@@ -189,7 +191,7 @@ async def test_schedule_pb_to_doc():
 def test_invalid_schedule():
     with pytest.raises(ScheduleValidationError):
         Schedule(
-            UUID('123e4567-e89b-12d3-a456-426655440001').bytes,
+            '123e4567-e89b-12d3-a456-426655440001',
             'My Schedule',
             True,
             datetime(2017, 11, 29, 15, 19, 50),
@@ -201,13 +203,13 @@ def test_invalid_schedule():
             0,
             [], # Must contain one seed
             ['tag1', 'tag2'],
-            UUID('123e4567-e89b-12d3-a456-426655448888').bytes,
-            UUID('123e4567-e89b-12d3-a456-426655449999').bytes
+            '123e4567-e89b-12d3-a456-426655448888',
+            '123e4567-e89b-12d3-a456-426655449999'
         )
 
     with pytest.raises(ScheduleValidationError):
         Schedule(
-            UUID('123e4567-e89b-12d3-a456-426655440001').bytes,
+            '123e4567-e89b-12d3-a456-426655440001',
             'My Schedule',
             True,
             datetime(2017, 11, 29, 15, 19, 50),
@@ -219,13 +221,13 @@ def test_invalid_schedule():
             0,
             ['http://seed.example'],
             ['tag1', 'tag2'],
-            UUID('123e4567-e89b-12d3-a456-426655448888').bytes,
-            UUID('123e4567-e89b-12d3-a456-426655449999').bytes
+            '123e4567-e89b-12d3-a456-426655448888',
+            '123e4567-e89b-12d3-a456-426655449999'
         )
 
     with pytest.raises(ScheduleValidationError):
         Schedule(
-            UUID('123e4567-e89b-12d3-a456-426655440001').bytes,
+            '123e4567-e89b-12d3-a456-426655440001',
             'My Schedule',
             True,
             datetime(2017, 11, 29, 15, 19, 50),
@@ -237,13 +239,13 @@ def test_invalid_schedule():
             0,
             ['http://seed.example'],
             ['tag1', 'tag2'],
-            UUID('123e4567-e89b-12d3-a456-426655448888').bytes,
-            UUID('123e4567-e89b-12d3-a456-426655449999').bytes
+            '123e4567-e89b-12d3-a456-426655448888',
+            '123e4567-e89b-12d3-a456-426655449999'
         )
 
     with pytest.raises(ScheduleValidationError):
         Schedule(
-            UUID('123e4567-e89b-12d3-a456-426655440001').bytes,
+            '123e4567-e89b-12d3-a456-426655440001',
             'My Schedule',
             True,
             datetime(2017, 11, 29, 15, 19, 50),
@@ -255,18 +257,18 @@ def test_invalid_schedule():
             0,
             ['http://seed.example'],
             ['tag1', 'tag2'],
-            UUID('123e4567-e89b-12d3-a456-426655448888').bytes,
-            UUID('123e4567-e89b-12d3-a456-426655449999').bytes
+            '123e4567-e89b-12d3-a456-426655448888',
+            '123e4567-e89b-12d3-a456-426655449999'
         )
 
 
 async def test_schedule_two_events(autojump_clock):
     ''' Create two schedules and ensure they execute at the correct times. '''
-    sched1_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    sched1_job_id = UUID('123e4567-e89b-12d3-a456-426655440011').bytes
+    sched1_id = '123e4567-e89b-12d3-a456-426655440001'
+    sched1_job_id = '123e4567-e89b-12d3-a456-426655440011'
 
-    sched2_id = UUID('123e4567-e89b-12d3-a456-426655440002').bytes
-    sched2_job_id = UUID('123e4567-e89b-12d3-a456-426655440012').bytes
+    sched2_id = '123e4567-e89b-12d3-a456-426655440002'
+    sched2_job_id = '123e4567-e89b-12d3-a456-426655440012'
 
     job_send, job_recv = trio.open_memory_channel(0)
     notify_send, notify_recv = trio.open_memory_channel(0)
@@ -312,9 +314,9 @@ async def test_schedule_two_events(autojump_clock):
 
 async def test_schedule_one_event_run_twice(autojump_clock):
     ''' Create one schedule and let it run twice. '''
-    sched_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
-    sched_job1_id = UUID('123e4567-e89b-12d3-a456-426655440002').bytes
-    sched_job2_id = UUID('123e4567-e89b-12d3-a456-426655440003').bytes
+    sched_id = '123e4567-e89b-12d3-a456-426655440001'
+    sched_job1_id = '123e4567-e89b-12d3-a456-426655440002'
+    sched_job2_id = '123e4567-e89b-12d3-a456-426655440003'
 
     job_send, job_recv = trio.open_memory_channel(0)
     notify_send, notify_recv = trio.open_memory_channel(0)

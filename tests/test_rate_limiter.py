@@ -1,5 +1,3 @@
-from uuid import UUID
-
 import pytest
 import trio
 
@@ -16,13 +14,12 @@ from starbelly.downloader import DownloadRequest
 def make_request(job_id, url):
     ''' Make a download request object. '''
     return DownloadRequest(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
         job_id=job_id,
         method='GET',
         url=url,
         form_data=None,
-        cost=1.0,
-        policy=None,
-        cookie_jar=None
+        cost=1.0
     )
 
 
@@ -51,7 +48,7 @@ def test_compare_expiry_to_float():
 
 
 async def test_one_request(nursery):
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
     rl = RateLimiter(1, request_recv, reset_recv)
@@ -70,7 +67,7 @@ async def test_two_requests_different_domains(nursery):
     The requests are for separate domains, so the rate limiter will emit both
     requests without delay.
     '''
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
     rl = RateLimiter(2, request_recv, reset_recv)
@@ -94,7 +91,7 @@ async def test_two_requests_same_domain(autojump_clock, nursery):
     10 second delay between the reset of the first request and issuing the
     second request.
     '''
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
     rl = RateLimiter(2, request_recv, reset_recv)
@@ -119,7 +116,7 @@ async def test_rate_limiter_over_capacity(autojump_clock, nursery):
     block for 5 seconds until ``remove_one_request()`` reads one item from the
     rate limiter.
     '''
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
     rl = RateLimiter(2, request_recv, reset_recv)
@@ -147,7 +144,7 @@ async def test_token_limit_supercedes_global_limit(autojump_clock, nursery):
     If a limit is set on a domain token, that rate limit is used, otherwise the
     global rate limit is used.
     '''
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
     rl = RateLimiter(2, request_recv, reset_recv)
@@ -190,7 +187,7 @@ async def test_skip_expired_limit_if_nothing_pending(autojump_clock, nursery):
     ''' The rate limit for domain1 will expire before the rate limit for
     domain2, but since domain1 has no pending requests, it will wait for domain2
     to become available again. '''
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
     rl = RateLimiter(2, request_recv, reset_recv)
@@ -221,7 +218,7 @@ async def test_skip_expired_limit_if_nothing_pending(autojump_clock, nursery):
 async def test_push_after_get(autojump_clock, nursery):
     ''' If a job is waiting for a request but nothing is pending, then the rate
     limiter will wait until it receives a request. '''
-    job_id = UUID('123e4567-e89b-12d3-a456-426655440001').bytes
+    job_id = '123e4567-e89b-12d3-a456-426655440001'
     request_send, request_recv = trio.open_memory_channel(0)
     reset_send, reset_recv = trio.open_memory_channel(0)
     rl = RateLimiter(2, request_recv, reset_recv)

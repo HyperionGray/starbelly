@@ -101,7 +101,9 @@ correctly even when two different jobs are crawling the same domain.
     }
 
 This diagram depicts the crawling pipeline for two concurrent jobs: Job #1 in
-blue and Job #2 in green.
+blue and Job #2 in green. The solid lines indicate "channels", i.e. in-memory
+communication between components. The dashed lines indicate data that is written
+to a database table by one component and later read back by another component.
 
 System Components
 -----------------
@@ -120,8 +122,9 @@ low-level details for each component.
 :ref:`captcha`
     Components that deal with CAPTCHA images.
 
-Crawl Manager
-    TODO
+:ref:`crawl`
+    The crawl manager is responsible for the lifecycle of crawl jobs, such as
+    starting/stopping jobs and keeping track of resource usage.
 
 :ref:`downloader`
     Responsible for fetching items from the network. Although
@@ -211,6 +214,15 @@ Starbelly supports passing CAPTCHA images to third-party solving services.
 .. autofunction:: captcha_doc_to_pb
 
 .. autofunction:: captcha_pb_to_doc
+
+.. _crawl:
+
+Crawl Manager
+-------------
+
+.. currentmodule:: starbelly.crawl
+
+TODO
 
 .. _downloader:
 

@@ -1,13 +1,12 @@
 from collections import namedtuple
 from datetime import datetime, timezone
 from unittest.mock import patch
-from uuid import UUID
 
 import pytest
 import trio
 
 from . import assert_min_elapsed, assert_max_elapsed
-from starbelly.crawl import CrawlStateProxy
+from starbelly.job import CrawlStateProxy
 from starbelly.rate_limiter import RateLimiter
 from starbelly.resource_monitor import ResourceMonitor
 
@@ -27,7 +26,7 @@ async def test_history(autojump_clock, nursery, rate_limiter):
     Note: this test doesn't mock out psutil, so it also ensures that we are
     consuming the psutil API correctly.
     '''
-    job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa').bytes
+    job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     crawl_resources = CrawlStateProxy({
         job1_id: {
             'frontier': 100,
@@ -71,8 +70,8 @@ async def test_measurement(autojump_clock, nursery, mocker,
     }
 
     # The crawl resources can be instantiated right here; no mocking required.
-    job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa').bytes
-    job2_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb').bytes
+    job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    job2_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     crawl_resources = CrawlStateProxy({
         job1_id: {
             'frontier': 100,
@@ -129,7 +128,7 @@ async def test_measurement(autojump_clock, nursery, mocker,
 async def test_slow_channel(autojump_clock, nursery, rate_limiter):
     ''' If there are two subscribers to the resource monitor and one is slow, it
     will not prevent delivery to the other subscriber. '''
-    job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa').bytes
+    job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     crawl_resources = CrawlStateProxy({
         job1_id: {
             'frontier': 100,

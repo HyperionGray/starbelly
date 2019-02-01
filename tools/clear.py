@@ -51,7 +51,6 @@ async def main():
         )
         await clear(conn, 'captcha_solver')
         await clear(conn, 'domain_login')
-        await clear(conn, 'extraction_queue')
         await clear(conn, 'frontier')
         await clear(conn, 'job')
         await clear(conn, 'job_schedule')

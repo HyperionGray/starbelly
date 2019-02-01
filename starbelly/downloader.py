@@ -11,7 +11,7 @@ import aiohttp_socks.errors
 import trio
 import trio_asyncio
 import w3lib.url
-import yarl
+from yarl import URL
 
 from .policy import Policy
 
@@ -28,19 +28,24 @@ class MimeNotAllowedError(Exception):
 @dataclass
 class DownloadRequest:
     ''' Represents a resource that needs to be downloaded. '''
+    frontier_id: bytes
     job_id: bytes
     method: str
     url: str
     form_data: dict
     cost: float
-    policy: Policy
-    cookie_jar: aiohttp.CookieJar
     canonical_url: str = field(init=False)
 
     def __post_init__(self):
-        ''' Initialize URL. '''
-        self.canonical_url = w3lib.url.canonicalize_url(self.url)
-        self.url = yarl.URL(self.url)
+        ''' Initialize URLs. '''
+        self.url = URL(self.url)
+        self.canonical_url = w3lib.url.canonicalize_url(str(self.url))
+
+    @classmethod
+    def from_frontier_item(cls, frontier_item):
+        return cls(frontier_item.frontier_id, frontier_item.job_id,
+            method='GET', url=frontier_item.url, form_data=None,
+            cost=frontier_item.cost)
 
 
 @dataclass
@@ -49,6 +54,7 @@ class DownloadResponse:
     Represents the result of downloading a resource, which could contain a
     successful response body, an HTTP error, or an exception.
     '''
+    frontier_id: bytes
     cost: float
     url: str
     canonical_url: str
@@ -59,7 +65,11 @@ class DownloadResponse:
     exception: str = field(default=None)
     status_code: int = field(default=None)
     headers: dict = field(default=None)
-    should_save: bool = field(default=None)
+
+    def __post_init__(self):
+        ''' Initialize URL. '''
+        self.url = URL(self.url)
+        self.canonical_url = w3lib.url.canonicalize_url(str(self.url))
 
     @classmethod
     def from_request(cls, request):
@@ -69,7 +79,8 @@ class DownloadResponse:
         :param DownloadRequest request: The request that generated this
             response.
         '''
-        return cls(request.cost, request.url, request.canonical_url)
+        return cls(request.frontier_id, request.cost, request.url,
+            request.canonical_url)
 
     @property
     def duration(self):
@@ -79,6 +90,10 @@ class DownloadResponse:
         except AttributeError:
             # One or both datetimes is None.
             return None
+
+    @property
+    def is_success(self):
+        return self._status_code == 200
 
     def start(self):
         ''' Called when the request has been sent and the response is being
@@ -107,10 +122,14 @@ class Downloader:
     ''' This class is responsible for downloading resources. A new instance is
     created for each crawl job. '''
 
-    def __init__(self, request_channel, response_channel, semaphore):
+    def __init__(self, job_id, policy, request_channel, response_channel,
+            semaphore):
         '''
         Constructor.
 
+        :param str job_id: The ID of the job to download requests for.
+        :param starbelly.policy.Policy: The policy to use when downloading
+            objects.
         :param trio.ReceiveChannel request_channel: A Trio channel that receives
             download requests.
         :param trio.SendChannel response_channel: A Trio channel that the
@@ -118,9 +137,16 @@ class Downloader:
         :param trio.Semaphore semaphore: The downloader acquires the semaphore
             for each download.
         '''
+        self._job_id = job_id
+        self._policy = policy
         self._request_channel = request_channel
         self._response_channel = response_channel
         self._semaphore = semaphore
+        self._cookie_jar = aiohttp.CookieJar()
+
+    def __repr__(self):
+        ''' Report crawl job ID. '''
+        return '<Downloader job_id={}>'.format(self._job_id[:8])
 
     async def run(self):
         '''
@@ -178,10 +204,12 @@ class Downloader:
         :param DownloadRequest request:
         '''
         # Timeout is handled by the caller:
-        session_args = {'timeout': aiohttp.ClientTimeout(total=None)}
-        policy = request.policy
+        session_args = {
+            'timeout': aiohttp.ClientTimeout(total=None),
+            'cookie_jar': self._cookie_jar,
+        }
         url = request.url
-        proxy_type, proxy_url = policy.proxy_rules.get_proxy_url(url)
+        proxy_type, proxy_url = self._policy.proxy_rules.get_proxy_url(url)
 
         if proxy_type in _SOCKS_PROXY_SCHEMES:
             session_args['connector'] = aiohttp_socks.SocksConnector.from_url(
@@ -189,10 +217,8 @@ class Downloader:
         else:
             session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 
-        user_agent = request.policy.user_agents.get_user_agent()
+        user_agent = self._policy.user_agents.get_user_agent()
         session_args['headers'] = {'User-Agent': user_agent}
-        if request.cookie_jar is not None:
-            session_args['cookie_jar'] = request.cookie_jar
         session = aiohttp.ClientSession(**session_args)
         dl_response = DownloadResponse.from_request(request)
 
@@ -214,28 +240,28 @@ class Downloader:
             async with http_request as http_response:
                 mime = http_response.headers.get('content-type',
                     'application/octet-stream')
-                if not policy.mime_type_rules.should_save(mime):
+                if not self._policy.mime_type_rules.should_save(mime):
                     raise MimeNotAllowedError()
                 body = await http_response.read()
                 dl_response.set_response(http_response, body)
-            logger.info('%d %s (cost=%0.2f)', dl_response.status_code,
+            logger.info('%r %d %s (cost=%0.2f)', self, dl_response.status_code,
                 dl_response.url, dl_response.cost)
         except asyncio.CancelledError:
             raise
-        except MimeNotAllowedError:
-            logger.info('MIME %s disallowed by policy for URL %s', mime,
-                request.url)
-            dl_response.should_save = False
         except (aiohttp.ClientError, aiohttp_socks.errors.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
             msg = '{}: {}'.format(err.__class__.__name__, err)
-            logger.warn('Failed downloading %s: %s', request.url, msg)
+            logger.warn('%r Failed downloading %s: %s', self, request.url, msg)
             dl_response.set_exception(msg)
         except asyncio.TimeoutError as te:
-            logger.warn('Timed out downloading %s', request.url)
+            logger.warn('%r Timed out downloading %s', self, request.url)
             dl_response.set_exception('Timed out')
+        except MimeNotAllowedError:
+            # If MIME is not allowed, then don't even download the body,
+            # the response is not forwarded to the next component, etc.
+            raise
         except Exception as exc:
-            logger.exception('Failed downloading %s', request.url)
+            logger.exception('%r Failed downloading %s', self, request.url)
             dl_response.set_exception(traceback.format_exc())
 
         return dl_response

@@ -301,10 +301,7 @@ async def init_db(db_config):
         await ensure_db_table(conn, 'domain_login', primary_key='domain')
         await ensure_db_table(conn, 'frontier')
         await ensure_db_index(conn, 'frontier', 'cost_index',
-            [r.row['job_id'], r.row['cost']])
-        await ensure_db_table(conn, 'extraction_queue')
-        await ensure_db_index(conn, 'extraction_queue', 'cost_index',
-            [r.row['job_id'], r.row['cost']])
+            [r.row['job_id'], r.row['in_flight'], r.row['cost']])
         await ensure_db_table(conn, 'job')
         await ensure_db_index(conn, 'job', 'started_at')
         await ensure_db_table(conn, 'job_schedule')
@@ -315,9 +312,11 @@ async def init_db(db_config):
         await ensure_db_index(conn, 'rate_limit', 'name')
         await ensure_db_index(conn, 'rate_limit', 'token')
         await ensure_db_table(conn, 'response')
+        await ensure_db_index(conn, 'response', 'sequence')
         await ensure_db_index(conn, 'response', 'job_sync',
                 [r.row['job_id'], r.row['sequence']])
         await ensure_db_table(conn, 'response_body')
+        await ensure_db_index(conn, 'response', 'ref_count')
         await ensure_db_table(conn, 'robots_txt')
         await ensure_db_index(conn, 'robots_txt', 'url')
         await ensure_db_fixtures(conn)

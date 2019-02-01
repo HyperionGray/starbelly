@@ -4,7 +4,6 @@ import logging
 import math
 import os
 from time import time
-from uuid import UUID
 
 import psutil
 import trio

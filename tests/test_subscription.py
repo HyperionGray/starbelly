@@ -9,7 +9,7 @@ import trio.hazmat
 from . import assert_elapsed, assert_max_elapsed, assert_min_elapsed
 from protobuf.shared_pb2 import JobRunState
 from protobuf.server_pb2 import ServerMessage
-from starbelly.crawl import CrawlStateProxy
+from starbelly.job import CrawlStateProxy
 from starbelly.subscription import (
     ExponentialBackoff,
     JobStatusSubscription,
@@ -38,57 +38,11 @@ def test_decode_malformed():
         assert SyncTokenInt.decode(token)
 
 
-async def test_backoff_no_change(autojump_clock):
-    ''' Backoff starts at 1, so 3 iterations takes ~2 seconds. '''
-    with assert_elapsed(2):
-        loop_count = 0
-        async for _ in ExponentialBackoff():
-            loop_count += 1
-            if loop_count == 3:
-                break
-
-
-async def test_backoff_increase(autojump_clock):
-    ''' Increase backoff on each loop. Backoffs should be equal to 1, 2, 4,
-    8, 16, 16, but the first value is skipped, so the total is ~46 seconds. '''
-    with assert_elapsed(seconds=46):
-        loop_count = 0
-        backoff = ExponentialBackoff(max_=16)
-        async for n in backoff:
-            backoff.increase()
-            loop_count += 1
-            if loop_count == 6: break
-
-
-async def test_backoff_returns_value(autojump_clock):
-    ''' Backoff returns the current value. Increase up to max and then decrease
-    back to starting point. '''
-    backoff = ExponentialBackoff(max_=8)
-    assert await backoff.__anext__() == 0
-    assert await backoff.__anext__() == 1
-    backoff.increase()
-    assert await backoff.__anext__() == 2
-    backoff.increase()
-    assert await backoff.__anext__() == 4
-    backoff.increase()
-    assert await backoff.__anext__() == 8
-    backoff.increase()
-    assert await backoff.__anext__() == 8
-    backoff.decrease()
-    assert await backoff.__anext__() == 4
-    backoff.decrease()
-    assert await backoff.__anext__() == 2
-    backoff.decrease()
-    assert await backoff.__anext__() == 1
-    backoff.decrease()
-    assert await backoff.__anext__() == 1
-
-
 async def test_job_state_subscription(autojump_clock, nursery):
-    job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa').bytes
-    job2_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb').bytes
+    job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    job2_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
     jobs_dict = {
-        job1_id: {
+        str(job1_id): {
             'name': 'Job #1',
             'seeds': ['https://job1.example'],
             'tags': ['tag1a', 'tag1b'],
@@ -101,7 +55,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
             'completed_at': None,
             'run_state': 'RUNNING',
         },
-        job2_id: {
+        str(job2_id): {
             'name': 'Job #2',
             'seeds': ['https://job2.example'],
             'tags': ['tag2a'],
@@ -132,7 +86,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
         assert message1.subscription_id == 1
         assert len(message1.job_list.jobs) == 2
         job1 = message1.job_list.jobs[0]
-        assert job1.job_id == job1_id
+        assert job1.job_id == job1_id.bytes
         assert job1.name == 'Job #1'
         assert job1.seeds[0] == 'https://job1.example'
         assert job1.tag_list.tags[0] == 'tag1a'
@@ -148,7 +102,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
         assert job1.run_state == JobRunState.Value('RUNNING')
 
         job2 = message1.job_list.jobs[1]
-        assert job2.job_id == job2_id
+        assert job2.job_id == job2_id.bytes
         assert job2.name == 'Job #2'
         assert job2.seeds[0] == 'https://job2.example'
         assert job2.tag_list.tags[0] == 'tag2a'
@@ -165,7 +119,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
     # Add 1 item to job 1. Two seconds later, we should get an update for job 1
     # but not job 2.
     with assert_min_elapsed(2):
-        jobs_dict[job1_id].update({
+        jobs_dict[str(job1_id)].update({
             'item_count': 11,
             'http_success_count': 8,
             'http_status_counts': {200: 8, 404: 2},
@@ -192,7 +146,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
     # Add 2 items to job 2. Two seconds later, we should get an update for job 2
     # but not job 1.
     with assert_min_elapsed(2):
-        jobs_dict[job2_id].update({
+        jobs_dict[str(job2_id)].update({
             'item_count': 22,
             'http_success_count': 15,
             'http_error_count': 5,
@@ -228,8 +182,8 @@ async def test_job_state_subscription(autojump_clock, nursery):
 
 async def test_resource_subscription(autojump_clock, nursery):
     # Set up fixtures
-    job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa').bytes
-    job2_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb').bytes
+    job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    job2_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
     resource_monitor = Mock()
     measurement1 = {
         'timestamp': datetime(2019, 1, 25, 0, 0, 0, tzinfo=timezone.utc),
@@ -255,13 +209,13 @@ async def test_resource_subscription(autojump_clock, nursery):
             'received': 10_000_000,
         }],
         'crawls': [{
-            'job_id': job1_id,
+            'job_id': str(job1_id),
             'frontier': 100,
             'pending': 50,
             'extraction': 5,
             'downloader': 10,
         },{
-            'job_id': job2_id,
+            'job_id': str(job2_id),
             'frontier': 200,
             'pending': 100,
             'extraction': 10,
@@ -312,12 +266,12 @@ async def test_resource_subscription(autojump_clock, nursery):
         assert frame1.networks[1].name == 'eth1'
         assert frame1.networks[1].sent == 9_000_000
         assert frame1.networks[1].received == 10_000_000
-        assert frame1.crawls[0].job_id == job1_id
+        assert frame1.crawls[0].job_id == job1_id.bytes
         assert frame1.crawls[0].frontier == 100
         assert frame1.crawls[0].pending == 50
         assert frame1.crawls[0].extraction == 5
         assert frame1.crawls[0].downloader == 10
-        assert frame1.crawls[1].job_id == job2_id
+        assert frame1.crawls[1].job_id == job2_id.bytes
         assert frame1.crawls[1].frontier == 200
         assert frame1.crawls[1].pending == 100
         assert frame1.crawls[1].extraction == 10

@@ -141,15 +141,8 @@ async def _download_captcha_image(policy, downloader, cookie_jar, img_src):
     :rtype bytes:
     '''
     logger.info('Downloading CAPTCHA image src=%s', img_src)
-    request = DownloadRequest(
-        job_id=None,
-        method='GET',
-        url=img_src,
-        form_data=None,
-        cost=0,
-        policy=policy,
-        cookie_jar=cookie_jar,
-    )
+    request = DownloadRequest(frontier_id=None, job_id=None, method='GET',
+        url=img_src, form_data=None, cost=0)
     response = await downloader.download(request)
 
     if response.status_code == 200 and response.body is not None:

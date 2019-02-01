@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import itertools
 import os
 import signal
 import subprocess
@@ -120,6 +121,7 @@ class Starbelly:
         self._logger = logger
         self._main_task = None
         self._quit_count = 0
+        self._sequence = None
 
     async def initialize_rate_limiter(self, rate_limiter, db_pool):
         ''' Load rate limits from database. '''
@@ -173,7 +175,7 @@ class Starbelly:
         )
 
         try:
-            await crawl_manager.startup_check()
+            await crawl_manager._startup_check()
             await rate_limiter.initialize()
             downloader.start()
             scheduler_task = daemon_task(scheduler.run())
@@ -189,6 +191,12 @@ class Starbelly:
             # Components must be shut down in the proper order.
             await subscription_manager.close_all()
             await cancel_futures(resource_monitor_task, server_task)
+            # TODO copied from crawl.py
+            # running_jobs = self._running_jobs.copy()
+            # self._running_jobs.clear()
+            # async with trio.open_nursery() as nursery:
+            #     for job in running_jobs.values():
+            #         nursery.start_soon(job.pause)
             await crawl_manager.pause_all_jobs()
             await cancel_futures(scheduler_task)
             await downloader.stop()
@@ -245,6 +253,41 @@ class Starbelly:
             )
 
         return db_connect
+
+    async def _set_sequence(self):
+        sequence_query = r.table('response').max(index='sequence')
+        max_sequence = await sequence_query.run(conn)
+        logger.info('Max sequence is %d.', max_sequence)
+        self._sequence = itertools.count(start=max_sequence + 1)
+
+    async def _startup_check(self, db_pool):
+        ''' Do some sanity checks at startup. '''
+        logger.info('Doing startup check...')
+
+        # If the server was previously killed, then some jobs may still be in
+        # the 'running' state even though they clearly aren't running. Mark
+        # those jobs as paused.
+        running_jobs_query = (
+            r.table('job')
+             .filter({'run_state': 'running'})
+             .update({'run_state': 'paused'})
+        )
+        async with db_pool.connection() as conn:
+            result = await running_jobs_query.run(conn)
+            logger.warning('%d jobs changed from "running" to "paused"',
+                result['replaced'])
+
+        # Any frontier items marked as "in-flight" should be set to not
+        # in-flight.
+        inflight_query =  r.table('frontier').between(
+            (self._job_id, True, r.minval),
+            (self._job_id, True, r.maxval),
+            index='cost_index'
+        ).update({'in_flight': False})
+        async with db_pool.connection() as conn:
+            result = await inflight_query.run()
+            logger.info('Reverted %d in-flight frontier items',
+                result['replaced'])
 
 
 def configure_logging(log_level, asyncio_log, error_log):

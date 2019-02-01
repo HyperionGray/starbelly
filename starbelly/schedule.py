@@ -13,7 +13,7 @@ from protobuf.shared_pb2 import (
 )
 import trio
 
-from .crawl import JobStatusNotification
+from .job import JobStatusNotification
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ class Schedule:
 
         :param pb: A schedule protobuf.
         '''
-        pb.schedule_id = self.id_
+        pb.schedule_id = UUID(self.id_).bytes
         pb.schedule_name = self.name
         pb.enabled = self.enabled
         pb.created_at = self.created_at.isoformat()
@@ -157,8 +157,8 @@ class Schedule:
             pb.seeds.append(seed)
         for tag in self.tags:
             pb.tag_list.tags.append(tag)
-        pb.policy_id = self.policy_id
-        pb.latest_job_id = self.latest_job_id
+        pb.policy_id = UUID(self.policy_id).bytes
+        pb.latest_job_id = UUID(self.latest_job_id).bytes
 
     def format_job_name(self, when):
         '''
@@ -210,8 +210,7 @@ class ScheduleEvent:
     def __repr__(self):
         ''' Make string representation. '''
         return 'ScheduleEvent<id={} name={} due={}>'.format(
-            UUID(bytes=self.schedule.id_), self._schedule.name, self._due
-        )
+            self._schedule.id_[:8], self._schedule.name, self._due)
 
     @property
     def due(self):

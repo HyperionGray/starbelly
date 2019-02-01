@@ -73,6 +73,7 @@ async def test_login_form_extraction(asyncio_loop, mocker):
         b'<input type="text" name="captcha">' \
         b'<input type="submit" value="Log In"></body></html>'
     form_response = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
         cost=0.0,
         url='https://www.example',
         canonical_url='https://www.example',
@@ -81,12 +82,12 @@ async def test_login_form_extraction(asyncio_loop, mocker):
         started_at=datetime.now(timezone.utc),
         completed_at=datetime.now(timezone.utc),
         status_code=200,
-        headers={'Server': 'Fake Server 1.0', 'Content-type': 'text/html'},
-        should_save=True
+        headers={'Server': 'Fake Server 1.0', 'Content-type': 'text/html'}
     )
     img_response_body = b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ'
         'AAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==')
     img_response = DownloadResponse(
+        frontier_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
         cost=0.0,
         url='https://www.example/captcha',
         canonical_url='https://www.example/captcha',
@@ -95,14 +96,14 @@ async def test_login_form_extraction(asyncio_loop, mocker):
         started_at=datetime.now(timezone.utc),
         completed_at=datetime.now(timezone.utc),
         status_code=200,
-        headers={'Server': 'Fake Server 1.0', 'Content-type': 'image/png'},
-        should_save=True
+        headers={'Server': 'Fake Server 1.0', 'Content-type': 'image/png'}
     )
     async def download_img():
         return img_response
     async def solve():
         return 'ABCD1234'
-    downloader = Downloader(None, None, trio.Semaphore(1))
+    job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    downloader = Downloader(job_id, policy, None, None, trio.Semaphore(1))
     downloader.download = mocker.Mock()
     downloader.download.side_effect = [download_img()]
     solve_mock = mocker.patch('starbelly.login.solve_captcha_asyncio')

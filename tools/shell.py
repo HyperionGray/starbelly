@@ -66,6 +66,26 @@ def run_query(query, super_user=False):
     return trio.run(async_query)
 
 
+def list_results(results):
+    '''
+    Convert query results to list, even if the query resulted in a cursor. '''
+    async def async_list_results():
+        if isinstance(results, list):
+            return results.copy()
+        elif isinstance(results, r.Cursor):
+            l = list()
+            async with results:
+                async for item in results:
+                    l.append(item)
+            return l
+        else:
+            type_ = type(results)
+            logger.error(f'RethinkDB UNKNOWN TYPE: {type_}')
+            return None
+
+    return trio.run(async_list_results)
+
+
 def print_results(results):
     '''
     Pretty print RethinkDB query results.
@@ -99,7 +119,6 @@ def print_results(results):
         else:
             type_ = type(results)
             logger.error(f'RethinkDB UNKNOWN TYPE: {type_}')
-            print(f'RethinkDB UNKNOWN: {results}')
 
     trio.run(async_print_results)
 
