@@ -49,9 +49,9 @@ def test_compare_expiry_to_float():
 
 async def test_one_request(nursery):
     job_id = '123e4567-e89b-12d3-a456-426655440001'
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(1, request_recv, reset_recv)
+    rl = RateLimiter(1)
+    request_send = rl.get_request_channel()
+    reset_send = rl.get_reset_channel()
     job_recv = rl.add_job(job_id)
     assert rl.job_count == 1
     assert rl.item_count == 0
@@ -68,10 +68,10 @@ async def test_two_requests_different_domains(nursery):
     requests without delay.
     '''
     job_id = '123e4567-e89b-12d3-a456-426655440001'
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(2, request_recv, reset_recv)
+    rl = RateLimiter(2)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
+    request_send = rl.get_request_channel()
+    reset_send = rl.get_reset_channel()
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)
     request1 = make_request(job_id, 'http://domain1.example')
@@ -92,10 +92,10 @@ async def test_two_requests_same_domain(autojump_clock, nursery):
     second request.
     '''
     job_id = '123e4567-e89b-12d3-a456-426655440001'
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(2, request_recv, reset_recv)
+    rl = RateLimiter(2)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
+    request_send = rl.get_request_channel()
+    reset_send = rl.get_reset_channel()
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)
     request1 = make_request(job_id, 'http://domain.example/1')
@@ -117,10 +117,10 @@ async def test_rate_limiter_over_capacity(autojump_clock, nursery):
     rate limiter.
     '''
     job_id = '123e4567-e89b-12d3-a456-426655440001'
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(2, request_recv, reset_recv)
+    rl = RateLimiter(2)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
+    request_send = rl.get_request_channel()
+    reset_send = rl.get_reset_channel()
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)
     request1 = make_request(job_id, 'http://domain1.example')
@@ -145,9 +145,9 @@ async def test_token_limit_supercedes_global_limit(autojump_clock, nursery):
     global rate limit is used.
     '''
     job_id = '123e4567-e89b-12d3-a456-426655440001'
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(2, request_recv, reset_recv)
+    rl = RateLimiter(2)
+    request_send = rl.get_request_channel()
+    reset_send = rl.get_reset_channel()
     token = get_domain_token('domain.example')
     rl.set_rate_limit(token, 2)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
@@ -188,9 +188,9 @@ async def test_skip_expired_limit_if_nothing_pending(autojump_clock, nursery):
     domain2, but since domain1 has no pending requests, it will wait for domain2
     to become available again. '''
     job_id = '123e4567-e89b-12d3-a456-426655440001'
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(2, request_recv, reset_recv)
+    rl = RateLimiter(2)
+    request_send = rl.get_request_channel()
+    reset_send = rl.get_reset_channel()
     token1 = get_domain_token('domain1.example')
     token2 = get_domain_token('domain2.example')
     rl.set_rate_limit(token1, 1)
@@ -219,10 +219,10 @@ async def test_push_after_get(autojump_clock, nursery):
     ''' If a job is waiting for a request but nothing is pending, then the rate
     limiter will wait until it receives a request. '''
     job_id = '123e4567-e89b-12d3-a456-426655440001'
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    rl = RateLimiter(2, request_recv, reset_recv)
+    rl = RateLimiter(2)
     rl.set_rate_limit(GLOBAL_RATE_LIMIT_TOKEN, 10)
+    request_send = rl.get_request_channel()
+    reset_send = rl.get_reset_channel()
     job_recv = rl.add_job(job_id)
     nursery.start_soon(rl.run)
     request = make_request(job_id, 'http://domain.example')

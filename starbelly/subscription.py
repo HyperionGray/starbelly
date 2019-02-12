@@ -20,6 +20,7 @@ import trio
 import websockets.exceptions
 
 from .backoff import ExponentialBackoff
+from .job import RunState
 
 
 r = RethinkDB()
@@ -88,7 +89,7 @@ class CrawlSyncSubscription:
         :param trio.Lock stream_lock: A lock that must be acquired before
             writing to the stream.
         :param db_pool: A RethinkDB connection pool.
-        :param bytes job_id: The ID of the job to send events for.
+        :param str job_id: The ID of the job to send events for.
         :param bool compression_ok: If true, response bodies are gzipped.
         :param trio.ReceiveChannel job_state_recv: A channel that will receive
             updates to job status.
@@ -197,8 +198,9 @@ class CrawlSyncSubscription:
             job status channel is closed, but that should never happen.
         '''
         async for job_state in self._job_state_recv:
+            logger.debug('job_state=%r', job_state)
             if job_state.job_id == self._job_id:
-                if job_state.run_state in ('COMPLETED', 'CANCELLED'):
+                if job_state.run_state in (RunState.COMPLETED, RunState.CANCELLED):
                     logger.debug('%r Job status: %s', self, job_state.run_state)
                     self._job_completed = True
 
@@ -225,6 +227,7 @@ class CrawlSyncSubscription:
                 backoff.increase()
             else:
                 backoff.decrease()
+            logging.debug('backoff is now %s', backoff)
 
     async def _send_complete(self):
         ''' Send a subscription end event. '''
@@ -285,7 +288,7 @@ class CrawlSyncSubscription:
             result = await query.run(conn)
             logging.debug('%r Initial job state: %r', self, result)
             self._job_completed = result['run_state'] in \
-                ('COMPLETED', 'CANCELLED')
+                (RunState.COMPLETED, RunState.CANCELLED)
 
 
 class JobStatusSubscription:
@@ -296,12 +299,13 @@ class JobStatusSubscription:
     It only sends events when something about a job has changed.
     '''
 
-    def __init__(self, id_, job_states, stream, stream_lock, min_interval):
+    def __init__(self, id_, stats_tracker, stream, stream_lock, min_interval):
         '''
         Constructor.
 
         :param int id_: Subscription ID.
-        :param JobStates job_states: A read-only view of job states.
+        :param starbelly.job.StatsTracker stats_tracker: An object that tracks
+            crawl stats.
         :param trio.abc.Stream stream: A stream to send events to.
         :param trio.Lock stream_lock: A lock that must be acquired before
             sending to the stream.
@@ -309,7 +313,7 @@ class JobStatusSubscription:
             sending events.
         '''
         self._id = id_
-        self._job_states = job_states
+        self._stats_tracker = stats_tracker
         self._stream = stream
         self._stream_lock = stream_lock
         self._min_interval = min_interval
@@ -352,28 +356,30 @@ class JobStatusSubscription:
         message = ServerMessage()
         message.event.subscription_id = self._id
         current_send = dict()
-
-        for job_id, job_state in self._job_states:
-            current_send[job_id] = job_state
-            if job_state == self._last_send.get(job_id):
+        import logging
+        for job in self._stats_tracker.snapshot():
+            logging.debug('job %r',job)
+            job_id = job['id']
+            current_send[job_id] = job
+            if job == self._last_send.get(job_id):
                 # No change since last send. Ignore this job.
                 continue
             pb_job = message.event.job_list.jobs.add()
             pb_job.job_id = UUID(job_id).bytes
-            pb_job.name = job_state['name']
-            pb_job.item_count = job_state['item_count']
-            pb_job.http_success_count = job_state['http_success_count']
-            pb_job.http_error_count = job_state['http_error_count']
-            pb_job.exception_count = job_state['exception_count']
-            for seed in job_state['seeds']:
+            pb_job.name = job['name']
+            pb_job.item_count = job['item_count']
+            pb_job.http_success_count = job['http_success_count']
+            pb_job.http_error_count = job['http_error_count']
+            pb_job.exception_count = job['exception_count']
+            for seed in job['seeds']:
                 pb_job.seeds.append(seed)
-            for tag in job_state['tags']:
+            for tag in job['tags']:
                 pb_job.tag_list.tags.append(tag)
-            pb_job.started_at = job_state['started_at'].isoformat()
-            if job_state['completed_at']:
-                pb_job.completed_at = job_state['completed_at'].isoformat()
-            pb_job.run_state = JobRunState.Value(job_state['run_state'].upper())
-            for status_code, count in job_state['http_status_counts'].items():
+            pb_job.started_at = job['started_at'].isoformat()
+            if job['completed_at']:
+                pb_job.completed_at = job['completed_at'].isoformat()
+            pb_job.run_state = JobRunState.Value(job['run_state'].upper())
+            for status_code, count in job['http_status_counts'].items():
                 pb_job.http_status_counts[int(status_code)] = count
 
         self._last_send = current_send
@@ -477,15 +483,15 @@ class ResourceMonitorSubscription:
             net.sent = network_measure['sent']
             net.received = network_measure['received']
 
-        for crawl_measure in measurement['crawls']:
-            crawl = frame.crawls.add()
-            crawl.job_id = UUID(crawl_measure['job_id']).bytes
-            crawl.frontier = crawl_measure['frontier']
-            crawl.pending = crawl_measure['pending']
-            crawl.extraction = crawl_measure['extraction']
-            crawl.downloader = crawl_measure['downloader']
+        for job_measure in measurement['jobs']:
+            job = frame.jobs.add()
+            job.job_id = UUID(job_measure['id']).bytes
+            job.name = job_measure['name']
+            job.current_downloads = job_measure['current_downloads']
 
-        frame.rate_limiter.count = measurement['rate_limiter']
+        frame.current_downloads = measurement['current_downloads']
+        frame.maximum_downloads = measurement['maximum_downloads']
+        frame.rate_limiter = measurement['rate_limiter']
         return message
 
     async def _send(self, event):

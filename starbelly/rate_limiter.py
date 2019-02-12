@@ -99,22 +99,16 @@ class RateLimiter:
     Internally, a queue is maintained for each rate limit token that has pending
     requests to it. When a rate limit expires for a given token, the next URL in
     the corresponding queue is sent to the downloader. The rate limiter has a
-    fixed capacity that is controlled by a Semaphore object passed into the
-    constructor. This prevents the rate limiter's memory usage from growing
+    fixed capacity. This prevents the rate limiter's memory usage from growing
     without bounds and applies backpressure to the crawl jobs that are
     submitting download requests to the rate limiter.
     '''
-    def __init__(self, capacity, request_recv, reset_recv):
+    def __init__(self, capacity):
         '''
         Constructor.
 
         :param int capacity: The maximum number of items to buffer inside of the
             rate limiter.
-        :param trio.ReceiveChannel request_recv: A channel that receives
-            `DownloadRequest` to be placed in rate limit queue.
-        :param trio.ReceiveChannel reset_recv: Receives URLs of items that can
-            have their rate limit reset, i.e. when they have finished
-            downloading.
         '''
         self._expires = list()
         self._expiry_cancel_scope = None
@@ -123,8 +117,8 @@ class RateLimiter:
         self._rate_limits = dict()
         self._capacity = capacity
         self._semaphore = trio.Semaphore(capacity)
-        self._request_recv = request_recv
-        self._reset_recv = reset_recv
+        self._request_send, self._request_recv = trio.open_memory_channel(0)
+        self._reset_send, self._reset_recv = trio.open_memory_channel(0)
         self._job_channels = dict()
 
     @property
@@ -142,17 +136,33 @@ class RateLimiter:
         Add a job to the rate limiter. Returns a send channel that requests for
         this job will be sent to.
 
-        :param bytes job_id: A job ID.
+        :param str job_id: A job ID.
         '''
         job_send, job_recv = trio.open_memory_channel(0)
         self._job_channels[job_id] = job_send
         return job_recv
 
+    def get_request_channel(self):
+        '''
+        Get a channel that can send requests to the rate limiter.
+
+        :rtype: trio.SendChannel
+        '''
+        return self._request_send.clone()
+
+    def get_reset_channel(self):
+        '''
+        Get a channel that can send resets to the rate limiter.
+
+        :rtype: trio.ReceiveChannel
+        '''
+        return self._reset_send.clone()
+
     async def remove_job(self, job_id):
         '''
         Remove all download requests for the given job.
 
-        :param bytes job_id:
+        :param str job_id:
         '''
         logger.debug('Remove job: id=%r', job_id)
         # Copy all existing queues to new queues but drop items matching the

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from ..captcha import captcha_doc_to_pb, captcha_pb_to_doc
 from .handler import handler
 
@@ -78,7 +80,7 @@ async def list_captcha_solvers(self, command, socket):
 @handler
 async def set_captcha_solver(self, command, socket):
     ''' Create or update CAPTCHA solver. '''
-    now = datetime.now(tzlocal())
+    now = datetime.now(datetime.utc)
     doc = captcha_pb_to_doc(command.solver)
     doc['updated_at'] = now
     response = Response()

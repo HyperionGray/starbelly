@@ -21,6 +21,10 @@ _HTTP_PROXY_SCHEMES = ('http', 'https')
 _SOCKS_PROXY_SCHEMES = ('socks4', 'socks4a', 'socks5')
 
 
+class CrawlItemLimitExceeded(Exception):
+    ''' The crawl has downloaded the maximum number of items. '''
+
+
 class MimeNotAllowedError(Exception):
     ''' Indicates that the MIME type of a response is not allowed by policy. '''
 
@@ -93,7 +97,7 @@ class DownloadResponse:
 
     @property
     def is_success(self):
-        return self._status_code == 200
+        return self.status_code == 200
 
     def start(self):
         ''' Called when the request has been sent and the response is being
@@ -122,31 +126,47 @@ class Downloader:
     ''' This class is responsible for downloading resources. A new instance is
     created for each crawl job. '''
 
-    def __init__(self, job_id, policy, request_channel, response_channel,
-            semaphore):
+    def __init__(self, job_id, policy, send_channel, recv_channel,
+            semaphore, rate_limiter_reset, stats):
         '''
         Constructor.
 
         :param str job_id: The ID of the job to download requests for.
         :param starbelly.policy.Policy: The policy to use when downloading
             objects.
-        :param trio.ReceiveChannel request_channel: A Trio channel that receives
-            download requests.
-        :param trio.SendChannel response_channel: A Trio channel that the
+        :param trio.SendChannel send_channel: A Trio channel that the
             downloader will send downloaded resources to.
+        :param trio.ReceiveChannel recv_channel: A Trio channel that receives
+            download requests.
         :param trio.Semaphore semaphore: The downloader acquires the semaphore
             for each download.
+        :param trio.SendChannel rate_limiter_reset: A Trio channel that can be
+            used to reset the rate limiter after each resource is downloaded.
+        :param dict stats: A dictionary that the download should store
+            statistics in, such as number of items downloaded.
         '''
         self._job_id = job_id
         self._policy = policy
-        self._request_channel = request_channel
-        self._response_channel = response_channel
+        self._send_channel = send_channel
+        self._recv_channel = recv_channel
         self._semaphore = semaphore
+        self._rate_limiter_reset = rate_limiter_reset
+        self._stats = stats
         self._cookie_jar = aiohttp.CookieJar()
+        self._count = 0
 
     def __repr__(self):
         ''' Report crawl job ID. '''
         return '<Downloader job_id={}>'.format(self._job_id[:8])
+
+    @property
+    def count(self):
+        '''
+        Return number of current downloads in progress.
+
+        :rtype int:
+        '''
+        return self._count
 
     async def run(self):
         '''
@@ -157,8 +177,9 @@ class Downloader:
         '''
         async with trio.open_nursery() as nursery, \
                    trio_asyncio.open_loop() as loop:
-            async for request in self._request_channel:
+            async for request in self._recv_channel:
                 await self._semaphore.acquire()
+                self._count += 1
                 nursery.start_soon(self._download, request)
 
     async def download(self, request):
@@ -170,7 +191,8 @@ class Downloader:
         where we want to download one item and return the response directly to
         the caller, such as a robot.txt or a login page.
 
-        The caller should apply their own timeout here.
+        These responses are not included in job statistics and do not get stored
+        in the database. The caller should apply their own timeout here.
 
         :param DownloadRequest request:
         :rtype DownloadResponse:
@@ -187,12 +209,34 @@ class Downloader:
         :param DownloadRequest request:
         '''
         try:
-            with trio.fail_after(20): # TODO make this part of policy
+            #TODO make this part of policy
+            with trio.move_on_after(20) as cancel_scope:
                 response = await self._download_asyncio(request)
-            await self._response_channel.send(response)
+            if cancel_scope.cancelled_caught:
+                logger.warn('%r Timed out downloading %s', self, request.url)
+                response.set_exception('Timed out')
+
+            # Update stats before forwarding response.
+            logger.info('doing stats now?')
+            stats = self._stats
+            stats['item_count'] += 1
+            if response.exception:
+                stats['exception_count'] += 1
+            elif response.is_success:
+                stats['http_success_count'] += 1
+            else:
+                stats['http_error_count'] += 1
+            http_status_counts = stats['http_status_counts']
+            http_status_counts[response.status_code] = \
+                http_status_counts.get(response.status_code, 0) + 1
+
+            await self._send_channel.send(response)
         finally:
-            # self._rate_limiter.reset(request.url) # TODO how to reset rate limiter?
+            await self._rate_limiter_reset.send(request.url)
             self._semaphore.release()
+            self._count -= 1
+            if self._policy.limits.met_item_limit(stats['item_count']):
+                raise CrawlItemLimitExceeded()
 
     @trio_asyncio.aio_as_trio
     async def _download_asyncio(self, request):
@@ -253,9 +297,6 @@ class Downloader:
             msg = '{}: {}'.format(err.__class__.__name__, err)
             logger.warn('%r Failed downloading %s: %s', self, request.url, msg)
             dl_response.set_exception(msg)
-        except asyncio.TimeoutError as te:
-            logger.warn('%r Timed out downloading %s', self, request.url)
-            dl_response.set_exception('Timed out')
         except MimeNotAllowedError:
             # If MIME is not allowed, then don't even download the body,
             # the response is not forwarded to the next component, etc.

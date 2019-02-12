@@ -14,7 +14,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from .config import get_config, get_path
-from .crawl import CrawlManager
+from .job import CrawlManager, RunState
 from .downloader import Downloader
 from .policy import PolicyManager
 from .rate_limiter import RateLimiter
@@ -254,23 +254,17 @@ class Starbelly:
 
         return db_connect
 
-    async def _set_sequence(self):
-        sequence_query = r.table('response').max(index='sequence')
-        max_sequence = await sequence_query.run(conn)
-        logger.info('Max sequence is %d.', max_sequence)
-        self._sequence = itertools.count(start=max_sequence + 1)
-
     async def _startup_check(self, db_pool):
         ''' Do some sanity checks at startup. '''
         logger.info('Doing startup check...')
 
         # If the server was previously killed, then some jobs may still be in
-        # the 'running' state even though they clearly aren't running. Mark
-        # those jobs as paused.
+        # the RUNNING state even though they clearly aren't running. Mark
+        # those jobs as PAUSED.
         running_jobs_query = (
             r.table('job')
-             .filter({'run_state': 'running'})
-             .update({'run_state': 'paused'})
+             .filter({'run_state': RunState.RUNNING})
+             .update({'run_state': RunState.PAUSED})
         )
         async with db_pool.connection() as conn:
             result = await running_jobs_query.run(conn)

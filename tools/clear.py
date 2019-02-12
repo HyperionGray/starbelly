@@ -11,7 +11,6 @@ import trio
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-import tools
 from starbelly.config import get_config
 
 

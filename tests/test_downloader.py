@@ -7,7 +7,7 @@ import pytest
 import trio
 from yarl import URL
 
-from . import asyncio_loop
+from . import asyncio_loop, get_mock_coro
 from starbelly.downloader import (
     Downloader,
     DownloadRequest,
@@ -27,6 +27,17 @@ def make_request(url, method='GET', policy=None, form_data=None):
         form_data=form_data,
         cost=1.0
     )
+
+
+def make_stats():
+    ''' Make an empty stats dictionary. '''
+    return {
+        'item_count': 0,
+        'http_success_count': 0,
+        'http_error_count': 0,
+        'exception_count': 0,
+        'http_status_counts': {},
+    }
 
 
 def make_policy(proxy=None):
@@ -125,12 +136,16 @@ async def test_http_get(nursery, asyncio_loop):
     addr, port = http_server[0].socket.getsockname()
 
     # Run the test:
+    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    policy = make_policy()
     request_send, request_recv = trio.open_memory_channel(0)
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
-    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
-    policy = make_policy()
-    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    rate_limiter_reset = Mock()
+    rate_limiter_reset.send = get_mock_coro(None)
+    stats = make_stats()
+    dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
+        rate_limiter_reset, stats)
     nursery.start_soon(dl.run)
     request = make_request('http://{}:{}/foo'.format(addr, port),
         form_data={'user': 'john'})
@@ -140,6 +155,9 @@ async def test_http_get(nursery, asyncio_loop):
     assert response.status_code == 200
     assert response.content_type == 'text/html'
     assert response.body.startswith(b'<html>')
+    assert stats['item_count'] == 1
+    assert stats['http_success_count'] == 1
+    assert stats['http_status_counts'][200] == 1
 
 
 @pytest.mark.skip('This test does not work; it just hangs...')
@@ -166,12 +184,16 @@ async def test_http_post(nursery):
     addr, port = http_server[0].socket.getsockname()
 
     # Run the test:
+    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    policy = make_policy()
     request_send, request_recv = trio.open_memory_channel(0)
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
-    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
-    policy = make_policy()
-    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    rate_limiter_reset = Mock()
+    rate_limiter_reset.send = get_mock_coro(None)
+    stats = make_stats()
+    dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
+        rate_limiter_reset, stats)
     nursery.start_soon(dl.run)
     request = make_request('http://{}:{}/foo'.format(addr, port), method='POST',
         form_data={'user': 'john'})
@@ -181,6 +203,9 @@ async def test_http_post(nursery):
     assert response.status_code == 200
     assert response.content_type == 'text/html'
     assert response.body.startswith(b'<html>')
+    assert stats['item_count'] == 1
+    assert stats['http_success_count'] == 1
+    assert stats['http_status_counts'][200] == 1
 
 
 async def test_http_proxy_get(asyncio_loop, nursery):
@@ -202,14 +227,18 @@ async def test_http_proxy_get(asyncio_loop, nursery):
     addr, port = http_proxy[0].socket.getsockname()
 
     # Run the test:
-    request_send, request_recv = trio.open_memory_channel(0)
-    response_send, response_recv = trio.open_memory_channel(0)
-    semaphore = trio.Semaphore(1)
     job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     policy = make_policy(proxy=[{
         'proxy_url': 'http://{}:{}'.format(addr, port),
     }])
-    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    request_send, request_recv = trio.open_memory_channel(0)
+    response_send, response_recv = trio.open_memory_channel(0)
+    semaphore = trio.Semaphore(1)
+    rate_limiter_reset = Mock()
+    rate_limiter_reset.send = get_mock_coro(None)
+    stats = make_stats()
+    dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
+        rate_limiter_reset, stats)
     nursery.start_soon(dl.run)
     request = make_request('http://test.example/foo', policy=policy)
     await request_send.send(request)
@@ -218,6 +247,9 @@ async def test_http_proxy_get(asyncio_loop, nursery):
     assert response.status_code == 200
     assert response.content_type == 'text/html'
     assert response.body.startswith(b'<html>')
+    assert stats['item_count'] == 1
+    assert stats['http_success_count'] == 1
+    assert stats['http_status_counts'][200] == 1
 
 
 async def test_socks_proxy_get(asyncio_loop, nursery):
@@ -249,14 +281,18 @@ async def test_socks_proxy_get(asyncio_loop, nursery):
     addr, port = socks_proxy[0].socket.getsockname()
 
     # Run the test:
-    request_send, request_recv = trio.open_memory_channel(0)
-    response_send, response_recv = trio.open_memory_channel(0)
-    semaphore = trio.Semaphore(1)
     job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     policy = make_policy(proxy=[{
         'proxy_url': 'socks5://{}:{}'.format(addr, port),
     }])
-    dl = Downloader(job_id, policy, request_recv, response_send, semaphore)
+    request_send, request_recv = trio.open_memory_channel(0)
+    response_send, response_recv = trio.open_memory_channel(0)
+    semaphore = trio.Semaphore(1)
+    rate_limiter_reset = Mock()
+    rate_limiter_reset.send = get_mock_coro(None)
+    stats = make_stats()
+    dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
+        rate_limiter_reset, stats)
     nursery.start_soon(dl.run)
     request = make_request('http://127.0.0.1/foo', policy=policy)
     await request_send.send(request)
@@ -265,3 +301,6 @@ async def test_socks_proxy_get(asyncio_loop, nursery):
     assert response.status_code == 200
     assert response.content_type == 'text/html'
     assert response.body.startswith(b'<html>')
+    assert stats['item_count'] == 1
+    assert stats['http_success_count'] == 1
+    assert stats['http_status_counts'][200] == 1

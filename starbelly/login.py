@@ -21,8 +21,59 @@ logger = logging.getLogger(__name__)
 chardet = lambda s: cchardet.detect(s).get('encoding')
 
 
-async def get_login_form(policy, downloader, cookie_jar, response,
-        username, password):
+class LoginManager:
+    def __init__(self, job_id, db_pool, downloader):
+        '''
+        Constructor
+
+        :param str job_id: The Job ID that this manager is created for.
+        :param db_pool: A RethinkDB connection pool.
+        :param starbelly.downloader.Downloader: A downloader used for getting
+            login form and posting login information.
+        '''
+        self._job_id = job_id
+        self._db_pool = db_pool
+        self._downloader = downloader
+
+    async def login(self, domain):
+        '''
+        Attempt a login for the given domain.
+
+        :param str domain: The domain to log into.
+        '''
+        async with self._db_pool.connection() as conn:
+            login = await r.table('domain_login').get(domain).run(conn)
+
+        if login is None:
+            return
+
+        user = random.choice(login['users'])
+        masked_pass = user['password'][:2] + '******'
+        logger.info('Attempting login: domain=%s with user=%s password=%s',
+            domain, user['username'], masked_pass)
+        request = DownloadRequest(frontier_id=None, job_id=self._job_id,
+            method='GET', url=login['login_url'], form_data=None, cost=1.0)
+        response = await self._downloader.download(request)
+        if not response.is_success:
+            logger.error('%r Login aborted: cannot fetch %s', self,
+                response.url)
+            return
+        try:
+            action, method, data = await get_login_form(response,
+                user['username'], user['password'])
+        except Exception as e:
+            logger.exception('Cannot parse login form: %s', e)
+            return
+        logger.info('Login action=%s method=%s data=%r', action, method, data)
+        request = DownloadRequest(frontier_id=None, job_id=self._job_id,
+            method=method, url=action, form_data=data, cost=1.0)
+        response = await self._downloader.download(request)
+        if not response.is_success():
+            logger.error('Login failed action=%s (see downloader log for'
+                ' details)', action)
+
+
+async def get_login_form(policy, downloader, response, username, password):
     '''
     Attempt to extract login form action and form data from a response,
     substituting the provided ``username`` and ``password`` into the
@@ -32,7 +83,6 @@ async def get_login_form(policy, downloader, cookie_jar, response,
         login form.
     :param starbelly.downloader.Downloader: The downloader to use for the login
         form and CAPTCHA.
-    :param cookie_jar: An aiohttp cookie jar.
     :param starbelly.downloader.DownloadResponse response:
     :param str username: The username to log in with.
     :param str password: The password to log in with.
@@ -67,8 +117,7 @@ async def get_login_form(policy, downloader, cookie_jar, response,
 
         img_el = _get_captcha_image_element(form)
         img_src = str(URL(response.url).join(URL(img_el.get('src'))))
-        img_data = await _download_captcha_image(policy, downloader, cookie_jar,
-            img_src)
+        img_data = await _download_captcha_image(policy, downloader, img_src)
         captcha_text = await solve_captcha_asyncio(policy.captcha_solver,
             img_data)
         form.fields[captcha_field] = captcha_text
@@ -128,7 +177,7 @@ async def solve_captcha_asyncio(solver, img_data):
     return solution
 
 
-async def _download_captcha_image(policy, downloader, cookie_jar, img_src):
+async def _download_captcha_image(policy, downloader, img_src):
     '''
     Download and return a CAPTCHA image.
 
@@ -136,7 +185,6 @@ async def _download_captcha_image(policy, downloader, cookie_jar, img_src):
         CAPTCHA image.
     :param starbelly.downloader.Downloader: The downloader to use for the login
         form and CAPTCHA.
-    :param cookie_jar: An aiohttp cookie jar.
     :param str img_src: The URL to download the image from.
     :rtype bytes:
     '''

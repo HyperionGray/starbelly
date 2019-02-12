@@ -6,7 +6,7 @@ async def test_backoff_no_change(autojump_clock):
     ''' Backoff starts at 1, so 3 iterations takes ~2 seconds. '''
     with assert_elapsed(2):
         loop_count = 0
-        async for _ in ExponentialBackoff():
+        async for _ in ExponentialBackoff(min_=1, max_=64):
             loop_count += 1
             if loop_count == 3:
                 break
@@ -17,7 +17,7 @@ async def test_backoff_increase(autojump_clock):
     8, 16, 16, but the first value is skipped, so the total is ~46 seconds. '''
     with assert_elapsed(seconds=46):
         loop_count = 0
-        backoff = ExponentialBackoff(max_=16)
+        backoff = ExponentialBackoff(min_=1, max_=16)
         async for n in backoff:
             backoff.increase()
             loop_count += 1
@@ -27,7 +27,7 @@ async def test_backoff_increase(autojump_clock):
 async def test_backoff_returns_value(autojump_clock):
     ''' Backoff returns the current value. Increase up to max and then decrease
     back to starting point. '''
-    backoff = ExponentialBackoff(max_=8)
+    backoff = ExponentialBackoff(min_=1, max_=8)
     assert await backoff.__anext__() == 0
     assert await backoff.__anext__() == 1
     backoff.increase()

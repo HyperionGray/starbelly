@@ -9,7 +9,7 @@ import trio.hazmat
 from . import assert_elapsed, assert_max_elapsed, assert_min_elapsed
 from protobuf.shared_pb2 import JobRunState
 from protobuf.server_pb2 import ServerMessage
-from starbelly.job import CrawlStateProxy
+from starbelly.job import StatsTracker
 from starbelly.subscription import (
     ExponentialBackoff,
     JobStatusSubscription,
@@ -41,37 +41,39 @@ def test_decode_malformed():
 async def test_job_state_subscription(autojump_clock, nursery):
     job1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
     job2_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
-    jobs_dict = {
-        str(job1_id): {
-            'name': 'Job #1',
-            'seeds': ['https://job1.example'],
-            'tags': ['tag1a', 'tag1b'],
-            'item_count': 10,
-            'http_success_count': 7,
-            'http_error_count': 2,
-            'exception_count': 1,
-            'http_status_counts': {200: 7, 404: 2},
-            'started_at': datetime(2019, 1, 25, 14, 44, 0, tzinfo=timezone.utc),
-            'completed_at': None,
-            'run_state': 'RUNNING',
-        },
-        str(job2_id): {
-            'name': 'Job #2',
-            'seeds': ['https://job2.example'],
-            'tags': ['tag2a'],
-            'item_count': 20,
-            'http_success_count': 14,
-            'http_error_count': 4,
-            'exception_count': 2,
-            'http_status_counts': {200: 14, 404: 4},
-            'started_at': datetime(2019, 1, 25, 14, 55, 0, tzinfo=timezone.utc),
-            'completed_at': None,
-            'run_state': 'RUNNING',
-        },
+    job1_doc = {
+        'id': str(job1_id),
+        'name': 'Job #1',
+        'seeds': ['https://job1.example'],
+        'tags': ['tag1a', 'tag1b'],
+        'item_count': 10,
+        'http_success_count': 7,
+        'http_error_count': 2,
+        'exception_count': 1,
+        'http_status_counts': {200: 7, 404: 2},
+        'started_at': datetime(2019, 1, 25, 14, 44, 0, tzinfo=timezone.utc),
+        'completed_at': None,
+        'run_state': 'RUNNING',
     }
-    job_states = CrawlStateProxy(jobs_dict)
+    job2_doc = {
+        'id': str(job2_id),
+        'name': 'Job #2',
+        'seeds': ['https://job2.example'],
+        'tags': ['tag2a'],
+        'item_count': 20,
+        'http_success_count': 14,
+        'http_error_count': 4,
+        'exception_count': 2,
+        'http_status_counts': {200: 14, 404: 4},
+        'started_at': datetime(2019, 1, 25, 14, 55, 0, tzinfo=timezone.utc),
+        'completed_at': None,
+        'run_state': 'RUNNING',
+    }
+    stats_tracker = StatsTracker()
+    stats_tracker.add_job(job1_doc)
+    stats_tracker.add_job(job2_doc)
     send_stream, receive_stream = trio.testing.memory_stream_pair()
-    subscription = JobStatusSubscription(id_=1, job_states=job_states,
+    subscription = JobStatusSubscription(id_=1, stats_tracker=stats_tracker,
         stream=send_stream, stream_lock=trio.Lock(), min_interval=2)
     assert repr(subscription) == '<JobStatusSubscription id=1>'
     with pytest.raises(Exception):
@@ -119,7 +121,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
     # Add 1 item to job 1. Two seconds later, we should get an update for job 1
     # but not job 2.
     with assert_min_elapsed(2):
-        jobs_dict[str(job1_id)].update({
+        job1_doc.update({
             'item_count': 11,
             'http_success_count': 8,
             'http_status_counts': {200: 8, 404: 2},
@@ -146,13 +148,12 @@ async def test_job_state_subscription(autojump_clock, nursery):
     # Add 2 items to job 2. Two seconds later, we should get an update for job 2
     # but not job 1.
     with assert_min_elapsed(2):
-        jobs_dict[str(job2_id)].update({
+        completed_at = datetime(2019, 1, 25, 14, 56, 0, tzinfo=timezone.utc)
+        job2_doc.update({
             'item_count': 22,
             'http_success_count': 15,
             'http_error_count': 5,
             'http_status_counts': {200: 15, 404: 5},
-            'completed_at': datetime(2019, 1, 25, 14, 56, 0,
-                tzinfo=timezone.utc),
         })
         data = await receive_stream.receive_some(4096)
         message3 = ServerMessage.FromString(data).event
@@ -169,7 +170,6 @@ async def test_job_state_subscription(autojump_clock, nursery):
         assert job2.http_status_counts[200] == 15
         assert job2.http_status_counts[404] == 5
         assert job2.started_at == '2019-01-25T14:55:00+00:00'
-        assert job2.completed_at == '2019-01-25T14:56:00+00:00'
         assert job2.run_state == JobRunState.Value('RUNNING')
 
     # Cancel the subscription and wait 2 seconds to make sure it doesn't send us
@@ -208,19 +208,17 @@ async def test_resource_subscription(autojump_clock, nursery):
             'sent': 9_000_000,
             'received': 10_000_000,
         }],
-        'crawls': [{
-            'job_id': str(job1_id),
-            'frontier': 100,
-            'pending': 50,
-            'extraction': 5,
-            'downloader': 10,
+        'jobs': [{
+            'id': str(job1_id),
+            'name': 'Test 1 Job',
+            'current_downloads':3,
         },{
-            'job_id': str(job2_id),
-            'frontier': 200,
-            'pending': 100,
-            'extraction': 10,
-            'downloader': 20,
+            'id': str(job2_id),
+            'name': 'Test 2 Job',
+            'current_downloads': 2,
         }],
+        'current_downloads': 5,
+        'maximum_downloads': 10,
         'rate_limiter': 150,
     }
     measurement2 = measurement1.copy() # Note: SHALLOW COPY!
@@ -266,17 +264,15 @@ async def test_resource_subscription(autojump_clock, nursery):
         assert frame1.networks[1].name == 'eth1'
         assert frame1.networks[1].sent == 9_000_000
         assert frame1.networks[1].received == 10_000_000
-        assert frame1.crawls[0].job_id == job1_id.bytes
-        assert frame1.crawls[0].frontier == 100
-        assert frame1.crawls[0].pending == 50
-        assert frame1.crawls[0].extraction == 5
-        assert frame1.crawls[0].downloader == 10
-        assert frame1.crawls[1].job_id == job2_id.bytes
-        assert frame1.crawls[1].frontier == 200
-        assert frame1.crawls[1].pending == 100
-        assert frame1.crawls[1].extraction == 10
-        assert frame1.crawls[1].downloader == 20
-        assert frame1.rate_limiter.count == 150
+        assert frame1.jobs[0].job_id == job1_id.bytes
+        assert frame1.jobs[0].name == 'Test 1 Job'
+        assert frame1.jobs[0].current_downloads == 3
+        assert frame1.jobs[1].job_id == job2_id.bytes
+        assert frame1.jobs[1].name == 'Test 2 Job'
+        assert frame1.jobs[1].current_downloads == 2
+        assert frame1.current_downloads == 5
+        assert frame1.maximum_downloads == 10
+        assert frame1.rate_limiter == 150
 
         data = await receive_stream.receive_some(4096)
         event2 = ServerMessage.FromString(data).event

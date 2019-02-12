@@ -3,6 +3,7 @@ from functools import wraps
 import pathlib
 from os.path import dirname
 from sys import path
+from unittest.mock import Mock
 
 import pytest
 import trio
@@ -52,3 +53,39 @@ def assert_elapsed(seconds, delta=0.1):
     '''
     with assert_min_elapsed(seconds-delta), assert_max_elapsed(seconds+delta):
         yield
+
+
+def get_mock_coro(return_value):
+    ''' Return a coroutine that can be assigned to a test mock. '''
+    async def mock_coro(*args, **kwargs):
+        return return_value
+
+    return Mock(wraps=mock_coro)
+
+
+class fail_after:
+    ''' This decorator fails if the runtime of the decorated function (as
+    measured by the Trio clock) exceeds the specified value. '''
+    def __init__(self, seconds):
+        self._seconds = seconds
+
+    def __call__(self, fn):
+        @wraps(fn)
+        async def wrapper(*args, **kwargs):
+            with trio.move_on_after(self._seconds) as cancel_scope:
+                await fn(*args, **kwargs)
+            if cancel_scope.cancelled_caught:
+                pytest.fail('Test runtime exceeded the maximum {} seconds'
+                    .format(self._seconds))
+        return wrapper
+
+
+async def async_iter(iter):
+    '''
+    Convert a sychronous iterator into an async iterator.
+
+    :param iterable iter:
+    '''
+    for item in iter:
+        await trio.sleep(0)
+        yield item

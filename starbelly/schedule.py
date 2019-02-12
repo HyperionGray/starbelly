@@ -6,17 +6,19 @@ import heapq
 import logging
 from uuid import UUID
 
+from rethinkdb import RethinkDB
+import trio
+
+from .job import JobStateEvent, RunState
 from protobuf import pb_date
 from protobuf.shared_pb2 import (
     JobScheduleTiming as PbJobScheduleTiming,
     JobScheduleTimeUnit as PbJobScheduleTimeUnit,
 )
-import trio
-
-from .job import JobStatusNotification
 
 
 logger = logging.getLogger(__name__)
+r = RethinkDB()
 
 
 class ScheduleValidationError(Exception):
@@ -24,18 +26,9 @@ class ScheduleValidationError(Exception):
 
 
 @dataclass
-class ScheduleNotification:
-    ''' Indicates that a scheduled job is ready start. '''
-    schedule_id: bytes
-    job_name: str
-    seeds: list
-    tags: list
-
-
-@dataclass
 class Schedule:
     ''' A schedule for running a job periodically. '''
-    id_: bytes
+    id: str
     name: str
     enabled: bool
     created_at: datetime
@@ -47,8 +40,7 @@ class Schedule:
     job_count: int
     seeds: list
     tags: list
-    policy_id: bytes
-    latest_job_id: bytes
+    policy_id: str
 
     def __post_init__(self):
         ''' Validate schedule attributes. '''
@@ -86,7 +78,6 @@ class Schedule:
             doc['seeds'],
             doc['tags'],
             doc['policy_id'],
-            doc['latest_job_id']
         )
 
     @classmethod
@@ -110,7 +101,6 @@ class Schedule:
             [seed for seed in pb.seeds],
             [tag for tag in pb.tag_list.tags],
             pb.policy_id,
-            pb.latest_job_id
         )
 
     def to_doc(self):
@@ -121,7 +111,7 @@ class Schedule:
         :rtype: dict
         '''
         return {
-            'id': self.id_,
+            'id': self.id,
             'schedule_name': self.name,
             'enabled': self.enabled,
             'created_at': self.created_at,
@@ -134,7 +124,6 @@ class Schedule:
             'seeds': self.seeds,
             'tags': self.tags,
             'policy_id': self.policy_id,
-            'latest_job_id': self.latest_job_id,
         }
 
     def to_pb(self, pb):
@@ -143,7 +132,7 @@ class Schedule:
 
         :param pb: A schedule protobuf.
         '''
-        pb.schedule_id = UUID(self.id_).bytes
+        pb.schedule_id = UUID(self.id).bytes
         pb.schedule_name = self.name
         pb.enabled = self.enabled
         pb.created_at = self.created_at.isoformat()
@@ -158,7 +147,6 @@ class Schedule:
         for tag in self.tags:
             pb.tag_list.tags.append(tag)
         pb.policy_id = UUID(self.policy_id).bytes
-        pb.latest_job_id = UUID(self.latest_job_id).bytes
 
     def format_job_name(self, when):
         '''
@@ -210,7 +198,7 @@ class ScheduleEvent:
     def __repr__(self):
         ''' Make string representation. '''
         return 'ScheduleEvent<id={} name={} due={}>'.format(
-            self._schedule.id_[:8], self._schedule.name, self._due)
+            self._schedule.id[:8], self._schedule.name, self._due)
 
     @property
     def due(self):
@@ -246,49 +234,66 @@ class ScheduleEvent:
 
 
 class Scheduler:
-    '''
-    Starts jobs according to a schedule.
-
-
-    '''
-    def __init__(self, recv_channel, send_channel):
+    ''' Starts jobs according to a schedule. '''
+    def __init__(self, db, crawl_manager):
         '''
         Constructor.
 
-        :param trio.abc.ReceiveChannel recv_channel: A channel for receiving
-            updates on job status, i.e. when jobs start and complete.
-        :parm trio.abc.SendChannel send_channel: A channel for sending schedule
-            status, i.e. when a job needs to start.
+        :param starbelly.db.ScheduleDB db:
+        :param starbelly.job.CrawlManager crawl_manager: A crawl manager, used
+            for starting jobs when they are scheduled to begin.
         '''
+        self._db = db
+        self._crawl_manager = crawl_manager
+
         self._events = list()
         self._schedules = dict()
-        self._recv_channel = recv_channel
-        self._send_channel = send_channel
+        self._recv_channel = crawl_manager.get_job_state_channel()
         self._event_added = trio.Event()
+        self._nursery = None
+        self._running_jobs = dict()
 
-    async def run(self):
+    def add_schedule(self, schedule, latest_job):
         '''
-        Listen for changes in job status and check if a job needs to be
-        rescheduled.
-
-        :returns: This method runs until cancelled.
-        '''
-        async with trio.open_nursery() as nursery:
-            nursery.start_soon(self._listen_task,
-                name='Scheduler Listen Task')
-            nursery.start_soon(self._schedule_task,
-                name='Scheduler Task')
-
-    def add_schedule(self, schedule):
-        '''
-        Add a schedule.
+        Add a new schedule.
 
         :param Schedule schedule:
+        :param latest_job: (Optional) The most recent job for this schedule, or
+            None if this schedule has never run.
+        :type latest_job: dict or None
         '''
-        if schedule.id_ in self._schedules:
-            raise Exception('Schedule ID {:x} has already been added.'.format(
-                schedule.id_))
-        self._schedules[schedule.id_] = schedule
+        if schedule.id in self._schedules:
+            raise Exception('Schedule ID {} has already been added.'.format(
+                schedule.id))
+        self._schedules[schedule.id] = schedule
+
+        # Schedule the next job for this schedule.
+        due = None
+        if latest_job:
+            timing_regular = schedule.timing == 'REGULAR_INTERVAL'
+            finished = latest_job['run_state'] in (RunState.CANCELLED,
+                RunState.COMPLETED)
+            running = not finished
+            timing_after = schedule.timing == 'AFTER_PREVIOUS_JOB_FINISHED'
+            if running and timing_regular:
+                due = self._compute_next_event(
+                    latest_job['started_at'],
+                    schedule.num_units,
+                    schedule.time_unit
+                )
+            elif finished and timing_after:
+                due = self._compute_next_event(
+                    latest_job['completed_at'],
+                    schedule.num_units,
+                    schedule.time_unit
+                )
+        else:
+            # When a schedule is first created, it runs 15 seconds later.
+            due = datetime.fromtimestamp(trio.current_time() + 15, timezone.utc)
+
+        if due:
+            logger.info('Scheduling "{}" at {}'.format(schedule.name, due))
+            self._add_event(ScheduleEvent(schedule, due.timestamp()))
 
     def remove_schedule(self, schedule_id):
         '''
@@ -300,15 +305,41 @@ class Scheduler:
 
         :param bytes schedule_id: The ID of the schedule to disable.
         '''
-        self._events = [e for e in self._events if e.schedule.id_ !=
+        self._events = [e for e in self._events if e.schedule.id !=
             schedule_id]
         self._schedules.pop(schedule_id)
+
+    async def run(self):
+        '''
+        Listen for changes in job status and check if a job needs to be
+        rescheduled.
+
+        :returns: This method runs until cancelled.
+        '''
+        async for schedule_doc in self._db.get_schedule_docs():
+            schedule = Schedule.from_doc(schedule_doc)
+            latest_job = schedule_doc['latest_job']
+            self.add_schedule(schedule, latest_job)
+
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(self._listen_task, name='Schedule Job Listener')
+            nursery.start_soon(self._schedule_task, name='Schedule Main')
+
+    def _add_event(self, event):
+        '''
+        Add an event to the internal queue.
+
+        :param ScheduleEvent event:
+        '''
+        heapq.heappush(self._events, event)
+        self._event_added.set()
+        self._event_added = trio.Event()
 
     def _compute_next_event(self, base, num_units, time_unit):
         '''
         Add an offset to a base time.
 
-        :param float base: The base timestamp.
+        :param datetime base: The base timestamp.
         :param int num_units: The number of units to add to the base timestamp.
         :param str time_unit: The type of units to add to the base timestamp.
         :returns: The future timestamp.
@@ -334,51 +365,44 @@ class Scheduler:
 
     async def _listen_task(self):
         '''
-        Listen for JobStatusNotification and check if a job needs to be
+        Listen for ``JobStateEvent`` and check if a job needs to be
         rescheduled.
 
         :returns: This method runs until cancelled.
         '''
-        async for job_notification in self._recv_channel:
-            try:
-                schedule = self._schedules[job_notification.schedule_id]
-            except KeyError:
-                # This job is not associated with a schedule.
-                continue
+        async with self._recv_channel:
+            async for job_state in self._recv_channel:
+                try:
+                    schedule = self._schedules[job_state.schedule_id]
+                except KeyError:
+                    # This job is not associated with a schedule.
+                    continue
 
-            # Keep track of job counts.
-            if job_notification.status == 'STARTED':
-                schedule.job_count += 1
+                # Compute the due date for the next event.
+                timing_regular = schedule.timing == 'REGULAR_INTERVAL'
+                finished = job_state.run_state in (RunState.CANCELLED,
+                    RunState.COMPLETED)
+                running = not finished
+                timing_after = schedule.timing == 'AFTER_PREVIOUS_JOB_FINISHED'
+                if (running and timing_regular) or (finished and timing_after):
+                    due = self._compute_next_event(
+                        job_state.event_time,
+                        schedule.num_units,
+                        schedule.time_unit
+                    )
+                    logger.info('Rescheduling "{}" at {}'.format(
+                        schedule.name, due.isoformat()
+                    ))
+                    self._add_event(ScheduleEvent(schedule, due.timestamp()))
 
-            # Compute the due date for the next event.
-            due = None
-            if job_notification.status is None:
-                # This schedule has not run before, so it should start soon.
-                due = datetime.fromtimestamp(trio.current_time()) \
-                    + timedelta(minutes=1)
-            elif ((job_notification.status == 'STARTED' and
-                      schedule.timing == 'REGULAR_INTERVAL') or
-                  (job_notification.status == 'COMPLETED' and
-                      schedule.timing == 'AFTER_PREVIOUS_JOB_FINISHED')):
-                due = self._compute_next_event(
-                    job_notification.datetime,
-                    schedule.num_units,
-                    schedule.time_unit
-                )
-
-            if due:
-                # Add job to schedule.
-                logger.info('Scheduling crawl for "{}" at {}'.format(
-                    schedule.name, due.isoformat()
-                ))
-                event = ScheduleEvent(schedule, due.timestamp())
-                heapq.heappush(self._events, event)
-                self._event_added.set()
-                self._event_added = trio.Event()
+                if running:
+                    self._running_jobs[job_state.schedule_id] = job_state.job_id
+                else:
+                    self._running_jobs.pop(job_state.schedule_id, None)
 
     async def _schedule_task(self):
         '''
-        Send notifications when scheduled events are ready to run.
+        Wait until a scheduled event is due, then start a new crawl job.
 
         :returns: This method runs until cancelled.
         '''
@@ -395,10 +419,31 @@ class Scheduler:
                 continue
 
             self._events.pop(0)
-            schedule = next_event.schedule
-            job_count = schedule.job_count + 1
-            job_name = schedule.format_job_name(next_event.due)
-            notification = ScheduleNotification(schedule.id_, job_name,
-                list(schedule.seeds), list(schedule.tags))
-            logger.info('Scheduled job "%s" is ready to start.', job_name)
-            await self._send_channel.send(notification)
+            logger.info('Scheduled job "%s" is ready to start.',
+                next_event.schedule.name)
+            await self._start_scheduled_job(next_event)
+
+    async def _start_scheduled_job(self, event):
+        '''
+        Start a scheduled job that is ready to run. If an instance of this
+        scheduled job is already running, cancel it first.
+
+        :param ScheduleEvent event: The event that triggered this new job.
+        '''
+        schedule = event.schedule
+        try:
+            # If this schedule already has a job running, then cancel it.
+            old_job_id = self._running_jobs[schedule.id]
+            await self._crawl_manager.cancel_job(old_job_id)
+        except KeyError:
+            # This schedule does not have a job running.
+            pass
+
+        # Start the new job:
+        schedule.job_count += 1
+        job_name = schedule.format_job_name(event.due)
+        job_id = await self._crawl_manager.start_job(job_name, schedule.seeds,
+            schedule.tags, schedule.policy_id, schedule.id)
+
+        # Update schedule metadata
+        await self._db.update_job_count(schedule.id, schedule.job_count)

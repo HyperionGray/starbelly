@@ -18,7 +18,7 @@ class ResourceMonitor:
     '''
     Keep track of consumption and usage statistics for various resources.
     '''
-    def __init__(self, interval, buffer_size, crawl_resources, rate_limiter):
+    def __init__(self, interval, buffer_size, crawl_resources_fn, rate_limiter):
         '''
         Constructor.
 
@@ -26,12 +26,12 @@ class ResourceMonitor:
             measurements.
         :param int buffer_size: The number of measurements to store in the
             internal buffer.
-        :param CrawlStateProxy crawl_resources: An object that exposes resource
-            usage for each crawl job.
+        :param callable crawl_resource_fn: A function that will return a dict
+            of crawl resources.
         :param starbelly.rate_limiter.RateLimiter rate_limiter:
         '''
         self._interval = interval
-        self._crawl_resources = crawl_resources
+        self._crawl_resources_fn = crawl_resources_fn
         self._rate_limiter = rate_limiter
         self._measurements = deque(maxlen=buffer_size)
         self._channels = list()
@@ -129,14 +129,15 @@ class ResourceMonitor:
             net['received'] = nic.bytes_recv
             measurement['networks'].append(net)
 
-        # Crawls
-        measurement['crawls'] = list()
-        for job_id, job_resources in self._crawl_resources:
-            crawl = job_resources.copy()
-            crawl['job_id'] = job_id
-            measurement['crawls'].append(crawl)
+        # Crawl Job Resources
+        measurement['jobs'] = list()
+        crawl_resources = self._crawl_resources_fn()
+        for job in crawl_resources['jobs']:
+            measurement['jobs'].append(job.copy())
 
-        # Rate limiter
+        # Crawl Global Resources
+        measurement['current_downloads'] = crawl_resources['current_downloads']
+        measurement['maximum_downloads'] = crawl_resources['maximum_downloads']
         measurement['rate_limiter'] = self._rate_limiter.item_count
 
         return measurement

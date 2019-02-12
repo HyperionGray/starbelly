@@ -1,4 +1,5 @@
 from .handler import handler
+from ..job import RunState
 
 # TODO: i moved thsi code from crawl manager to here. these methods don't act
 # on internal crawl state, so it makes more sense to put them here
@@ -11,7 +12,7 @@ from .handler import handler
     #     table. Those bodies are periodically cleaned up and removed by a
     #     a separate task.
 
-    #     :param bytes job_id: The ID of the job to delete.
+    #     :param str job_id: The ID of the job to delete.
     #     '''
     #     job_query = r.table('job').get(job_id).pluck('run_state')
     #     delete_job_query = r.table('job').get(job_id).delete()
@@ -26,7 +27,7 @@ from .handler import handler
     #     async with self._db_pool.connection() as conn:
     #         job = await job_query.run(conn)
 
-    #         if job['run_state'] not in ('completed', 'cancelled'):
+    #         if job['run_state'] not in (RunState.CANCELLED, RunState.COMPLETED):
     #             raise Exception('Can only delete cancelled or completed jobs.')
 
     #         await delete_items_query.run(conn)
@@ -36,7 +37,7 @@ from .handler import handler
     #     '''
     #     Get data for the specified job.
 
-    #     :param bytes job_id: The ID of the job to get.
+    #     :param str job_id: The ID of the job to get.
     #     :returns: Database document.
     #     :rtype: dict or None
     #     '''
@@ -53,7 +54,7 @@ from .handler import handler
     #     '''
     #     List the items downloaded by a job.
 
-    #     :param bytes job_id: The ID of the job to list.
+    #     :param str job_id: The ID of the job to list.
     #     :param bool include_success: If True, include items that were
     #         successfully downloaded.
     #     :param bool include_error: If True, include items that resulted in an

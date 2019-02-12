@@ -12,6 +12,11 @@ r = RethinkDB()
 logger = logging.getLogger(__name__)
 
 
+class FrontierExhaustionError(Exception):
+    ''' Indicates that the frontier has no items remaining (in-flight or
+    otherwise. '''
+
+
 @dataclass
 class FrontierItem:
     ''' Represents a resource that should be crawled. '''
@@ -33,35 +38,28 @@ class FrontierItem:
 class CrawlFrontier:
     ''' Contains the logic for managing a crawl frontier, i.e. the URLs that
     have already been crawled and the URLs that are remaining to be crawled. '''
-    def __init__(self, job_id, db_pool, send_channel, downloader,
-            robots_txt_manager, policy, pickled_state=None):
+    def __init__(self, job_id, db_pool, send_channel, login_manager,
+            robots_txt_manager, policy):
         '''
         Constructor
 
-        :param bytes job_id: The ID of the job corresponding to this frontier.
+        :param str job_id: The ID of the job corresponding to this frontier.
         :param db_pool: A RethinkDB connection pool.
         :param trio.SendChannel send_channel: This channel is used to send
             ``FrontierItem`` that need to be downloaded, e.g. to send to the
             rate limiter.
-        :param starbelly.downloader.Downloader downloader: The downloader used
-            for logging in.
+        :param starbelly.login.LoginManager login_manager: Used when the
+            frontier sees an unauthenticated domain and needs to log in.
         :param starbelly.robots.RobotsTxtManager: A robots.txt manager.
         :param starbelly.policy.Policy: The policy to use.
-        :param bytes pickled_state: If not None, initialize the "seen" URLs to
-            those contained in this pickled data.
         '''
         self._job_id = job_id
         self._db_pool = db_pool
         self._send_channel = send_channel
         self._receive_channel = receive_channel
-        self._downloader = downloader
+        self._login_manager = login_manager
         self._robots_txt_manager = robots_txt_manager
         self._policy = policy
-        if pickled_state:
-            self._frontier_seen = pickle.loads(pickled_state)
-        else:
-            self._frontier_seen = set()
-
         self._authenticated_domains = set()
         self._size = 0
         self._pending = 0
@@ -100,11 +98,31 @@ class CrawlFrontier:
                 if self._auth_policy.is_enabled():
                     domain = urlparse(item['url']).hostname
                     if domain not in self._authenticated_domains:
-                        await self._try_login(domain)
+                        await self._login_manager.login(domain)
                         self._authenticated_domains.add(domain)
                 logger.debug('%r Sending: %r', self, item)
                 request = DownloadRequest.from_frontier_item(item)
                 await self._send_channel.send(request)
+
+    async def _any_in_flight(self):
+        '''
+        Check whether there are any frontier items that are "in-flight", i.e.
+        somewhere in the crawling pipeline.
+
+        :rtype bool:
+        '''
+        in_flight_query = (
+            r.table('frontier')
+             .order_by(index='cost_index')
+             .between((self.id, True, r.minval),
+                      (self.id, True, r.maxval))
+             .count()
+        )
+
+        async with self._db_pool.connection() as conn:
+            in_flight_count = await in_flight_query.run(conn)
+
+        return in_flight_count > 0
 
     async def _initialize(self):
         ''' Initialize frontier database documents. '''
@@ -144,41 +162,9 @@ class CrawlFrontier:
                     self._pending += 1
                     break
                 except r.ReqlNonExistenceError:
-                    await trio.sleep(1)
+                    if await self._any_in_flight():
+                        await trio.sleep(1)
+                    else:
+                        raise FrontierExhaustionError()
 
         return [FrontierItem.from_doc(doc) for doc in docs]
-
-    async def _try_login(self, domain):
-        ''' Attempt a login for the given domain. '''
-        async with self._db_pool.connection() as conn:
-            login = await r.table('domain_login').get(domain).run(conn)
-
-        if login is None:
-            return
-
-        user = random.choice(login['users'])
-        masked_pass = user['password'][:2] + '******'
-        logger.info('%r Attempting login: domain=%s with user=%s password=%s',
-            self, domain, user['username'], masked_pass)
-        request = DownloadRequest(frontier_id=self.id, job_id=self._job_id,
-            method='GET', url=login['login_url'], form_data=None, cost=1.0)
-        response = await self._downloader.download(request)
-        if not response.is_success:
-            logger.error('%r Login aborted: cannot fetch %s', self,
-                response.url)
-            return
-        try:
-            action, method, data = await get_login_form(self._cookie_jar,
-                response, user['username'], user['password'])
-        except Exception as e:
-            logger.exception('%r Cannot parse login form: %s', self, e)
-            return
-        logger.info('%r Login action=%s method=%s data=%r', self, action, method,
-            data)
-        request = DownloadRequest(frontier_id=self.id, job_id=self._job_id,
-            method=method, url=action, form_data=data, cost=1.0)
-        response = await self._downloader.download(request)
-        if not response.is_success():
-            logger.error('%r Login failed action=%s (see downloader log for'
-                ' details)', self, action)
-

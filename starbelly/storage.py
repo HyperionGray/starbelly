@@ -17,7 +17,7 @@ class CrawlStorage:
         '''
         Constructor
 
-        :param bytes job_id: The job to store items for.
+        :param str job_id: The job to store items for.
         :param db_pool: A RethinkDB connection pool.
         :param starbelly.policy.Policy: A policy to use for determining which
             responses to save.
@@ -122,7 +122,7 @@ class CrawlStorage:
             response.content_type)
         if type_ == 'text':
             should_compress = True
-        elif type_ == 'application' subtype in ('json', 'pdf'):
+        elif type_ == 'application' and subtype in ('json', 'pdf'):
             should_compress = True
         return should_compress
 

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import gzip
+import logging
 from unittest.mock import Mock
 from uuid import UUID
 
@@ -7,8 +8,9 @@ import pytest
 from rethinkdb import RethinkDB
 import trio
 
+from . import fail_after
 from protobuf.server_pb2 import ServerMessage, SubscriptionClosed
-from starbelly.job import JobStateEvent
+from starbelly.job import JobStateEvent, RunState
 from starbelly.subscription import (
     CrawlSyncSubscription,
 )
@@ -16,6 +18,7 @@ from starbelly.subscription import (
 
 r = RethinkDB()
 r.set_loop_type('trio')
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -53,6 +56,7 @@ async def response_body_table(db_pool):
     await r.table_drop('response_body').run(conn)
 
 
+@fail_after(3)
 async def test_subscribe_to_crawl(db_pool, job_table, response_table,
         response_body_table, nursery):
     ''' Subscribe to a job that has 3 items. Simulate interrupting and resuming
@@ -63,7 +67,7 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
     async with db_pool.connection() as conn:
         await r.table('job').insert({
             'id': str(job_id),
-            'run_state': 'COMPLETED',
+            'run_state': RunState.COMPLETED,
         }).run(conn)
 
         await r.table('response_body').insert({
@@ -198,41 +202,37 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
     assert repr(subscription) == '<CrawlSyncSubscription id=2 job_id=aaaaaaaa>'
     nursery.start_soon(subscription.run)
 
-    import logging
-    with trio.fail_after(3):
-        # The next message will be a repeat of the previous, since we "interrupted"
-        # the sync before the previous item finished.
-        data = await receive_stream.receive_some(4096)
-        logging.debug('message3')
-        message3 = ServerMessage.FromString(data).event
-        assert message3.subscription_id == 2
-        item3 = message3.sync_item.item
-        assert item3.url == 'https://www.example/foo'
+    # The next message will be a repeat of the previous, since we "interrupted"
+    # the sync before the previous item finished.
+    data = await receive_stream.receive_some(4096)
+    message3 = ServerMessage.FromString(data).event
+    assert message3.subscription_id == 2
+    item3 = message3.sync_item.item
+    assert item3.url == 'https://www.example/foo'
 
-        data = await receive_stream.receive_some(4096)
-        message4 = ServerMessage.FromString(data).event
-        logging.debug('message4')
-        assert message4.subscription_id == 2
-        item4 = message4.sync_item.item
-        assert item4.job_id == job_id.bytes
-        assert item4.url     == 'https://www.example/bar'
-        assert item4.url_can == 'https://www.example/bar'
-        assert item4.started_at   == '2019-01-01T01:01:04+00:00'
-        assert item4.completed_at == '2019-01-01T01:01:05+00:00'
-        assert item4.cost == 2.0
-        assert item4.duration == 1.0
-        assert item4.status_code == 200
-        assert item4.is_success
-        assert item4.is_compressed
-        assert gzip.decompress(item4.body) == b'Test document #2'
+    data = await receive_stream.receive_some(4096)
+    message4 = ServerMessage.FromString(data).event
+    assert message4.subscription_id == 2
+    item4 = message4.sync_item.item
+    assert item4.job_id == job_id.bytes
+    assert item4.url     == 'https://www.example/bar'
+    assert item4.url_can == 'https://www.example/bar'
+    assert item4.started_at   == '2019-01-01T01:01:04+00:00'
+    assert item4.completed_at == '2019-01-01T01:01:05+00:00'
+    assert item4.cost == 2.0
+    assert item4.duration == 1.0
+    assert item4.status_code == 200
+    assert item4.is_success
+    assert item4.is_compressed
+    assert gzip.decompress(item4.body) == b'Test document #2'
 
-        data = await receive_stream.receive_some(4096)
-        message5 = ServerMessage.FromString(data).event
-        logging.debug('message5')
-        assert message5.subscription_id == 2
-        assert message5.subscription_closed.reason == SubscriptionClosed.COMPLETE
+    data = await receive_stream.receive_some(4096)
+    message5 = ServerMessage.FromString(data).event
+    assert message5.subscription_id == 2
+    assert message5.subscription_closed.reason == SubscriptionClosed.COMPLETE
 
 
+@fail_after(3)
 async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
         response_body_table, nursery):
     ''' If requested, the server will decompress response bodies. '''
@@ -242,7 +242,7 @@ async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
     async with db_pool.connection() as conn:
         await r.table('job').insert({
             'id': str(job_id),
-            'run_state': 'COMPLETED',
+            'run_state': RunState.COMPLETED,
         }).run(conn)
 
         await r.table('response_body').insert({
@@ -269,6 +269,7 @@ async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
         }).run(conn)
 
     # Instantiate subscription
+    logger.info('Creating subscription…')
     send_stream, receive_stream = trio.testing.memory_stream_pair()
     stream_lock = trio.Lock()
     job_send, job_recv = trio.open_memory_channel(0)
@@ -279,6 +280,7 @@ async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
     nursery.start_soon(subscription.run)
 
     # Read from subscription
+    logger.info('Reading one event…')
     data = await receive_stream.receive_some(4096)
     message1 = ServerMessage.FromString(data).event
     assert message1.subscription_id == 1
@@ -295,12 +297,14 @@ async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
     assert not item1.is_compressed
     assert item1.body == b'Test document #1'
 
+    logger.info('Reading subscription close…')
     data = await receive_stream.receive_some(4096)
     message2 = ServerMessage.FromString(data).event
     assert message2.subscription_id == 1
     assert message2.subscription_closed.reason == SubscriptionClosed.COMPLETE
 
 
+@fail_after(6)
 async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
         response_body_table, nursery):
     ''' Subscribe to a job that currently has 1 items. After receiving the first
@@ -312,7 +316,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
     async with db_pool.connection() as conn:
         await r.table('job').insert({
             'id': str(job_id),
-            'run_state': 'RUNNING',
+            'run_state': RunState.RUNNING,
         }).run(conn)
 
         await r.table('response_body').insert({
@@ -342,6 +346,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
         }).run(conn)
 
     # Instantiate subscription
+    logger.info('Set up subscription…')
     send_stream, receive_stream = trio.testing.memory_stream_pair()
     stream_lock = trio.Lock()
     job_send, job_recv = trio.open_memory_channel(0)
@@ -352,6 +357,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
     nursery.start_soon(subscription.run)
 
     # Read from subscription
+    logger.info('Read first event…')
     data = await receive_stream.receive_some(4096)
     message1 = ServerMessage.FromString(data).event
     assert message1.subscription_id == 1
@@ -373,11 +379,13 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
     assert gzip.decompress(item1.body) == b'Test document #1'
 
     # The subscription should time out because there are no items to send:
+    logger.info('Time out on next event…')
     with pytest.raises(trio.TooSlowError):
         with trio.fail_after(1) as cancel_scope:
             data = await receive_stream.receive_some(4096)
 
     # Now add second result and mark the crawl as completed:
+    logger.info('Add second result…')
     async with db_pool.connection() as conn:
         await r.table('response_body').insert({
             'id': b'\x02' * 32,
@@ -401,9 +409,11 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
             'content_type': 'text/plain',
             'headers': []
         }).run(conn)
-    await job_send.send(JobStateEvent(str(job_id), 'COMPLETED'))
+    await job_send.send(JobStateEvent(job_id=str(job_id), schedule_id=None,
+        run_state=RunState.COMPLETED, event_time=datetime.now(timezone.utc)))
 
     # Now wait to receive the second result
+    logger.info('Read second event…')
     data = await receive_stream.receive_some(4096)
     message2 = ServerMessage.FromString(data).event
     assert message2.subscription_id == 1
@@ -420,6 +430,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
     assert item2.is_compressed
     assert gzip.decompress(item2.body) == b'Test document #2'
 
+    logger.info('Read subscription close…')
     data = await receive_stream.receive_some(4096)
     message3 = ServerMessage.FromString(data).event
     assert message3.subscription_id == 1

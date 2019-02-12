@@ -251,26 +251,16 @@ class PolicyLimits:
         if self._max_items is not None and self._max_items < 0:
             _invalid('Max items must be ≥0')
 
-    def exceeds_max_cost(self, cost):
+    @property
+    def max_duration(self):
         '''
-        Return true if ``cost`` is greater than the policy's max cost.
+        The maximum duration that a crawl is allowed to run.
 
-        :param float cost:
-        :rtype: bool
+        :rtype: float or None
         '''
-        return self._max_cost is not None and cost > self._max_cost
+        return self._max_duration
 
-    def exceeds_max_duration(self, duration):
-        '''
-        Return true if ``duration`` is greater than or equal to the policy's max
-        duration.
-
-        :param float duration:
-        :rtype: bool
-        '''
-        return self._max_duration is not None and duration >= self._max_duration
-
-    def exceeds_max_items(self, items):
+    def met_item_limit(self, items):
         '''
         Return true if ``items`` is greater than or equal to the policy's max
         item count.
@@ -279,6 +269,15 @@ class PolicyLimits:
         :rtype: bool
         '''
         return self._max_items is not None and items >= self._max_items
+
+    def exceeds_max_cost(self, cost):
+        '''
+        Return true if ``cost`` is greater than the policy's max cost.
+
+        :param float cost:
+        :rtype: bool
+        '''
+        return self._max_cost is not None and cost > self._max_cost
 
 
 class PolicyMimeTypeRules:

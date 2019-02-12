@@ -6,16 +6,13 @@ import pytest
 import trio
 
 from . import assert_min_elapsed, assert_max_elapsed
-from starbelly.job import CrawlStateProxy
 from starbelly.rate_limiter import RateLimiter
 from starbelly.resource_monitor import ResourceMonitor
 
 
 @pytest.fixture
 def rate_limiter():
-    request_send, request_recv = trio.open_memory_channel(0)
-    reset_send, reset_recv = trio.open_memory_channel(0)
-    return RateLimiter(1, request_recv, reset_recv)
+    return RateLimiter(1)
 
 
 async def test_history(autojump_clock, nursery, rate_limiter):
@@ -27,16 +24,17 @@ async def test_history(autojump_clock, nursery, rate_limiter):
     consuming the psutil API correctly.
     '''
     job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-    crawl_resources = CrawlStateProxy({
-        job1_id: {
-            'frontier': 100,
-            'pending': 50,
-            'extraction': 5,
-            'downloader': 10,
-        }
-    })
+    crawl_resources_fn = lambda: {
+        'current_downloads': 3,
+        'maximum_downloads': 10,
+        'jobs': [{
+            'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            'name': 'Test Job',
+            'current_downloads': 3,
+        }],
+    }
     rm = ResourceMonitor(interval=2, buffer_size=300,
-        crawl_resources=crawl_resources, rate_limiter=rate_limiter)
+        crawl_resources_fn=crawl_resources_fn, rate_limiter=rate_limiter)
     nursery.start_soon(rm.run)
     await trio.sleep(11)
     history1 = list(rm.history())
@@ -72,24 +70,23 @@ async def test_measurement(autojump_clock, nursery, mocker,
     # The crawl resources can be instantiated right here; no mocking required.
     job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     job2_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
-    crawl_resources = CrawlStateProxy({
-        job1_id: {
-            'frontier': 100,
-            'pending': 50,
-            'extraction': 5,
-            'downloader': 10,
-        },
-        job2_id: {
-            'frontier': 200,
-            'pending': 100,
-            'extraction': 10,
-            'downloader': 20,
-        },
-    })
+    crawl_resources_fn = lambda: {
+        'current_downloads': 5,
+        'maximum_downloads': 10,
+        'jobs': [{
+            'id': job1_id,
+            'name': 'Test Job 1',
+            'current_downloads': 3,
+        },{
+            'id': job2_id,
+            'name': 'Test Job 2',
+            'current_downloads': 2,
+        }],
+    }
 
     # Run the resource monitor
     rm = ResourceMonitor(interval=1, buffer_size=300,
-        crawl_resources=crawl_resources, rate_limiter=rate_limiter)
+        crawl_resources_fn=crawl_resources_fn, rate_limiter=rate_limiter)
     rm_recv = rm.get_channel(channel_size=5)
     nursery.start_soon(rm.run)
 
@@ -112,34 +109,32 @@ async def test_measurement(autojump_clock, nursery, mocker,
     assert measurement['networks'][1]['name'] == 'eth1'
     assert measurement['networks'][1]['sent'] == 300
     assert measurement['networks'][1]['received'] == 400
-    assert measurement['crawls'][0]['job_id'] == job1_id
-    assert measurement['crawls'][0]['frontier'] == 100
-    assert measurement['crawls'][0]['pending'] == 50
-    assert measurement['crawls'][0]['extraction'] == 5
-    assert measurement['crawls'][0]['downloader'] == 10
-    assert measurement['crawls'][1]['job_id'] == job2_id
-    assert measurement['crawls'][1]['frontier'] == 200
-    assert measurement['crawls'][1]['pending'] == 100
-    assert measurement['crawls'][1]['extraction'] == 10
-    assert measurement['crawls'][1]['downloader'] == 20
+    assert measurement['jobs'][0]['id'] == job1_id
+    assert measurement['jobs'][0]['name'] == 'Test Job 1'
+    assert measurement['jobs'][0]['current_downloads'] == 3
+    assert measurement['jobs'][1]['id'] == job2_id
+    assert measurement['jobs'][1]['name'] == 'Test Job 2'
+    assert measurement['jobs'][1]['current_downloads'] == 2
+    assert measurement['current_downloads'] == 5
+    assert measurement['maximum_downloads'] == 10
     assert measurement['rate_limiter'] == 0
 
 
 async def test_slow_channel(autojump_clock, nursery, rate_limiter):
     ''' If there are two subscribers to the resource monitor and one is slow, it
     will not prevent delivery to the other subscriber. '''
-    job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-    crawl_resources = CrawlStateProxy({
-        job1_id: {
-            'frontier': 100,
-            'pending': 50,
-            'extraction': 5,
-            'downloader': 10,
-        }
-    })
+    crawl_resources_fn = lambda: {
+        'current_downloads': 3,
+        'maximum_downloads': 10,
+        'jobs': [{
+            'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            'name': 'Test Job',
+            'current_downloads': 3,
+        }],
+    }
 
     rm = ResourceMonitor(interval=1, buffer_size=300,
-        crawl_resources=crawl_resources, rate_limiter=rate_limiter)
+        crawl_resources_fn=crawl_resources_fn, rate_limiter=rate_limiter)
     slow_recv = rm.get_channel(channel_size=1)
     fast_recv = rm.get_channel(channel_size=1)
     nursery.start_soon(rm.run)

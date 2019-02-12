@@ -12,6 +12,91 @@ logger = logging.getLogger(__name__)
 chardet = lambda s: cchardet.detect(s).get('encoding')
 
 
+class CrawlExtractor:
+    ''' Extract URLs from crawled items and add them to the frontier table. '''
+    def __init__(self, job_id, receive_channel, policy, old_urls):
+        '''
+        Constructor.
+
+        :param str job_id: The ID of the job to extract response for.
+        :param trio.ReceiveChannel receive_channel: A channel that receives
+            DownloadResponse instances.
+        :param starbelly.policy.Policy: A policy for computing costs.
+        :param old_urls: A set of hashed URLs that this crawl has seen before.
+            These URLs will not be added to the crawl frontier a second time.
+        '''
+        self._job_id = job_id
+        self._receive_channel = receive_channel
+        self._policy = policy
+        self._old_urls = old_urls
+
+    def __repr__(self):
+        ''' Report crawl job ID. '''
+        return '<CrawlJob job_id={}>'.format(self._job_id[:8])
+
+    async def run(self):
+        '''
+        Read responses from extraction channel and add them to the frontier.
+
+        :returns: This function runs until cancelled.
+        '''
+        async for response in self._receive_channel:
+            try:
+                await self._extract(response)
+            except Exception as e:
+                logger.exception('%r Extractor exception', self)
+            finally:
+                delete_query = (
+                    r.table('frontier')
+                     .get(response.frontier_id)
+                     .delete()
+                )
+                async with self._db_pool.connection() as conn:
+                    await delete_query.run(conn)
+
+    async def _extract(self, response):
+        '''
+        Find links in a response body and put them in the frontier.
+
+        :param starbelly.downloader.DownloadReponse:
+        '''
+        logger.debug('%r Extracting links from %s', self, response.url)
+        extracted_urls = await trio.run_sync_in_worker_thread(
+            extract_urls, response)
+
+        frontier_items = list()
+        insert_items = list()
+
+        for counter, url in enumerate(extracted_urls):
+            new_cost = self._policy.url_rules.get_cost(response.cost, url)
+            exceeds_max_cost = self._policy.limits.exceeds_max_cost(new_cost)
+            if (new_cost > 0 and not exceeds_max_cost):
+                frontier_items.append((url, new_cost))
+
+            # Don't monopolize the event loop:
+            if counter % 100 == 99:
+                await trio.sleep(0)
+
+        for url, new_cost in frontier_items:
+            url_can = self.policy.url_normalization.normalize(url)
+            hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
+            url_hash = hash_.digest()
+
+            if url_hash not in self._old_urls:
+                logger.debug('%r Adding URL %s (cost=%0.2f)', self, url,
+                    new_cost)
+                insert_items.append({
+                    'cost': frontier_item.cost,
+                    'job_id': self.id,
+                    'url': frontier_item.url,
+                })
+                self._old_urls.add(url_hash)
+
+        if len(insert_items) > 0:
+            async with self._db_pool.connection() as conn:
+                await r.table('frontier').insert(insert_items).run(conn)
+
+
 def extract_urls(response):
     '''
     Extract URLs from a response body.
@@ -97,92 +182,3 @@ def _extract_html(response):
             extracted_urls.append(str(absolute_href))
 
     return extracted_urls
-
-
-class CrawlExtractor:
-    ''' Extract URLs from crawled items and add them to the frontier table. '''
-    def __init__(self, job_id, receive_channel, policy, seen_urls=None):
-        '''
-        Constructor.
-
-        :param bytes job_id: The ID of the job to extract response for.
-        :param trio.ReceiveChannel receive_channel: A channel that receives
-            DownloadResponse instances.
-        :param starbelly.policy.Policy: A policy for computing costs.
-        :param seen_urls: An optional set of URLs that have been seen
-            before, used for deduplicating.
-        :type seen_urls: set or None
-        '''
-        self._job_id = job_id
-        self._receive_channel = receive_channel
-        self._policy = policy
-        if seen_urls:
-            self._seen_urls = seen_urls
-        else:
-            self._seen_urls = set()
-
-    def __repr__(self):
-        ''' Report crawl job ID. '''
-        return '<CrawlJob job_id={}>'.format(self._job_id[:8])
-
-    async def run(self):
-        '''
-        Read responses from extraction channel and add them to the frontier.
-
-        :returns: This function runs until cancelled.
-        '''
-        async for response in self._receive_channel:
-            try:
-                await self._extract(response)
-            except Exception as e:
-                logger.exception('%r Extractor exception', self)
-            finally:
-                delete_query = (
-                    r.table('frontier')
-                     .get(response.frontier_id)
-                     .delete()
-                )
-                async with self._db_pool.connection() as conn:
-                    await delete_query.run(conn)
-
-    async def _extract(self, response):
-        '''
-        Find links in a response body and put them in the frontier.
-
-        :param starbelly.downloader.DownloadReponse:
-        '''
-        logger.debug('%r Extracting links from %s', self, response.url)
-        extracted_urls = await trio.run_sync_in_worker_thread(
-            extract_urls, response)
-
-        frontier_items = list()
-        insert_items = list()
-
-        for counter, url in enumerate(extracted_urls):
-            new_cost = self._policy.url_rules.get_cost(response.cost, url)
-            exceeds_max_cost = self._policy.limits.exceeds_max_cost(new_cost)
-            if (new_cost > 0 and not exceeds_max_cost):
-                frontier_items.append((url, new_cost))
-
-            # Don't monopolize the event loop:
-            if counter % 100 == 99:
-                await trio.sleep(0)
-
-        for url, new_cost in frontier_items:
-            url_can = self.policy.url_normalization.normalize(url)
-            hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
-            url_hash = hash_.digest()
-
-            if url_hash not in self._seen_urls:
-                logger.debug('%r Adding URL %s (cost=%0.2f)', self, url,
-                    new_cost)
-                insert_items.append({
-                    'cost': frontier_item.cost,
-                    'job_id': self.id,
-                    'url': frontier_item.url,
-                })
-                self._seen_urls.add(url_hash)
-
-        if len(insert_items) > 0:
-            async with self._db_pool.connection() as conn:
-                await r.table('frontier').insert(insert_items).run(conn)

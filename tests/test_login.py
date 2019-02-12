@@ -1,12 +1,13 @@
 from base64 import b64decode
 from datetime import datetime, timezone
 from functools import partial
+from unittest.mock import Mock
 
 from aiohttp import CookieJar
 import trio
 from yarl import URL
 
-from . import asyncio_loop
+from . import asyncio_loop, get_mock_coro
 from starbelly.captcha import CaptchaSolver
 from starbelly.downloader import Downloader, DownloadResponse
 from starbelly.login import get_login_form, solve_captcha_asyncio
@@ -34,7 +35,7 @@ async def test_login_form_extraction(asyncio_loop, mocker):
             'api_key': None,
             'require_phrase': False,
             'case_sensitive': True,
-            'characters': True,
+            'characters': 'ALPHANUMERIC',
             'require_math': False,
         },
         'limits': {
@@ -98,21 +99,29 @@ async def test_login_form_extraction(asyncio_loop, mocker):
         status_code=200,
         headers={'Server': 'Fake Server 1.0', 'Content-type': 'image/png'}
     )
-    async def download_img():
-        return img_response
-    async def solve():
-        return 'ABCD1234'
     job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-    downloader = Downloader(job_id, policy, None, None, trio.Semaphore(1))
-    downloader.download = mocker.Mock()
-    downloader.download.side_effect = [download_img()]
-    solve_mock = mocker.patch('starbelly.login.solve_captcha_asyncio')
-    solve_mock.side_effect = [solve()]
+    request_send, request_recv = trio.open_memory_channel(0)
+    response_send, response_recv = trio.open_memory_channel(0)
+    rate_limiter_reset = Mock()
+    rate_limiter_reset.send = get_mock_coro(None)
+    stats =  {
+        'item_count': 0,
+        'http_success_count': 0,
+        'http_error_count': 0,
+        'exception_count': 0,
+        'http_status_counts': {},
+    }
+    semaphore = trio.Semaphore(1)
+    downloader = Downloader(job_id, policy, None, None, semaphore,
+        rate_limiter_reset, stats)
+    downloader.download = get_mock_coro(img_response)
+    solve_mock = mocker.patch('starbelly.login.solve_captcha_asyncio',
+        new=get_mock_coro('ABCD1234'))
 
     # Now test the login extractor.
     with trio.fail_after(3):
         action, method, data = await get_login_form(policy, downloader,
-            cookie_jar, form_response, 'testuser', 'testpass')
+            form_response, 'testuser', 'testpass')
 
     solve_mock.assert_called()
     assert action == URL('https://www.example/login')

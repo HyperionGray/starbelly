@@ -14,16 +14,20 @@ class ExponentialBackoff:
     This is written as an async iterator, so you can just loop over it and it
     will automatically delay in between loop iterations.
     '''
-    def __init__(self, start=1, max_=math.inf):
+    def __init__(self, min_=0.25, max_=64):
         '''
         Constructor.
 
         :param int start: The initial delay between loop iterations.
         :param int max_: The maximum delay.
         '''
-        self._backoff = start
+        self._backoff = min_
         self._initial = True
+        self._min = min_
         self._max = max_
+
+    def __repr__(self):
+        return '<ExponentialBackoff value={}>'.format(self._backoff)
 
     def __aiter__(self):
         ''' This instance is an async iterator. '''
@@ -48,5 +52,5 @@ class ExponentialBackoff:
 
     def decrease(self):
         ''' Halve the current backoff, not if would be less than 1. '''
-        if self._backoff >= 2:
+        if self._backoff >= 2 * self._min:
             self._backoff //= 2
