@@ -1,10 +1,19 @@
 from datetime import datetime, timezone
 from operator import itemgetter
+import pickle
 
 import pytest
 from rethinkdb import RethinkDB
 
-from starbelly.db import ScheduleDb
+from starbelly.db import (
+    CrawlFrontierDb,
+    CrawlExtractorDb,
+    CrawlManagerDb,
+    CrawlStorageDb,
+    LoginDb,
+    ScheduleDb,
+)
+from starbelly.downloader import DownloadResponse
 from starbelly.job import RunState
 
 
@@ -17,6 +26,27 @@ async def db_pool(nursery):
     db_pool = r.ConnectionPool(db='test', nursery=nursery)
     yield db_pool
     await db_pool.close()
+
+
+@pytest.fixture
+async def captcha_solver_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('captcha_solver').run(conn)
+    yield r.table('captcha_solver')
+    async with db_pool.connection() as conn:
+        await r.table_drop('captcha_solver').run(conn)
+
+
+@pytest.fixture
+async def frontier_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('frontier').run(conn)
+        await r.table('frontier').index_create('cost_index', [r.row['job_id'],
+            r.row['in_flight'], r.row['cost']]).run(conn)
+        await r.table('frontier').index_wait('cost_index').run(conn)
+    yield r.table('frontier')
+    async with db_pool.connection() as conn:
+        await r.table_drop('frontier').run(conn)
 
 
 @pytest.fixture
@@ -34,6 +64,45 @@ async def job_table(db_pool):
 
 
 @pytest.fixture
+async def login_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('domain_login', primary_key='domain').run(conn)
+    yield r.table('domain_login')
+    async with db_pool.connection() as conn:
+        await r.table_drop('domain_login').run(conn)
+
+
+@pytest.fixture
+async def policy_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('policy').run(conn)
+    yield r.table('policy')
+    async with db_pool.connection() as conn:
+        await r.table_drop('policy').run(conn)
+
+
+@pytest.fixture
+async def response_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('response', primary_key='sequence').run(conn)
+        await r.table('response').index_create('job_sync',
+            [r.row['job_id'], r.row['sequence']]).run(conn)
+        await r.table('response').index_wait('job_sync').run(conn)
+    yield r.table('response')
+    async with db_pool.connection() as conn:
+        await r.table_drop('response').run(conn)
+
+
+@pytest.fixture
+async def response_body_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('response_body').run(conn)
+    yield r.table('response_body')
+    async with db_pool.connection() as conn:
+        await r.table_drop('response_body').run(conn)
+
+
+@pytest.fixture
 async def schedule_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create('schedule').run(conn)
@@ -42,6 +111,514 @@ async def schedule_table(db_pool):
     yield r.table('schedule')
     async with db_pool.connection() as conn:
         await r.table_drop('schedule').run(conn)
+
+
+class TestCrawlExtractorDb:
+    async def test_delete_frontier_items(self, db_pool, frontier_table):
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        async with db_pool.connection() as conn:
+            result = await frontier_table.insert({
+                'cost': 1.0,
+                'job_id': job_id,
+                'in_flight': False,
+                'url': 'https://extractor.example',
+            }).run(conn)
+            frontier_id = result['generated_keys'][0]
+            count = await frontier_table.count().run(conn)
+        assert count == 1
+        crawl_extractor_db = CrawlExtractorDb(db_pool)
+        result = await crawl_extractor_db.delete_frontier_item(frontier_id)
+        async with db_pool.connection() as conn:
+            count = await frontier_table.count().run(conn)
+        assert count == 0
+
+    async def test_insert_frontier_items(self, db_pool, frontier_table):
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        crawl_extractor_db = CrawlExtractorDb(db_pool)
+        result = await crawl_extractor_db.insert_frontier_items([
+            {'cost': 1.0, 'job_id': job_id, 'url': 'https://a.example'},
+            {'cost': 1.0, 'job_id': job_id, 'url': 'https://b.example'},
+            {'cost': 1.0, 'job_id': job_id, 'url': 'https://c.example'},
+        ])
+        async with db_pool.connection() as conn:
+            count = await frontier_table.count().run(conn)
+            first = await frontier_table.order_by('url').nth(0).run(conn)
+        assert count == 3
+        assert first['url'] == 'https://a.example'
+
+
+class TestCrawlFrontierDb:
+    async def test_any_in_flight(self, db_pool, frontier_table):
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        async with db_pool.connection() as conn:
+            await frontier_table.insert({
+                'cost': 1.0,
+                'job_id': job_id,
+                'url': 'https://frontier.example',
+                'in_flight': False,
+            }).run(conn)
+        crawl_frontier_db = CrawlFrontierDb(db_pool)
+        assert not await crawl_frontier_db.any_in_flight(job_id)
+        async with db_pool.connection() as conn:
+            await frontier_table.update({'in_flight': True}).run(conn)
+        assert await crawl_frontier_db.any_in_flight(job_id)
+
+    async def test_get_frontier_batch(self, db_pool, frontier_table):
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        async with db_pool.connection() as conn:
+            # The frontier has 4 items, 1 of which is already in-flight and
+            # should not be included in any frontier batches.
+            await frontier_table.insert([{
+                'cost': 3.0,
+                'job_id': job_id,
+                'url': 'https://frontier.example/3',
+                'in_flight': False,
+            },{
+                'cost': 2.0,
+                'job_id': job_id,
+                'url': 'https://frontier.example/2',
+                'in_flight': False,
+            },{
+                'cost': 1.0,
+                'job_id': job_id,
+                'url': 'https://frontier.example/1',
+                'in_flight': False,
+            },{
+                'cost': 2.5,
+                'job_id': job_id,
+                'url': 'https://frontier.example/4',
+                'in_flight': True,
+            }]).run(conn)
+        crawl_frontier_db = CrawlFrontierDb(db_pool)
+        # The batch size is 2 and we have 3 documents, so we should get two
+        # batches.
+        batch1 = await crawl_frontier_db.get_frontier_batch(job_id, 2)
+        async with db_pool.connection() as conn:
+            in_flight_count = await frontier_table.filter({'in_flight': True}
+                ).count().run(conn)
+        assert in_flight_count == 3
+        assert len(batch1) == 2
+        assert batch1[0]['url'] == 'https://frontier.example/1'
+        assert batch1[1]['url'] == 'https://frontier.example/2'
+
+        batch2 = await crawl_frontier_db.get_frontier_batch(job_id, 2)
+        async with db_pool.connection() as conn:
+            in_flight_count = await frontier_table.filter({'in_flight': True}
+                ).count().run(conn)
+        assert in_flight_count == 4
+        assert len(batch2) == 1
+        assert batch2[0]['url'] == 'https://frontier.example/3'
+
+    async def test_get_frontier_size(self, db_pool, frontier_table):
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        async with db_pool.connection() as conn:
+            await frontier_table.insert([{
+                'cost': 1.0,
+                'job_id': job_id,
+                'url': 'https://frontier.example/1',
+                'in_flight': False,
+            },{
+                'cost': 1.0,
+                'job_id': job_id,
+                'url': 'https://frontier.example/2',
+                'in_flight': True,
+            }]).run(conn)
+        crawl_frontier_db = CrawlFrontierDb(db_pool)
+        assert await crawl_frontier_db.get_frontier_size(job_id) == 2
+
+
+class TestCrawlManagerDb:
+    async def test_clear_frontier(self, db_pool, frontier_table):
+        job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        job2_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+        async with db_pool.connection() as conn:
+            # There are 2 items in the frontier for job 1 and 1 item for job 2.
+            await frontier_table.insert([{
+                'cost': 1.0,
+                'job_id': job1_id,
+                'in_flight': False,
+                'url': 'https://job1.example/alpha',
+            },{
+                'cost': 1.0,
+                'job_id': job1_id,
+                'in_flight': True,
+                'url': 'https://job1.example/bravo',
+            },{
+                'cost': 1.0,
+                'job_id': job2_id,
+                'in_flight': False,
+                'url': 'https://job2.example/alpha',
+            }]).run(conn)
+        crawl_manager_db = CrawlManagerDb(db_pool)
+        await crawl_manager_db.clear_frontier(job1_id)
+        async with db_pool.connection() as conn:
+            # The job 1 items should be gone. Only 1 item remains, and it is for
+            # job 2.
+            size = await frontier_table.count().run(conn)
+            item = await frontier_table.nth(0).run(conn)
+        assert size == 1
+        assert item['url'] == 'https://job2.example/alpha'
+
+    async def test_create_job(self, db_pool, job_table, frontier_table):
+        ''' This tests job creation, finish, and getting schedule ID. '''
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2018, 1, 1, 13, 0, 0, tzinfo=timezone.utc)
+        job_doc = {
+            'name': 'Test Job',
+            'seeds': ['https://seed1.example', 'https://seed2.example'],
+            'tags': [],
+            'run_state': RunState.PENDING,
+            'started_at': started_at,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {},
+            'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        }
+        crawl_manager_db = CrawlManagerDb(db_pool)
+        job_id = await crawl_manager_db.create_job(job_doc)
+        async with db_pool.connection() as conn:
+            job_count = await job_table.count().run(conn)
+            frontier_count = await frontier_table.count().run(conn)
+            job = await job_table.get(job_id).run(conn)
+        assert job_count == 1
+        assert frontier_count == 2
+        assert job['name'] == 'Test Job'
+        await crawl_manager_db.finish_job(job_id, RunState.CANCELLED,
+            completed_at)
+        async with db_pool.connection() as conn:
+            job = await job_table.get(job_id).run(conn)
+        assert job['run_state'] == RunState.CANCELLED
+        assert job['completed_at'] == completed_at
+        assert job['duration'] == 3600
+        schedule_id = await crawl_manager_db.get_job_schedule_id(job_id)
+        assert schedule_id == 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+
+    async def test_get_max_sequence(self, db_pool, response_table):
+        crawl_manager_db = CrawlManagerDb(db_pool)
+        max_sequence = await crawl_manager_db.get_max_sequence()
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        started_at = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2019, 1, 1, 12, 0, 1, tzinfo=timezone.utc)
+        assert max_sequence == 0
+        async with db_pool.connection() as conn:
+            await response_table.insert([{
+                'sequence': 100,
+                'job_id': job_id,
+                'url': 'http://sequence.example/1',
+                'url_can': 'http://sequence.example/1',
+                'started_at': started_at,
+                'completed_at': completed_at,
+                'duration': 1.0,
+                'cost': 1.0,
+                'content_type': 'text/plain',
+                'status_code': 200,
+                'is_success': True,
+                'body_id': None,
+            },{
+                'sequence': 101,
+                'job_id': job_id,
+                'url': 'http://sequence.example/1',
+                'url_can': 'http://sequence.example/1',
+                'started_at': started_at,
+                'completed_at': completed_at,
+                'duration': 1.0,
+                'cost': 1.0,
+                'content_type': 'text/plain',
+                'status_code': 200,
+                'is_success': True,
+                'body_id': None,
+            }]).run(conn)
+        max_sequence = await crawl_manager_db.get_max_sequence()
+        assert max_sequence == 101
+
+    async def test_get_policy(self, db_pool, captcha_solver_table,
+            policy_table):
+        captcha_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        catpcha_doc = {
+            'id': captcha_id,
+            'name': 'CAPTCHA Service',
+            'service_url': 'https://captcha.example',
+            'api_key': 'FAKE-API-KEY',
+            'require_phrase': False,
+            'case_sensitive': True,
+            'characters': 'ALPHANUMERIC',
+            'require_math': False,
+            'min_length': 5,
+            'max_length': 5,
+        }
+        policy_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+        created_at = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        policy_doc = {
+            'id': policy_id,
+            'name': 'Test Policy',
+            'created_at': created_at,
+            'updated_at': created_at,
+            'authentication': {
+                'enabled': False,
+            },
+            'captcha_solver_id': captcha_id,
+            'limits': {
+                'max_cost': 10,
+                'max_duration': 3600,
+                'max_items': 10_000,
+            },
+            'mime_type_rules': [
+                {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+                {'save': False},
+            ],
+            'proxy_rules': [],
+            'robots_txt': {
+                'usage': 'IGNORE',
+            },
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': [],
+            },
+            'url_rules': [
+                {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+                 'pattern': '^https?://({SEED_DOMAINS})/'},
+                {'action': 'MULTIPLY', 'amount': 0},
+            ],
+            'user_agents': [
+                {'name': 'Test User Agent'}
+            ]
+        }
+        async with db_pool.connection() as conn:
+            await captcha_solver_table.insert(catpcha_doc).run(conn)
+            await policy_table.insert(policy_doc).run(conn)
+        crawl_manager_db = CrawlManagerDb(db_pool)
+        policy = await crawl_manager_db.get_policy(policy_id)
+        assert policy['name'] == 'Test Policy'
+        assert 'captcha_solver_id' not in policy
+        assert policy['captcha_solver']['service_url'] == \
+            'https://captcha.example'
+
+    async def test_pause_resume_job(self, db_pool, captcha_solver_table,
+            job_table):
+        captcha_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        catpcha_doc = {
+            'id': captcha_id,
+            'name': 'CAPTCHA Service',
+            'service_url': 'https://captcha.example',
+            'api_key': 'FAKE-API-KEY',
+            'require_phrase': False,
+            'case_sensitive': True,
+            'characters': 'ALPHANUMERIC',
+            'require_math': False,
+            'min_length': 5,
+            'max_length': 5,
+        }
+        created_at = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        job_doc = {
+            'name': 'Test Job',
+            'seeds': ['https://seed1.example', 'https://seed2.example'],
+            'tags': [],
+            'run_state': RunState.RUNNING,
+            'started_at': created_at,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {},
+            'schedule_id': 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+            'policy': {
+                'id': 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+                'name': 'Test Policy',
+                'created_at': created_at,
+                'updated_at': created_at,
+                'authentication': {
+                    'enabled': False,
+                },
+                'captcha_solver_id': captcha_id,
+                'limits': {
+                    'max_cost': 10,
+                    'max_duration': 3600,
+                    'max_items': 10_000,
+                },
+                'mime_type_rules': [
+                    {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+                    {'save': False},
+                ],
+                'proxy_rules': [],
+                'robots_txt': {
+                    'usage': 'IGNORE',
+                },
+                'url_normalization': {
+                    'enabled': True,
+                    'strip_parameters': [],
+                },
+                'url_rules': [
+                    {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+                     'pattern': '^https?://({SEED_DOMAINS})/'},
+                    {'action': 'MULTIPLY', 'amount': 0},
+                ],
+                'user_agents': [
+                    {'name': 'Test User Agent'}
+                ],
+            },
+        }
+        async with db_pool.connection() as conn:
+            await captcha_solver_table.insert(catpcha_doc).run(conn)
+            result = await job_table.insert(job_doc).run(conn)
+            job_id = result['generated_keys'][0]
+        crawl_manager_db = CrawlManagerDb(db_pool)
+        # Old URLs is really a set of hashes, not URLs, but the difference
+        # doesn't matter right here:
+        old_urls = pickle.dumps({'https://old.example/1',
+            'https://old.example/2'})
+        await crawl_manager_db.pause_job(job_id, old_urls)
+        async with db_pool.connection() as conn:
+            job = await job_table.get(job_id).run(conn)
+        assert job['run_state'] == RunState.PAUSED
+        job = await crawl_manager_db.resume_job(job_id)
+        assert job['run_state'] == RunState.RUNNING
+        assert job['policy']['captcha_solver']['service_url'] == \
+            'https://captcha.example'
+
+    async def test_run_job(self, db_pool, job_table):
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        job_doc = {
+            'name': 'Test Job',
+            'seeds': ['https://seed1.example', 'https://seed2.example'],
+            'tags': [],
+            'run_state': RunState.PENDING,
+            'started_at': started_at,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {},
+            'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        }
+        async with db_pool.connection() as conn:
+            result = await job_table.insert(job_doc).run(conn)
+            job_id = result['generated_keys'][0]
+        crawl_manager_db = CrawlManagerDb(db_pool)
+        await crawl_manager_db.run_job(job_id)
+        async with db_pool.connection() as conn:
+            job = await job_table.get(job_id).run(conn)
+        assert job['run_state'] == RunState.RUNNING
+
+
+class TestCrawlStorageDb:
+    async def test_save_response(self, db_pool, response_table,
+            response_body_table):
+        started_at = datetime(2019, 2, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2019, 2, 1, 12, 0, 3, tzinfo=timezone.utc)
+        body_id = '\x01' * 16
+        response_doc = {
+            'sequence': 1,
+            'job_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            'url': 'http://response.example',
+            'url_can': 'http://response.example',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 3.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 200,
+            'is_success': True,
+            'body_id': body_id,
+        }
+        response_body_doc = {
+            'id': body_id,
+            'body': 'Hello world!',
+            'is_compressed': False,
+        }
+        crawl_storage_db = CrawlStorageDb(db_pool)
+        await crawl_storage_db.save_response(response_doc, response_body_doc)
+        async with db_pool.connection() as conn:
+            response_count = await response_table.count().run(conn)
+            body_count = await response_body_table.count().run(conn)
+        assert response_count == 1
+        assert body_count == 1
+        # This second document has the same body, so we should end up with two
+        # responses but only 1 body.
+        response2_doc = {
+            'sequence': 2,
+            'job_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            'url': 'http://response2.example',
+            'url_can': 'http://response2.example',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 3.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 200,
+            'is_success': True,
+            'body_id': body_id,
+        }
+        await crawl_storage_db.save_response(response2_doc, response_body_doc)
+        async with db_pool.connection() as conn:
+            response_count = await response_table.count().run(conn)
+            body_count = await response_body_table.count().run(conn)
+        assert response_count == 2
+        assert body_count == 1
+
+    async def test_update_job_stats(self, db_pool, job_table):
+        started_at = datetime(2019, 2, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2019, 2, 1, 12, 0, 3, tzinfo=timezone.utc)
+        async with db_pool.connection() as conn:
+            result = await job_table.insert({
+                'name': 'Test Job',
+                'seeds': ['https://seed.example'],
+                'tags': ['tag1', 'tag2'],
+                'run_state': RunState.RUNNING,
+                'started_at': started_at,
+                'completed_at': None,
+                'duration': 60.0,
+                'item_count': 100,
+                'http_success_count': 90,
+                'http_error_count': 9,
+                'exception_count': 1,
+                'http_status_counts': {'200': 90, '404': 9},
+            }).run(conn)
+            job_id = result['generated_keys'][0]
+        crawl_storage_db = CrawlStorageDb(db_pool)
+        response = DownloadResponse(
+            frontier_id='cccccccc-cccc-cccc-cccc-cccccccccccc',
+            cost=1.0,
+            url='https://storage.example/',
+            canonical_url='https://storage.example/',
+            content_type='text/plain',
+            body=None,
+            started_at=started_at,
+            completed_at=completed_at,
+            exception=None,
+            status_code=404,
+            headers={'Server': 'Foo'}
+        )
+        await crawl_storage_db.update_job_stats(job_id, response)
+        async with db_pool.connection() as conn:
+            job_doc = await job_table.get(job_id).run(conn)
+        assert job_doc['item_count'] == 101
+        assert job_doc['http_error_count'] == 10
+
+
+class TestLoginDb:
+    async def test_get_login(self, db_pool, login_table):
+        async with db_pool.connection() as conn:
+            await login_table.insert({
+                'domain': 'login.example',
+                'login_url': 'https://login.example/login.html',
+                'users': [
+                    {'username': 'john', 'password': 'fake1'},
+                    {'username': 'jane', 'password': 'fake2'},
+                ],
+            }).run(conn)
+        login_db = LoginDb(db_pool)
+        login = await login_db.get_login('login.example')
+        assert login['domain'] == 'login.example'
+        assert len(login['users']) == 2
+        assert login['users'][0] == {'username': 'john', 'password': 'fake1'}
 
 
 class TestScheduleDb:
@@ -149,6 +726,3 @@ class TestScheduleDb:
             query = schedule_table.get(schedule_id).pluck('job_count')
             result = await query.run(conn)
         assert result['job_count'] == 2
-
-
-

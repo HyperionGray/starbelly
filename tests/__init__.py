@@ -14,14 +14,6 @@ import trio_asyncio
 path.append(dirname(dirname(__file__)))
 
 
-@pytest.fixture
-async def asyncio_loop():
-    ''' Open an asyncio loop. Useful for things like aiohttp.CookieJar that
-    require a global loop. '''
-    async with trio_asyncio.open_loop() as loop:
-        yield loop
-
-
 @contextmanager
 def assert_min_elapsed(seconds):
     '''
@@ -55,12 +47,72 @@ def assert_elapsed(seconds, delta=0.1):
         yield
 
 
-def get_mock_coro(return_value):
-    ''' Return a coroutine that can be assigned to a test mock. '''
-    async def mock_coro(*args, **kwargs):
-        return return_value
+class AsyncMock:
+    ''' A mock that acts like an async def function. '''
+    def __init__(self, return_value=None, return_values=None, raises=None):
+        if raises:
+            self._raises = raises
+            self._return_value = None
+            self._index = None
+        elif return_values:
+            self._raises = None
+            self._return_value = return_values
+            self._index = 0
+        else:
+            self._raises = None
+            self._return_value = return_value
+            self._index = None
+        self._call_count = 0
+        self._call_args = None
+        self._call_kwargs = None
 
-    return Mock(wraps=mock_coro)
+    @property
+    def call_args(self):
+        return self._call_args
+
+    @property
+    def call_kwargs(self):
+        return self._call_kwargs
+
+    @property
+    def called(self):
+        return self._call_count > 0
+
+    @property
+    def call_count(self):
+        return self._call_count
+
+    async def __call__(self, *args, **kwargs):
+        self._call_args = args
+        self._call_kwargs = kwargs
+        self._call_count += 1
+        if self._raises:
+            raise(self._raises)
+        elif self._index is not None:
+            return_index = self._index
+            self._index += 1
+            return self._return_value[return_index]
+        else:
+            return self._return_value
+
+
+async def async_iter(iter):
+    '''
+    Convert a synchronous iterable into an async iterator.
+
+    :param iterable iter:
+    '''
+    for item in iter:
+        await trio.sleep(0)
+        yield item
+
+
+@pytest.fixture
+async def asyncio_loop():
+    ''' Open an asyncio loop. Useful for things like aiohttp.CookieJar that
+    require a global loop. '''
+    async with trio_asyncio.open_loop() as loop:
+        yield loop
 
 
 class fail_after:
@@ -78,14 +130,3 @@ class fail_after:
                 pytest.fail('Test runtime exceeded the maximum {} seconds'
                     .format(self._seconds))
         return wrapper
-
-
-async def async_iter(iter):
-    '''
-    Convert a sychronous iterator into an async iterator.
-
-    :param iterable iter:
-    '''
-    for item in iter:
-        await trio.sleep(0)
-        yield item

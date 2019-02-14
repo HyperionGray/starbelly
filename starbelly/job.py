@@ -110,12 +110,52 @@ class StatsTracker:
         return jobs
 
 
+class PipelineTerminator:
+    '''
+    This class reads all items from a channel and discards them. This is
+    handy because each crawling component is part of a pipeline that reads from
+    one channel and writes to another. This class can be used to terminate the
+    pipeline.
+    '''
+    def __init__(self, channel):
+        '''
+        Constructor
+
+        :param trio.ReceiveChannel channel:
+        '''
+        self._channel = channel
+
+    async def run(self):
+        ''' Run the pipeline terminator. '''
+        async for _ in self._channel:
+            pass
+
+
 class CrawlManager:
     ''' Manage crawl jobs and provide introspection into their states. '''
-    def __init__(self, db_pool, rate_limiter, stats_tracker):
-        self._db_pool = db_pool
+    def __init__(self, rate_limiter, stats_tracker, robots_txt_manager,
+            crawl_db, frontier_db, extractor_db, storage_db, login_db):
+        '''
+        Constructor.
+
+        :param starbelly.rate_limiter.RateLimiter rate_limiter: A rate limiter.
+        :param StatsTracker stats_tracker: A stats tracking instance.
+        :param starbelly.robots.RobotsTxtManager robots_txt_manager: A
+            robots.txt manager.
+        :param starbelly.db.CrawlManagerDb crawl_db: A database layer.
+        :param starbelly.db.CrawlFrontierDb crawl_db: A database layer.
+        :param starbelly.db.CrawlExtractorDb crawl_db: A database layer.
+        :param starbelly.db.CrawlStorageDb crawl_db: A database layer.
+        :param starbelly.db.LoginDb login_db: A database layer.
+        '''
         self._rate_limiter = rate_limiter
         self._stats_tracker = stats_tracker
+        self._robots_txt_manager = robots_txt_manager
+        self._db = crawl_db
+        self._frontier_db = frontier_db
+        self._extractor_db = extractor_db
+        self._storage_db = storage_db
+        self._login_db = login_db
 
         self._download_capacity = 20
         self._download_semaphore = trio.Semaphore(self._download_capacity)
@@ -136,42 +176,12 @@ class CrawlManager:
         :param str job_id:
         '''
         logger.info('%r Cancelling job_id=%s…', self, job_id[:8])
-        try:
-            # If the job is currently running, stop it.
-            await self._jobs.pop(job_id).stop()
-        except KeyError:
-            pass
-
-        completed_at = datetime.now(timezone.utc)
-
         run_state = RunState.CANCELLED
-        job_query = (
-            r.table('job')
-             .get(job_id)
-             .update({
-                'run_state': run_state,
-                'completed_at': completed_at
-             })
-        )
-
-        schedule_query = r.table('job').get(job_id).pluck('schedule_id')
-
-        frontier_query = (
-            r.table('frontier')
-             .between((job_id, r.minval, r.minval),
-                      (job_id, r.maxval, r.maxval),
-                      index='cost_index')
-             .delete()
-        )
-
-        async with self._db_pool.connection() as conn:
-            await job_query.run(conn)
-            await frontier_query.run(conn)
-            schedule_id = await schedule_query.run(conn)
-
+        completed_at = datetime.now(timezone.utc)
+        await self._db.finish_job(job_id, run_state, completed_at)
+        schedule_id = await self._db.clear_frontier(job_id)
         self._stats_tracker.set_run_state(job_id, run_state)
-        event = JobStateEvent(job_id=self.job_id, schedule_id=schedule_id,
-            run_state=run_state, datetime=completed_at)
+        event = JobStateEvent(job_id, schedule_id, run_state, completed_at)
         self._send_job_state_event(event)
         logger.info('%r Cancelled job_id=%s', self, job_id[:8])
 
@@ -204,7 +214,7 @@ class CrawlManager:
                 'name': job.name,
                 'current_downloads': job.current_downloads,
             })
-        max_ = self._download_semaphore.max_value
+        max_ = self._download_capacity
         return {
             'current_downloads': max_ - self._download_semaphore.value,
             'maximum_downloads': max_,
@@ -218,29 +228,17 @@ class CrawlManager:
 
         :param str job_id:
         '''
-        logger.info('%r Pausing job_id=%s…', self, job_id[:8])
-        job = self._jobs.pop(job_id)
+        job = self._jobs[job_id]
+        logger.info('%r Pausing job_id=%s…', self, job.id[:8])
         await job.stop()
-
         run_state = RunState.PAUSED
-        job_query = (
-            r.table('job')
-             .get(self.id)
-             .update({
-                'run_state': run_state,
-                'old_urls': job.old_urls,
-             })
-        )
-
-        async with self._db_pool.connection() as conn:
-            await job_query.run(conn)
-            await frontier_query.run(conn)
-
-        self._stats_tracker.set_run_state(job_id, run_state)
-        event = JobStateEvent(job_id=self.job.id, schedule_id=job.schedule_id,
-            run_state=run_state, datetime=datetime.now(timezone.utc))
+        old_urls = pickle.dumps(job.old_urls)
+        await self._db.pause_job(job.id, old_urls)
+        self._stats_tracker.set_run_state(job.id, run_state)
+        event = JobStateEvent(job.id, job.schedule_id, run_state,
+            datetime.now(timezone.utc))
         self._send_job_state_event(event)
-        logger.info('%r Paused job_id=%s', self, job_id[:8])
+        logger.info('%r Paused job_id=%s', self, job.id[:8])
 
     async def resume_job(self, job_id):
         '''
@@ -249,20 +247,8 @@ class CrawlManager:
         :param str job_id: The ID of the job to resume.
         '''
         logger.info('%r Resuming job_id=%s…', self, job_id[:8])
-        job_query = r.table('job').get(job_id)
-        async with self._db_pool.connection() as conn:
-            job_doc = await job_query.run(conn)
-            policy_doc = job_doc['policy']
-            captcha_solver_id = policy_doc.get('captcha_solver_id')
-            if captcha_solver_id:
-                policy_doc['captcha_solver'] = await (
-                    r.table('captcha_solver')
-                     .get(captcha_solver_id)
-                     .run(conn)
-                )
-                del policy_doc['captcha_solver_id']
-
-        policy = Policy(policy_doc, __version__, seeds)
+        job_doc = await self._db.resume_job(job_id)
+        policy = Policy(job_doc['policy'], __version__, job_doc['seeds'])
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job)
         logger.info('%r Resumed job_id=%s', self, job_id[:8])
@@ -276,14 +262,9 @@ class CrawlManager:
 
         :returns: This function runs until cancelled.
         '''
-        sequence_query = r.table('response').max(index='sequence')
-        async with self._db_pool.connection() as conn:
-            try:
-                max_sequence = await sequence_query.run(conn)
-            except r.RuntimeError:
-                max_sequence = 0
-            self._sequence = itertools.count(start=max_sequence + 0)
-            logger.info('%r Sequence initialized to %s', self, self._sequence)
+        max_sequence = await self._db.get_max_sequence()
+        self._sequence = itertools.count(start=max_sequence + 1)
+        logger.info('%r Sequence initialized to %s', self, max_sequence + 1)
 
         async with trio.open_nursery() as nursery:
             self._nursery = nursery
@@ -322,37 +303,16 @@ class CrawlManager:
         if schedule_id is not None:
             job_doc['schedule_id'] = schedule_id
 
-        async with self._db_pool.connection() as conn:
-            # Set up the job in the database.
-            policy_doc = await r.table('policy').get(policy_id).run(conn)
-            job_doc['policy'] = policy_doc
-            result = await r.table('job').insert(job_doc).run(conn)
-            job_id = result['generated_keys'][0]
-            job_doc['id'] = job_id
-            if policy_doc.get('captcha_solver_id') is not None:
-                policy_doc['captcha_solver'] = await (
-                    r.table('captcha_solver')
-                     .get(policy['captcha_solver_id'])
-                     .run(conn)
-                )
-                del policy_doc['captcha_solver_id']
-
-            # Add seeds to the frontier.
-            frontier_items = list()
-            for seed in seeds:
-                frontier_items.append({
-                    'cost': 0,
-                    'job_id': job_id,
-                    'url': seed,
-                })
-            await r.table('frontier').insert(insert_items).run(conn)
-
+        policy_doc = await self._db.get_policy(policy_id)
+        job_doc['policy'] = policy_doc
+        job_id = await self._db.create_job(job_doc, policy_id)
+        job_doc['id'] = job_id
         policy = Policy(policy_doc, __version__, seeds)
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job)
         return job_id
 
-    async def _make_job(self, job_doc):
+    def _make_job(self, job_doc):
         '''
         Create a job instance.
 
@@ -363,7 +323,7 @@ class CrawlManager:
         job_id = job_doc['id']
         policy = Policy(job_doc['policy'], __version__, job_doc['seeds'])
         try:
-            old_urls = pickle.load(job_doc['old_urls'])
+            old_urls = pickle.loads(job_doc['old_urls'])
         except KeyError:
             # If old URLs are not in the job_doc, then this is a new job and
             # we should intialize old_urls to the seed URLs.
@@ -379,10 +339,11 @@ class CrawlManager:
         downloader_recv = self._rate_limiter.add_job(job_id)
         downloader_send, storage_recv = trio.open_memory_channel(0)
         storage_send, extractor_recv = trio.open_memory_channel(0)
+        extractor_send, pipeline_end = trio.open_memory_channel(0)
 
         # Set up crawling components.
         stats_dict = {
-            'job_id': job_id,
+            'id': job_id,
             'run_state': job_doc['run_state'],
             'name': job_doc['name'],
             'seeds': job_doc['seeds'],
@@ -396,19 +357,22 @@ class CrawlManager:
             'http_status_counts': job_doc['http_status_counts'],
         }
         self._stats_tracker.add_job(stats_dict)
-        login_manager = LoginManager(job_id, db_pool, downloader)
         downloader = Downloader(job_id, policy, downloader_send,
             downloader_recv, self._download_semaphore, rate_limiter_reset,
             stats_dict)
-        frontier = CrawlFrontier(job_id, self._db_pool, frontier_send,
-            login_manager, policy)
-        storage = CrawlStorage(job_id, db_pool, storage_send, storage_recv,
-            policy, self._sequence)
-        extractor = CrawlExtractor(job_id, extractor_recv, policy, old_urls)
+        login_manager = LoginManager(job_id, self._login_db, policy, downloader)
+        frontier = CrawlFrontier(job_id, self._frontier_db, frontier_send,
+            login_manager, policy, stats_dict)
+        storage = CrawlStorage(job_id, self._storage_db, storage_send,
+            storage_recv, policy, self._sequence)
+        extractor = CrawlExtractor(job_id, self._extractor_db, extractor_send,
+            extractor_recv, policy, self._robots_txt_manager, old_urls,
+            stats_dict)
+        terminator = PipelineTerminator(pipeline_end)
 
         # Now we can create a job instance.
         return CrawlJob(job_doc['name'], job_id, job_doc.get('schedule_id'),
-            frontier, downloader, storage, extractor, stats)
+            policy, frontier, downloader, storage, extractor, terminator)
 
     async def _run_job(self, job):
         '''
@@ -418,13 +382,11 @@ class CrawlManager:
         '''
         # Update local state to indicate that the job is running:
         run_state = RunState.RUNNING
-        query = r.table('job').get(job.id).update({'run_state': run_state})
-        async with self._db_pool.connection() as conn:
-            await query.run(conn)
-        self._running_jobs[job.id] = job
-        self._stats_tracker.set_run_state(job_id, run_state)
-        event = JobStateEvent(job_id=self.job.id, schedule_id=job.schedule_id,
-            run_state=run_state, datetime=datetime.now(timezone.utc))
+        await self._db.run_job(job.id)
+        self._jobs[job.id] = job
+        self._stats_tracker.set_run_state(job.id, run_state)
+        event = JobStateEvent(job.id, job.schedule_id, run_state,
+            datetime.now(timezone.utc))
         self._send_job_state_event(event)
         job_completed = False
 
@@ -432,7 +394,7 @@ class CrawlManager:
             await job.run()
         except (CrawlDurationExceeded, CrawlItemLimitExceeded,
                 FrontierExhaustionError) as exc:
-            logger.info('<CrawlManager> job_id=%s finished %s', job.id[:8],
+            logger.info('<CrawlManager> job_id=%s finished %r', job.id[:8],
                 exc)
             job_completed = True
 
@@ -442,25 +404,11 @@ class CrawlManager:
         if job_completed:
             completed_at = datetime.now(timezone.utc)
             run_state = RunState.COMPLETED
-            new_data = {
-                'run_state': run_state,
-                'completed_at': completed_at,
-                'duration': completed_at - r.row['started_at'],
-            }
-            job_query = r.table('job').get(job.id).update(new_data)
-            frontier_query = (
-                r.table('frontier')
-                 .order_by(index='cost_index')
-                 .between((self.id, r.minval, r.minval),
-                          (self.id, r.maxval, r.maxval))
-                 .delete()
-            )
-            async with self._db_pool.connection() as conn:
-                await job_query.run(conn)
-                await frontier_query.run(conn)
+            await self._db.finish_job(job.id, run_state, completed_at)
+            await self._db.clear_frontier(job.id)
             self._stats_tracker.set_run_state(job.id, run_state)
             self._stats_tracker.complete_job(job.id, completed_at)
-            event = JobStateEvent(self.job.id, job.schedule_id, run_state,
+            event = JobStateEvent(job.id, job.schedule_id, run_state,
                 completed_at)
             self._send_job_state_event(event)
             logger.info('%r Completed job id=%s', self, job.id[:8])
@@ -492,8 +440,8 @@ class CrawlManager:
 
 class CrawlJob:
     ''' Manages job state. '''
-    def __init__(self, name, job_id, schedule_id, frontier, downloader, storage,
-            extractor):
+    def __init__(self, name, job_id, schedule_id, policy, frontier, downloader,
+            storage, extractor, terminator):
         '''
         Constructor.
 
@@ -502,6 +450,7 @@ class CrawlJob:
         :param schedule_id: (Optional) The ID of the schedule associated with
             this job.
         :type schedule_id: str or None
+        :param starbelly.policy.Policy: A crawl policy.
         :param starbelly.frontier.CrawlFrontier frontier: The component that
             manages the crawl priority queue.
         :param starbelly.downloader.Downloader downloader: The component that
@@ -511,14 +460,18 @@ class CrawlJob:
         :param starbelly.extractor.CrawlExtractor extractor: The component that
             extracts URLs from downloaded resources and adds them to the crawl
             frontier.
+        :param PipelineTerminator terminator: The component that reads data off
+            of the end of the crawling pipeline and discards it.
         '''
         self._name = name
         self._job_id = job_id
+        self._schedule_id = schedule_id
+        self._policy = policy
         self._frontier = frontier
         self._downloader = downloader
         self._storage = storage
         self._extractor = extractor
-        self._stats = stats
+        self._terminator = terminator
 
         self._cancel_scope = None
         self._stopped = trio.Event()
@@ -526,16 +479,6 @@ class CrawlJob:
     def __repr__(self):
         ''' Report crawl job ID. '''
         return '<CrawlJob job_id={} "{}">'.format(self._job_id[:8], self._name)
-
-    @property
-    def completed(self):
-        '''
-        Indicates if the crawl has completed, i.e. exhausted all possible URLs
-        or run into one of the policy-defined limits.
-
-        :rtype: bool
-        '''
-        return self._completed
 
     @property
     def current_downloads(self):
@@ -551,17 +494,23 @@ class CrawlJob:
         return self._job_id
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def old_urls(self):
         ''' Returns a set of hashed URLs that the crawl has seen before. '''
         return self._extractor.old_urls
+
+    @property
+    def schedule_id(self):
+        return self._schedule_id
 
     async def run(self):
         '''
         Start all of the subcomponents of the job.
 
-        :returns: When the crawl stops running, return True if the crawl is
-            completed or False otherwise.
-        :rtype: bool
+        :returns: Runs until this job finishes.
         '''
         def exc_filter(exc):
             ''' Filter out Cancelled exceptions raised by the nursery. '''
@@ -573,11 +522,12 @@ class CrawlJob:
         with trio.MultiError.catch(exc_filter):
             async with trio.open_nursery() as nursery:
                 self._cancel_scope = nursery.cancel_scope
-                logger.info('%r Running...'.format(self))
+                logger.info('%r Running...', self)
                 nursery.start_soon(self._frontier.run)
                 nursery.start_soon(self._downloader.run)
                 nursery.start_soon(self._extractor.run)
                 nursery.start_soon(self._storage.run)
+                nursery.start_soon(self._terminator.run)
 
                 # After starting background tasks, this task enforces the
                 # maximum crawl duration.
@@ -588,7 +538,6 @@ class CrawlJob:
                     await trio.sleep_forever()
 
         self._stopped.set()
-        return False
 
     async def stop(self):
         '''

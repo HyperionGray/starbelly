@@ -11,7 +11,7 @@ from protobuf.shared_pb2 import (
 import pytest
 import trio
 
-from . import async_iter, fail_after, get_mock_coro
+from . import AsyncMock, async_iter, fail_after
 from starbelly.job import JobStateEvent, RunState
 from starbelly.schedule import (
     Schedule,
@@ -318,7 +318,7 @@ async def test_schedule_one_event_run_twice(autojump_clock, mocker, nursery):
     job_send, job_recv = trio.open_memory_channel(0)
     db = Mock()
     db.get_schedule_docs.return_value = async_iter([sched_doc])
-    db.update_job_count.side_effect = get_mock_coro(None)
+    db.update_job_count.side_effect = AsyncMock()
     crawl_manager = Mock()
     crawl_manager.get_job_state_channel.return_value = job_recv
     crawl_manager.start_job.side_effect = start_job
@@ -391,7 +391,7 @@ async def test_schedule_two_events(autojump_clock, nursery):
     job_send, job_recv = trio.open_memory_channel(0)
     db = Mock()
     db.get_schedule_docs.return_value = async_iter([s1_doc, s2_doc])
-    db.update_job_count.side_effect = get_mock_coro(None)
+    db.update_job_count.side_effect = AsyncMock()
     crawl_manager = Mock()
     crawl_manager.get_job_state_channel.return_value = job_recv
     crawl_manager.start_job.side_effect = start_job

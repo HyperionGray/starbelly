@@ -1,9 +1,13 @@
 from datetime import datetime, timezone
+from unittest.mock import Mock
 
 import pytest
+import trio
 
+from . import AsyncMock, fail_after
 from starbelly.downloader import DownloadResponse
-from starbelly.extractor import extract_urls
+from starbelly.extractor import CrawlExtractor, extract_urls
+from starbelly.policy import Policy
 
 
 def test_atom():
@@ -271,3 +275,101 @@ def test_skip_malformed_urls():
     actual_links = set(extract_urls(item))
     assert actual_links == expected_links
 
+
+@fail_after(3)
+async def test_crawl_extractor(nursery):
+    # Create test fixtures.
+    job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    db = Mock()
+    db.delete_frontier_item = AsyncMock()
+    db.insert_frontier_items = AsyncMock()
+    to_extractor, extractor_recv = trio.open_memory_channel(0)
+    extractor_send, from_extractor = trio.open_memory_channel(0)
+    created_at = datetime(2018,12,31,13,47,00)
+    policy_doc = {
+        'id': 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        'name': 'Test',
+        'created_at': created_at,
+        'updated_at': created_at,
+        'authentication': {
+            'enabled': False,
+        },
+        'limits': {
+            'max_cost': 10,
+            'max_duration': 3600,
+            'max_items': 10_000,
+        },
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [],
+        'robots_txt': {
+            'usage': 'IGNORE',
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': ['b'],
+        },
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'Test User Agent'}
+        ]
+    }
+    policy = Policy(policy_doc, '1.0.0', ['https://extractor.example'])
+    robots_txt_manager = Mock()
+    robots_txt_manager.is_allowed = AsyncMock(return_value=True)
+    old_urls = {b'\xd2\x1b\x9b(p-\xed\xb2\x10\xdf\xf0\xa8\xe1\xa2*<'}
+    stats_dict = {'frontier_size': 0}
+    extractor = CrawlExtractor(job_id, db, extractor_send, extractor_recv,
+        policy, robots_txt_manager, old_urls, stats_dict, batch_size=3)
+    assert repr(extractor) == '<CrawlExtractor job_id=aaaaaaaa>'
+    nursery.start_soon(extractor.run)
+
+    # The HTML document has 5 valid links (enough to create two batches when the
+    # `insert_batch` is set to 3) as well as 1 link that's out of domain (should
+    # not be added to frontier) and 1 link that's in `old_urls` (also should not
+    # be added to frontier).
+    html_body = \
+    b'''<!DOCTYPE html>
+        <html>
+            <head><meta charset="UTF-8"><title>Test</title></head>
+            <body>
+                <a href='http://extractor.example/alpha'>Alpha</a>
+                <a href='http://extractor.example/bravo'>Bravo</a>
+                <a href='http://extractor.example/charlie'>Charlie</a>
+                <a href='http://invalid.example/'>Invalid</a>
+                <a href='http://extractor.example/delta'>Delta</a>
+                <a href='http://extractor.example/echo'>Echo</a>
+                <a href='http://extractor.example/old-url'>Echo</a>
+            </body>
+        </html>'''
+    response = DownloadResponse(
+        frontier_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        cost=1.0,
+        url='https://extractor.example',
+        canonical_url='https://extractor.example',
+        content_type='text/html',
+        body=html_body,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
+    await to_extractor.send(response)
+    await from_extractor.receive()
+    # The item should be deleted from the frontier:
+    assert db.delete_frontier_item.call_count == 1
+    assert db.delete_frontier_item.call_args[0] == \
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    # The insert function should be called twice: once with three items
+    # (alpha, bravo charlie), and once with two items (delta, echo).
+    assert db.insert_frontier_items.call_count == 2
+    assert len(db.insert_frontier_items.call_args[0]) == 2
+    assert stats_dict['frontier_size'] == 5
+    assert robots_txt_manager.is_allowed.call_count == 6

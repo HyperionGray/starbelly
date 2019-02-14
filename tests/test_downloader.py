@@ -7,7 +7,7 @@ import pytest
 import trio
 from yarl import URL
 
-from . import asyncio_loop, get_mock_coro
+from . import asyncio_loop, AsyncMock
 from starbelly.downloader import (
     Downloader,
     DownloadRequest,
@@ -142,7 +142,7 @@ async def test_http_get(nursery, asyncio_loop):
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
     rate_limiter_reset = Mock()
-    rate_limiter_reset.send = get_mock_coro(None)
+    rate_limiter_reset.send = AsyncMock()
     stats = make_stats()
     dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
         rate_limiter_reset, stats)
@@ -190,7 +190,7 @@ async def test_http_post(nursery):
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
     rate_limiter_reset = Mock()
-    rate_limiter_reset.send = get_mock_coro(None)
+    rate_limiter_reset.send = AsyncMock()
     stats = make_stats()
     dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
         rate_limiter_reset, stats)
@@ -235,7 +235,7 @@ async def test_http_proxy_get(asyncio_loop, nursery):
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
     rate_limiter_reset = Mock()
-    rate_limiter_reset.send = get_mock_coro(None)
+    rate_limiter_reset.send = AsyncMock()
     stats = make_stats()
     dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
         rate_limiter_reset, stats)
@@ -289,7 +289,7 @@ async def test_socks_proxy_get(asyncio_loop, nursery):
     response_send, response_recv = trio.open_memory_channel(0)
     semaphore = trio.Semaphore(1)
     rate_limiter_reset = Mock()
-    rate_limiter_reset.send = get_mock_coro(None)
+    rate_limiter_reset.send = AsyncMock()
     stats = make_stats()
     dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
         rate_limiter_reset, stats)
