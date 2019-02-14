@@ -122,7 +122,7 @@ low-level details for each component.
 :ref:`captcha`
     Components that deal with CAPTCHA images.
 
-:ref:`crawl`
+:ref:`crawl_manager`
     The crawl manager is responsible for the lifecycle of crawl jobs, such as
     starting/stopping jobs and keeping track of resource usage.
 
@@ -132,11 +132,14 @@ low-level details for each component.
     significant portions of the crawling policy, such as enforcing proxy policy
     and MIME type rules.
 
+:ref:`frontier`
+    The crawl frontier keeps track of the URLs that are pending download.
+
 :ref:`extractor`
     Parses response bodies to discover new URLs that may be
     added to the crawl frontier.
 
-:ref:`login-manager`
+:ref:`login_manager`
     Automates the process of logging in to a site to perform an authenticated
     crawl.
 
@@ -145,7 +148,7 @@ low-level details for each component.
     robots.txt exclusion rules, how to prioritize URLs, how long to run the
     crawl, etc.
 
-:ref:`rate-limiter`
+:ref:`rate_limiter`
     Acts a bottleneck between the jobs' crawl
     frontiers and the jobs' downloaders. It prevents sites from being crawled
     too quickly, even when multiple jobs are crawling the same domain.
@@ -163,6 +166,9 @@ low-level details for each component.
 :ref:`scheduler`
     Controls the crawling schedule. When a job needs
     to run, the scheduler will automatically start it.
+
+:ref:`storage`
+    The crawl storage saves downloaded items into the database.
 
 .. _api_server:
 
@@ -215,14 +221,26 @@ Starbelly supports passing CAPTCHA images to third-party solving services.
 
 .. autofunction:: captcha_pb_to_doc
 
-.. _crawl:
+.. _crawl_manager:
 
-Crawl Manager
--------------
+Crawl Management
+----------------
 
-.. currentmodule:: starbelly.crawl
+Crawl management is implemented by two main classes. The first class,
+``CrawlManager`` acts as a registry and supervisor for all currently running
+jobs. All interactions with jobs (starting, pausing, etc.) are done through this
+class.
 
-TODO
+.. currentmodule:: starbelly.job
+
+.. autoclass:: CrawlManager
+    :members:
+
+Each job also has a single object that acts as a supervisor for all of the rest
+of the crawling components in that job.
+
+.. autoclass:: CrawlJob
+    :members:
 
 .. _downloader:
 
@@ -250,14 +268,29 @@ sending them back to the crawl manager.
 Extractor
 ---------
 
-.. currentmodule:: starbelly.url_extractor
+.. currentmodule:: starbelly.extractor
 
-After a resource is downloaded, the following function is called to extract
-URLs from the resource that the crawler can follow.
+The extractor component extracts URLs from download resources and adds those
+URLs that comply with the policy to the fontier.
 
-.. autofunction:: extract_urls
+.. autoclass:: CrawlExtractor
+    :members:
 
-.. _login-manager:
+.. _frontier:
+
+Frontier
+---------
+
+.. currentmodule:: starbelly.frontier
+
+The frontier component keeps track of which URLs are pending to be crawled. The
+frontier issues download requests ordered by "crawl cost", i.e. pending items
+with lower cost values are issued first.
+
+.. autoclass:: CrawlFrontier
+    :members:
+
+.. _login_manager:
 
 Login Manager
 -------------
@@ -272,9 +305,8 @@ request a CAPTCHA solution from a CAPTCHA solver.
 
 .. currentmodule:: starbelly.login
 
-.. autofunction:: get_login_form
-
-.. autofunction:: solve_captcha_asyncio
+.. autoclass:: LoginManager
+    :members:
 
 .. _policy:
 
@@ -318,7 +350,7 @@ A policy object is a container that includes many various subpolicies.
 .. autoclass:: PolicyUserAgents
     :members:
 
-.. _rate-limiter:
+.. _rate_limiter:
 
 Rate Limiter
 ------------
@@ -396,9 +428,16 @@ The following model classes are used by the Scheduler.
 .. autoclass:: ScheduleEvent
     :members:
 
-.. autoclass:: ScheduleNotification
-    :members:
-
 .. autoclass:: ScheduleValidationError
 
-.. _subscription:
+.. _storage:
+
+Storage
+---------
+
+.. currentmodule:: starbelly.storage
+
+The storage component saves downloaded items into the database.
+
+.. autoclass:: CrawlStorage
+    :members:
