@@ -4,8 +4,9 @@ docs:
 	cd docs && pipenv run make html
 
 init:
-	pip install pipenv
+	pip install codecov pipenv
 	pipenv install --dev
 
 test:
 	pipenv run pytest --cov=starbelly tests
+	codecov

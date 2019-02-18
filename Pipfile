@@ -16,7 +16,7 @@ protobuf = "*"
 psutil = "*"
 python-dateutil = "*"
 python-mimeparse = "*"
-rethinkdb = {ref = "trio", git = "https://github.com/mehaase/rethinkdb-python.git"}
+rethinkdb = {ref = "master", git = "https://github.com/mehaase/rethinkdb-python.git"}
 robotexclusionrulesparser = "*"
 trio = "*"
 trio-websocket = "*"
