@@ -1,23 +1,18 @@
-from .handler import handler
+import cProfile
+import operator
+import pstats
+
+import trio
+
+from . import api_handler, InvalidRequestException
 
 
-@handler
-async def ping(self, command, socket):
-    '''
-    A client may ping the server to prevent connection timeout.
-
-    This sends back whatever string was sent.
-    '''
-    response = Response()
-    response.ping.pong = command.pong
-    return response
-
-@handler
-async def profile(self, command, socket):
+@api_handler
+async def performance_profile(command, response):
     ''' Run CPU profiler. '''
     profile = cProfile.Profile()
     profile.enable()
-    await asyncio.sleep(command.duration)
+    await trio.sleep(command.duration)
     profile.disable()
 
     # pstats sorting only works when you use pstats printing... so we have
@@ -41,7 +36,6 @@ async def profile(self, command, socket):
         raise InvalidRequestException('Invalid sort key: {}'
             .format(command.sort_by))
 
-    response = Response()
     response.performance_profile.total_calls = pr_stats.total_calls
     response.performance_profile.total_time = pr_stats.total_tt
 
@@ -54,6 +48,3 @@ async def profile(self, command, socket):
         function.non_recursive_calls = stat['non_recursive_calls']
         function.total_time = stat['total_time']
         function.cumulative_time = stat['cumulative_time']
-
-    return response
-

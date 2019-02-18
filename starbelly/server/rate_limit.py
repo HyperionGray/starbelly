@@ -1,8 +1,8 @@
+from . import api_handler
 from ..rate_limiter import GLOBAL_RATE_LIMIT_TOKEN
-from .handler import handler
 
 
-@handler
+@api_handler
 async def get_rate_limits(self, command, socket):
     ''' Get a page of rate limits. '''
     limit = command.page.limit
@@ -37,7 +37,7 @@ async def get_rate_limits(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def set_rate_limit(self, command, socket):
     ''' Set a rate limit. '''
     rate_limit = command.rate_limit

@@ -9,13 +9,13 @@ import dateutil.parser
 import w3lib.url
 
 from .captcha import CaptchaSolver
-import protobuf.shared_pb2
+import starbelly.starbelly_pb2
 
 
 logger = logging.getLogger(__name__)
-ACTION_ENUM = protobuf.shared_pb2.PolicyUrlRule.Action
-MATCH_ENUM = protobuf.shared_pb2.PatternMatch
-USAGE_ENUM = protobuf.shared_pb2.PolicyRobotsTxt.Usage
+ACTION_ENUM = starbelly.starbelly_pb2.PolicyUrlRule.Action
+MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
+USAGE_ENUM = starbelly.starbelly_pb2.PolicyRobotsTxt.Usage
 
 
 class PolicyValidationError(Exception):
@@ -40,7 +40,7 @@ class Policy:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.Policy
+        :type pb: starbelly.starbelly_pb2.Policy
         '''
         pb.policy_id = UUID(doc['id']).bytes
         pb.name = doc['name']
@@ -73,7 +73,7 @@ class Policy:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.Policy.
+        :type pb: starbelly.starbelly_pb2.Policy.
         :returns: Database document.
         :rtype: dict
         '''
@@ -170,7 +170,7 @@ class PolicyAuthentication:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyAuthentication
+        :type pb: starbelly.starbelly_pb2.PolicyAuthentication
         '''
         pb.enabled = doc['enabled']
 
@@ -180,7 +180,7 @@ class PolicyAuthentication:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyAuthentication
+        :type pb: starbelly.starbelly_pb2.PolicyAuthentication
         :returns: Database document.
         :rtype: dict
         '''
@@ -213,7 +213,7 @@ class PolicyLimits:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyLimits
+        :type pb: starbelly.starbelly_pb2.PolicyLimits
         '''
         if doc.get('max_cost') is not None:
             pb.max_cost = doc['max_cost']
@@ -228,7 +228,7 @@ class PolicyLimits:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyLimits
+        :type pb: starbelly.starbelly_pb2.PolicyLimits
         :returns: Database document.
         :rtype: dict
         '''
@@ -290,7 +290,7 @@ class PolicyMimeTypeRules:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyMimeTypeRules
+        :type pb: starbelly.starbelly_pb2.PolicyMimeTypeRules
         '''
         for doc_mime in doc:
             pb_mime = pb.add()
@@ -307,7 +307,7 @@ class PolicyMimeTypeRules:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyMimeTypeRules
+        :type pb: starbelly.starbelly_pb2.PolicyMimeTypeRules
         :returns: Database document.
         :rtype: dict
         '''
@@ -334,7 +334,7 @@ class PolicyMimeTypeRules:
         # Rules are stored as list of tuples: (pattern, match, save)
         self._rules = list()
         max_index = len(docs) - 1
-        MATCH_ENUM = protobuf.shared_pb2.PatternMatch
+        MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
 
         for index, mime_type_rule in enumerate(docs):
             if index < max_index:
@@ -398,7 +398,7 @@ class PolicyProxyRules:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyProxyRules
+        :type pb: starbelly.starbelly_pb2.PolicyProxyRules
         '''
         for doc_proxy in doc:
             pb_proxy = pb.add()
@@ -415,7 +415,7 @@ class PolicyProxyRules:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyProxyRules
+        :type pb: starbelly.starbelly_pb2.PolicyProxyRules
         :returns: Database document.
         :rtype: dict
         '''
@@ -440,7 +440,7 @@ class PolicyProxyRules:
         # proxy_url)
         self._rules = list()
         max_index = len(docs) - 1
-        MATCH_ENUM = protobuf.shared_pb2.PatternMatch
+        MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
 
         for index, proxy_rule in enumerate(docs):
             if index < max_index:
@@ -529,7 +529,7 @@ class PolicyRobotsTxt:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyRobotsTxt
+        :type pb: starbelly.starbelly_pb2.PolicyRobotsTxt
         '''
         pb.usage = USAGE_ENUM.Value(doc['usage'])
 
@@ -539,7 +539,7 @@ class PolicyRobotsTxt:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyRobotsTxt
+        :type pb: starbelly.starbelly_pb2.PolicyRobotsTxt
         :returns: Database document.
         :rtype: dict
         '''
@@ -572,7 +572,7 @@ class PolicyUrlNormalization:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyUrlNormalization
+        :type pb: starbelly.starbelly_pb2.PolicyUrlNormalization
         '''
         if 'enabled' in doc:
             pb.enabled = doc['enabled']
@@ -584,7 +584,7 @@ class PolicyUrlNormalization:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyUrlNormalization
+        :type pb: starbelly.starbelly_pb2.PolicyUrlNormalization
         :returns: Database document.
         :rtype: dict
         '''
@@ -629,7 +629,7 @@ class PolicyUrlRules:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyUrlRules
+        :type pb: starbelly.starbelly_pb2.PolicyUrlRules
         '''
         for doc_url in doc:
             pb_url = pb.add()
@@ -648,7 +648,7 @@ class PolicyUrlRules:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyUrlRules
+        :type pb: starbelly.starbelly_pb2.PolicyUrlRules
         :returns: Database document.
         :rtype: dict
         '''
@@ -680,8 +680,8 @@ class PolicyUrlRules:
         self._rules = list()
         max_index = len(docs) - 1
         seed_domains = {urlparse(seed).hostname for seed in seeds}
-        ACTION_ENUM = protobuf.shared_pb2.PolicyUrlRule.Action
-        MATCH_ENUM = protobuf.shared_pb2.PatternMatch
+        ACTION_ENUM = starbelly.starbelly_pb2.PolicyUrlRule.Action
+        MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
 
         for index, url_rule in enumerate(docs):
             if index < max_index:
@@ -759,7 +759,7 @@ class PolicyUserAgents:
 
         :param dict doc: Database document.
         :param pb: An empty protobuf.
-        :type pb: protobuf.shared_pb2.PolicyUserAgents
+        :type pb: starbelly.starbelly_pb2.PolicyUserAgents
         '''
         for doc_user_agent in doc:
             pb_user_agent = pb.add()
@@ -771,7 +771,7 @@ class PolicyUserAgents:
         Convert protobuf to database document.
 
         :param pb: A protobuf
-        :type pb: protobuf.shared_pb2.PolicyUserAgents
+        :type pb: starbelly.starbelly_pb2.PolicyUserAgents
         :returns: Database document.
         :rtype: dict
         '''

@@ -12,6 +12,7 @@ from starbelly.db import (
     CrawlStorageDb,
     LoginDb,
     ScheduleDb,
+    ServerDb,
 )
 from starbelly.downloader import DownloadResponse
 from starbelly.job import RunState
@@ -726,3 +727,124 @@ class TestScheduleDb:
             query = schedule_table.get(schedule_id).pluck('job_count')
             result = await query.run(conn)
         assert result['job_count'] == 2
+
+
+class TestServerDb():
+    def _make_captcha_doc(self):
+        return {
+            'service_url': 'https://captcha.example',
+            'api_key': 'FAKE-API-KEY',
+            'require_phrase': False,
+            'case_sensitive': False,
+            'characters': 'ALPHANUMERIC',
+            'require_math': False,
+            'min_length': 5,
+            'max_length': 5,
+        }
+
+    def _make_policy_doc(self, captcha_id):
+        created_at = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        return {
+            'name': 'Test Policy',
+            'created_at': created_at,
+            'updated_at': created_at,
+            'authentication': {
+                'enabled': False,
+            },
+            'captcha_solver_id': captcha_id,
+            'limits': {
+                'max_cost': 10,
+                'max_duration': 3600,
+                'max_items': 10_000,
+            },
+            'mime_type_rules': [
+                {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+                {'save': False},
+            ],
+            'proxy_rules': [],
+            'robots_txt': {
+                'usage': 'IGNORE',
+            },
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': [],
+            },
+            'url_rules': [
+                {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+                 'pattern': '^https?://({SEED_DOMAINS})/'},
+                {'action': 'MULTIPLY', 'amount': 0},
+            ],
+            'user_agents': [
+                {'name': 'Test User Agent'}
+            ],
+        },
+
+
+    async def test_delete_captcha_solver(self, db_pool, captcha_solver_table,
+            policy_table):
+        ''' Create two captchas and try to delete them. One can be deleted
+        without issue, but the other is referenced by a policy and cannot be
+        deleted. '''
+        captcha_doc = self._make_captcha_doc()
+        async with db_pool.connection() as conn:
+            result = await captcha_solver_table.insert([captcha_doc,
+                captcha_doc]).run(conn)
+            captcha1_id, captcha2_id = result['generated_keys']
+            policy_doc = self._make_policy_doc(captcha2_id)
+            await policy_table.insert(policy_doc).run(conn)
+        server_db = ServerDb(db_pool)
+
+        # Delete 1 captcha:
+        await server_db.delete_captcha_solver(captcha1_id)
+        async with db_pool.connection() as conn:
+            count = await captcha_solver_table.count().run(conn)
+        assert count == 1
+
+        # Cannot delete the other captcha:
+        with pytest.raises(ValueError):
+            await server_db.delete_captcha_solver(captcha2_id)
+
+    async def test_get_captcha_solver(self, db_pool, captcha_solver_table):
+        captcha_doc = self._make_captcha_doc()
+        async with db_pool.connection() as conn:
+            result = await captcha_solver_table.insert(captcha_doc).run(conn)
+            captcha_id = result['generated_keys'][0]
+        server_db = ServerDb(db_pool)
+        doc = await server_db.get_captcha_solver(captcha_id)
+        assert doc['service_url'] == 'https://captcha.example'
+
+    async def test_list_captcha_solvers(self, db_pool, captcha_solver_table):
+        ''' Create 7 docs. Get pages of 5 items each. '''
+        captcha_docs = [self._make_captcha_doc()] * 7
+        async with db_pool.connection() as conn:
+            result = await captcha_solver_table.insert(captcha_docs).run(conn)
+
+        # Get first page:
+        server_db = ServerDb(db_pool)
+        count, docs = await server_db.list_captcha_solvers(limit=5, offset=0)
+        assert count == 7
+        assert len(docs) == 5
+        assert docs[0]['service_url'] == 'https://captcha.example'
+
+        # Get second page:
+        count, docs = await server_db.list_captcha_solvers(limit=5, offset=5)
+        assert count == 7
+        assert len(docs) == 2
+        assert docs[0]['service_url'] == 'https://captcha.example'
+
+    async def test_set_captcha_solver(self, db_pool, captcha_solver_table):
+        captcha_doc = self._make_captcha_doc()
+        async with db_pool.connection() as conn:
+            result = await captcha_solver_table.insert(captcha_doc).run(conn)
+            captcha_id = result['generated_keys'][0]
+
+        # Insert one doc
+        now = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        server_db = ServerDb(db_pool)
+        captcha_id = await server_db.set_captcha_solver(captcha_doc, now)
+        assert captcha_id is not None
+
+        # Update one doc
+        captcha_doc['id'] = captcha_id
+        captcha_id = await server_db.set_captcha_solver(captcha_doc, now)
+        assert captcha_id is None

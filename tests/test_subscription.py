@@ -7,9 +7,8 @@ import trio
 import trio.hazmat
 
 from . import assert_elapsed, assert_max_elapsed, assert_min_elapsed
-from protobuf.shared_pb2 import JobRunState
-from protobuf.server_pb2 import ServerMessage
 from starbelly.job import StatsTracker
+from starbelly.starbelly_pb2 import JobRunState, ServerMessage
 from starbelly.subscription import (
     ExponentialBackoff,
     JobStatusSubscription,

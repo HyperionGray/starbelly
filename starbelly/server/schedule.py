@@ -1,7 +1,7 @@
-from .handler import handler
+from . import api_handler
 
 
-@handler
+@api_handler
 async def delete_job_schedule(server, command, socket):
     ''' Delete a job schedule. '''
     schedule_id = str(UUID(bytes=command.schedule_id))
@@ -11,7 +11,7 @@ async def delete_job_schedule(server, command, socket):
     return Response()
 
 
-@handler
+@api_handler
 async def get_job_schedule(self, command, socket):
     ''' Get metadata for a job schedule. '''
     schedule_id = str(UUID(bytes=command.schedule_id))
@@ -27,7 +27,7 @@ async def get_job_schedule(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def list_job_schedules(self, command, socket):
     ''' Return a list of job schedules. '''
     limit = command.page.limit
@@ -53,7 +53,7 @@ async def list_job_schedules(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def set_job_schedule(self, command, socket):
     ''' Create or update job schedule metadata. '''
     doc = Scheduler.pb_to_doc(command.job_schedule)

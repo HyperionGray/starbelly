@@ -1,4 +1,4 @@
-from .handler import handler
+from . import api_handler
 from ..job import RunState
 
 # TODO: i moved thsi code from crawl manager to here. these methods don't act
@@ -170,7 +170,7 @@ from ..job import RunState
     #             await r.table('job').get(job_id).update(update).run(conn)
 
 
-@handler
+@api_handler
 async def delete_job(self, command, socket):
     ''' Delete a job. '''
     job_id = str(UUID(bytes=command.job_id))
@@ -178,7 +178,7 @@ async def delete_job(self, command, socket):
     return Response()
 
 
-@handler
+@api_handler
 async def get_job(self, command, socket):
     ''' Get status for a single job. '''
     job_id = str(UUID(bytes=command.job_id))
@@ -204,14 +204,14 @@ async def get_job(self, command, socket):
         if job_doc['completed_at'] is not None:
             job.completed_at = job_doc['completed_at'].isoformat()
         run_state = job_doc['run_state'].upper()
-        job.run_state = protobuf.shared_pb2.JobRunState.Value(run_state)
+        job.run_state = starbelly.starbelly_pb2.JobRunState.Value(run_state)
         http_status_counts = job_doc['http_status_counts']
         for status_code, count in http_status_counts.items():
             job.http_status_counts[int(status_code)] = count
     return response
 
 
-@handler
+@api_handler
 async def get_job_items(self, command, socket):
     ''' Get a page of items (crawl responses) from a job. '''
     job_id = str(UUID(bytes=command.job_id))
@@ -257,7 +257,7 @@ async def get_job_items(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def list_jobs(self, command, socket):
     ''' Return a list of jobs. '''
     limit = command.page.limit
@@ -291,7 +291,7 @@ async def list_jobs(self, command, socket):
         if job_doc['completed_at'] is not None:
             job.completed_at = job_doc['completed_at'].isoformat()
         run_state = job_doc['run_state'].upper()
-        job.run_state = protobuf.shared_pb2.JobRunState \
+        job.run_state = starbelly.starbelly_pb2.JobRunState \
             .Value(run_state)
         http_status_counts = job_doc['http_status_counts']
         for status_code, count in http_status_counts.items():
@@ -300,7 +300,7 @@ async def list_jobs(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def set_job(self, command, socket):
     ''' Create or update job metadata. '''
     #TODO
@@ -319,11 +319,11 @@ async def set_job(self, command, socket):
 
         if command.HasField('run_state'):
             run_state = command.run_state
-            if run_state == protobuf.shared_pb2.CANCELLED:
+            if run_state == starbelly.starbelly_pb2.CANCELLED:
                 await self._crawl_manager.cancel_job(job_id)
-            elif run_state == protobuf.shared_pb2.PAUSED:
+            elif run_state == starbelly.starbelly_pb2.PAUSED:
                 await self._crawl_manager.pause_job(job_id)
-            elif run_state == protobuf.shared_pb2.RUNNING:
+            elif run_state == starbelly.starbelly_pb2.RUNNING:
                 await self._crawl_manager.resume_job(job_id)
             else:
                 raise Exception('Not allowed to set job run state: {}'
@@ -343,7 +343,7 @@ async def set_job(self, command, socket):
             if len(seeds) > 1:
                 name += '& {} more'.format(len(seeds) - 1)
 
-        if command.run_state != protobuf.shared_pb2.RUNNING:
+        if command.run_state != starbelly.starbelly_pb2.RUNNING:
             raise InvalidRequestException(
                 'New job state must be set to RUNNING')
 

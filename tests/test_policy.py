@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 
-import protobuf.shared_pb2
 import pytest
 
 from starbelly.captcha import CaptchaSolver
@@ -17,11 +16,12 @@ from starbelly.policy import (
     PolicyUrlRules,
     PolicyUserAgents,
 )
+import starbelly.starbelly_pb2
 
 
-ACTION_ENUM = protobuf.shared_pb2.PolicyUrlRule.Action
-MATCH_ENUM = protobuf.shared_pb2.PatternMatch
-USAGE_ENUM = protobuf.shared_pb2.PolicyRobotsTxt.Usage
+ACTION_ENUM = starbelly.starbelly_pb2.PolicyUrlRule.Action
+MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
+USAGE_ENUM = starbelly.starbelly_pb2.PolicyRobotsTxt.Usage
 
 
 def test_convert_policy_doc_to_pb():
@@ -63,7 +63,7 @@ def test_convert_policy_doc_to_pb():
             {'name': 'Test User Agent'}
         ]
     }
-    pb = protobuf.shared_pb2.Policy()
+    pb = starbelly.starbelly_pb2.Policy()
     Policy.convert_doc_to_pb(doc, pb)
     assert pb.policy_id == b'\x01\xb6\x0e\xeb*\xc9OA\x9b\x0cG\xdc\xbc\xf67\xf7'
     assert pb.name == 'Test'
@@ -143,7 +143,7 @@ def test_convert_policy_doc_to_pb_captcha():
             {'name': 'Test User Agent'}
         ]
     }
-    pb = protobuf.shared_pb2.Policy()
+    pb = starbelly.starbelly_pb2.Policy()
     Policy.convert_doc_to_pb(doc, pb)
     assert pb.captcha_solver_id == \
         b'\xe2\x72\x23\xd3\x85\xef\x4e\x89\x8f\xc8\xdb\xcf\x8d\xf0\xce\x97'
@@ -152,7 +152,7 @@ def test_convert_policy_doc_to_pb_captcha():
 def test_convert_policy_pb_to_doc():
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc) + timedelta(minutes=1)
-    pb = protobuf.shared_pb2.Policy()
+    pb = starbelly.starbelly_pb2.Policy()
     pb.policy_id = \
         b'\x01\xb6\x0e\xeb*\xc9OA\x9b\x0cG\xdc\xbc\xf67\xf7'
     pb.name = 'Test'
@@ -255,7 +255,7 @@ def test_convert_policy_pb_to_doc():
 def test_convert_policy_pb_to_doc_captcha():
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc) + timedelta(minutes=1)
-    pb = protobuf.shared_pb2.Policy()
+    pb = starbelly.starbelly_pb2.Policy()
     pb.policy_id = \
         b'\x01\xb6\x0e\xeb*\xc9OA\x9b\x0cG\xdc\xbc\xf67\xf7'
     pb.name = 'Test'

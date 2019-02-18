@@ -1,7 +1,7 @@
 import base64
 from uuid import UUID
 
-import protobuf.shared_pb2
+import starbelly.starbelly_pb2
 
 
 class CaptchaSolver:
@@ -65,7 +65,7 @@ def captcha_doc_to_pb(doc):
     :param dict doc: A database document.
     :returns: A protobuf message.
     '''
-    pb = protobuf.shared_pb2.CaptchaSolver()
+    pb = starbelly.starbelly_pb2.CaptchaSolver()
     pb.name = doc['name']
     pb.solver_id = UUID(doc['id']).bytes
     pb.created_at = doc['created_at'].isoformat()
@@ -85,12 +85,12 @@ def _antigate_doc_to_pb(doc):
     :param dict doc: A database document.
     :returns: A protobuf message.
    '''
-    pb = protobuf.shared_pb2.CaptchaSolverAntigate()
+    pb = starbelly.starbelly_pb2.CaptchaSolverAntigate()
     pb.service_url = doc['service_url']
     pb.api_key = doc['api_key']
     pb.require_phrase = doc['require_phrase']
     pb.case_sensitive = doc['case_sensitive']
-    pb.characters = protobuf.shared_pb2.CaptchaSolverAntigateCharacters \
+    pb.characters = starbelly.starbelly_pb2.CaptchaSolverAntigateCharacters \
         .Value(doc['characters'])
     pb.require_math = doc['require_math']
     if 'min_length' in doc:
@@ -135,7 +135,7 @@ def _antigate_pb_to_doc(pb):
         'api_key': antigate.api_key,
         'require_phrase': antigate.require_phrase,
         'case_sensitive': antigate.case_sensitive,
-        'characters': protobuf.shared_pb2.CaptchaSolverAntigateCharacters \
+        'characters': starbelly.starbelly_pb2.CaptchaSolverAntigateCharacters \
             .Name(antigate.characters),
         'require_math': antigate.require_math,
         'type': 'antigate',

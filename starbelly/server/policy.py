@@ -1,8 +1,8 @@
-from .handler import handler
+from . import api_handler
 from .policy import Policy
 
 
-@handler
+@api_handler
 async def delete_policy(server, command, socket):
     ''' Delete a policy. '''
     policy_id = str(UUID(bytes=command.policy_id))
@@ -11,7 +11,7 @@ async def delete_policy(server, command, socket):
     return Response()
 
 
-@handler
+@api_handler
 async def get_policy(self, command, socket):
     ''' Get a single policy. '''
     policy_id = str(UUID(bytes=command.policy_id))
@@ -22,7 +22,7 @@ async def get_policy(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def list_policies(self, command, socket):
     ''' Get a list of policies. '''
     limit = command.page.limit

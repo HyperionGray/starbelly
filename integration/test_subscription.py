@@ -9,8 +9,8 @@ from rethinkdb import RethinkDB
 import trio
 
 from . import fail_after
-from protobuf.server_pb2 import ServerMessage, SubscriptionClosed
 from starbelly.job import JobStateEvent, RunState
+from starbelly.starbelly_pb2 import ServerMessage, SubscriptionClosed
 from starbelly.subscription import (
     CrawlSyncSubscription,
 )

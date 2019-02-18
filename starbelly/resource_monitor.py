@@ -8,7 +8,7 @@ from time import time
 import psutil
 import trio
 
-from protobuf.server_pb2 import ServerMessage
+from .starbelly_pb2 import ServerMessage
 
 
 logger = logging.getLogger(__name__)

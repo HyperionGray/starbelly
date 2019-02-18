@@ -1,7 +1,7 @@
-from .handler import handler
+from . import api_handler
 
 
-@handler
+@api_handler
 async def delete_domain_login(server, command, socket):
     ''' Delete a domain login and all of its users. '''
     if command.HasField('domain'):
@@ -20,7 +20,7 @@ async def delete_domain_login(server, command, socket):
     return Response()
 
 
-@handler
+@api_handler
 async def get_domain_login(self, command, socket):
     ''' Get a domain login. '''
     if not command.HasField('domain'):
@@ -55,7 +55,7 @@ async def get_domain_login(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def list_domain_logins(self, command, socket):
     ''' Return a list of domain logins. '''
     limit = command.page.limit
@@ -87,7 +87,7 @@ async def list_domain_logins(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def set_domain_login(self, command, socket):
     ''' Create or update a domain login. '''
     domain_login = command.login

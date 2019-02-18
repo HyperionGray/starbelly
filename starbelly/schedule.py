@@ -11,7 +11,7 @@ import trio
 
 from .job import JobStateEvent, RunState
 from protobuf import pb_date
-from protobuf.shared_pb2 import (
+from starbelly.starbelly_pb2 import (
     JobScheduleTiming as PbJobScheduleTiming,
     JobScheduleTimeUnit as PbJobScheduleTimeUnit,
 )

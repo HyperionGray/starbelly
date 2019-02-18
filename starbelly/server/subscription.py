@@ -1,4 +1,4 @@
-from .handler import handler
+from . import api_handler
 from ..subscription import (
     CrawlSyncSubscription,
     JobStatusSubscription,
@@ -36,7 +36,7 @@ from ..subscription import (
 #  * close all subscriptions on socket
 #  * close all subscriptions (this is probably an implicit part of shutting down a socket?)
 
-@handler
+@api_handler
 async def subscribe_crawl_sync(self, command, socket):
     ''' Handle the subscribe crawl items command. '''
     job_id = str(UUID(bytes=command.job_id))
@@ -58,7 +58,7 @@ async def subscribe_crawl_sync(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def subscribe_job_status(self, command, socket):
     ''' Handle the subscribe crawl status command. '''
     subscription = JobStatusSubscription(
@@ -72,7 +72,7 @@ async def subscribe_job_status(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def subscribe_resource_monitor(self, command, socket):
     ''' Handle the subscribe resource monitor command. '''
     subscription = ResourceMonitorSubscription(socket,
@@ -83,7 +83,7 @@ async def subscribe_resource_monitor(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def subscribe_task_monitor(self, command, socket):
     ''' Handle the subscribe task monitor command. '''
     subscription = TaskMonitorSubscription(socket, command.period,
@@ -94,7 +94,7 @@ async def subscribe_task_monitor(self, command, socket):
     return response
 
 
-@handler
+@api_handler
 async def unsubscribe(self, command, socket):
     ''' Handle an unsubscribe command. '''
     sub_id = command.subscription_id

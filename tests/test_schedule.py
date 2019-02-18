@@ -3,11 +3,6 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, MagicMock
 from uuid import UUID
 
-from protobuf.shared_pb2 import (
-    JobSchedule as PbJobSchedule,
-    JobScheduleTiming as PbJobScheduleTiming,
-    JobScheduleTimeUnit as PbJobScheduleTimeUnit,
-)
 import pytest
 import trio
 
@@ -18,6 +13,11 @@ from starbelly.schedule import (
     Scheduler,
     ScheduleEvent,
     ScheduleValidationError
+)
+from starbelly.starbelly_pb2 import (
+    JobSchedule as PbJobSchedule,
+    JobScheduleTiming as PbJobScheduleTiming,
+    JobScheduleTimeUnit as PbJobScheduleTimeUnit,
 )
 
 

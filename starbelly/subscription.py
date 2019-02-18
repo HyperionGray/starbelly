@@ -13,14 +13,13 @@ import math
 import struct
 from uuid import UUID
 
-from protobuf.shared_pb2 import JobRunState
-from protobuf.server_pb2 import ServerMessage, SubscriptionClosed
 from rethinkdb import RethinkDB
 import trio
 import websockets.exceptions
 
 from .backoff import ExponentialBackoff
 from .job import RunState
+from .starbelly_pb2 import JobRunState, ServerMessage, SubscriptionClosed
 
 
 r = RethinkDB()
@@ -351,7 +350,7 @@ class JobStatusSubscription:
         '''
         Make an event to send to the client and update internal state.
 
-        :rtype: protobuf.server_pb2.ServerMessage
+        :rtype: starbelly_pb2.ServerMessage
         '''
         message = ServerMessage()
         message.event.subscription_id = self._id
@@ -391,7 +390,7 @@ class JobStatusSubscription:
         shared stream, including acquiring a lock for the stream and shielding
         the send from cancellation.
 
-        :param protobuf.server_pb2.ServerMessage event:
+        :param starbelly_pb2.ServerMessage event:
         '''
         async with self._stream_lock:
             with trio.open_cancel_scope(shield=True):
@@ -457,7 +456,7 @@ class ResourceMonitorSubscription:
         '''
         Make an event to send to the client.
 
-        :rtype: protobuf.server_pb2.ServerMessage
+        :rtype: starbelly_pb2.ServerMessage
         '''
         message = ServerMessage()
         message.event.subscription_id = self._id
@@ -500,7 +499,7 @@ class ResourceMonitorSubscription:
         shared stream, including acquiring a lock for the stream and shielding
         the send from cancellation.
 
-        :param protobuf.server_pb2.ServerMessage event:
+        :param starbelly_pb2.ServerMessage event:
         '''
         async with self._stream_lock:
             with trio.open_cancel_scope(shield=True):
@@ -557,7 +556,7 @@ class TaskMonitorSubscription:
         '''
         Make an event containing task monitor data.
 
-        :rtype: protobuf.server_pb2.ServerMessage
+        :rtype: starbelly_pb2.ServerMessage
         '''
         message = ServerMessage()
         message.event.subscription_id = self._id
@@ -582,7 +581,7 @@ class TaskMonitorSubscription:
         shared stream, including acquiring a lock for the stream and shielding
         the send from cancellation.
 
-        :param protobuf.server_pb2.ServerMessage event:
+        :param starbelly_pb2.ServerMessage event:
         '''
         async with self._stream_lock:
             with trio.open_cancel_scope(shield=True):

@@ -3,12 +3,12 @@ from uuid import UUID
 
 import pytest
 
-from protobuf.shared_pb2 import CaptchaSolverAntigateCharacters
 from starbelly.captcha import (
     CaptchaSolver,
     captcha_doc_to_pb,
     captcha_pb_to_doc,
 )
+from starbelly.starbelly_pb2 import CaptchaSolverAntigateCharacters
 
 
 def test_captcha_command():
@@ -16,7 +16,7 @@ def test_captcha_command():
         'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
         'name': 'Captcha #1',
         'service_url': 'https://captcha.example/service.php',
-        'api_key': 'ABCDEFGH',
+        'api_key': 'FAKE-API-KEY',
         'require_phrase': False,
         'case_sensitive': True,
         'characters': 'ALPHANUMERIC',
@@ -25,7 +25,7 @@ def test_captcha_command():
     solver = CaptchaSolver(captcha_doc)
     img_data = b'\x01\x02\x03\x04'
     command = solver.get_command(img_data)
-    assert command['clientKey'] == 'ABCDEFGH'
+    assert command['clientKey'] == 'FAKE-API-KEY'
     assert command['task']['type'] == 'ImageToTextTask'
     assert command['task']['body'] == 'AQIDBA==' # Base64 of img_data
     assert not command['task']['phrase']
@@ -45,7 +45,7 @@ def test_captcha_doc_to_pb():
         'updated_at': datetime(2019, 1, 26, 15, 35, 0, tzinfo=timezone.utc),
         'name': 'Captcha #1',
         'service_url': 'https://captcha.example/service.php',
-        'api_key': 'ABCDEFGH',
+        'api_key': 'FAKE-API-KEY',
         'require_phrase': False,
         'case_sensitive': True,
         'characters': 'ALPHANUMERIC',
@@ -58,7 +58,7 @@ def test_captcha_doc_to_pb():
     assert pb_captcha.updated_at == '2019-01-26T15:35:00+00:00'
     assert pb_captcha.antigate.service_url == \
         'https://captcha.example/service.php'
-    assert pb_captcha.antigate.api_key == 'ABCDEFGH'
+    assert pb_captcha.antigate.api_key == 'FAKE-API-KEY'
     assert not pb_captcha.antigate.require_phrase
     assert pb_captcha.antigate.case_sensitive
     assert pb_captcha.antigate.characters == \
@@ -70,7 +70,7 @@ def test_captcha_doc_to_pb():
     assert captcha_doc['name'] == 'Captcha #1'
     assert captcha_doc['type'] == 'antigate'
     assert captcha_doc['service_url'] == 'https://captcha.example/service.php'
-    assert captcha_doc['api_key'] == 'ABCDEFGH'
+    assert captcha_doc['api_key'] == 'FAKE-API-KEY'
     assert captcha_doc['require_phrase'] == False
     assert captcha_doc['case_sensitive'] == True
     assert captcha_doc['characters'] == 'ALPHANUMERIC'

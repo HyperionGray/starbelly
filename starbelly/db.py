@@ -443,3 +443,98 @@ class ScheduleDb:
             'job_count': job_count})
         async with self._db_pool.connection() as conn:
             await update_query.run(conn)
+
+
+class ServerDb:
+    ''' Handles database queries for the Server class. '''
+    def __init__(self, db_pool):
+        '''
+        Constructor
+
+        :param db_pool: A RethinkDB connection pool.
+        '''
+        self._db_pool = db_pool
+
+    async def delete_captcha_solver(self, solver_id):
+        '''
+        Delete a CAPTCHA solver document.
+
+        This checks if any policies are depending on the CAPTCHA solver. If so
+        it raises ValueError.
+
+        :param str solver_id:
+        '''
+        async with self._db_pool.connection() as conn:
+            use_count = await (
+                r.table('policy')
+                 .filter({'captcha_solver_id': solver_id})
+                 .count()
+                 .run(conn)
+            )
+            if use_count > 0:
+                raise ValueError('Cannot delete CAPTCHA solver'
+                    ' because it is being used by a policy.')
+            await (
+                r.table('captcha_solver')
+                 .get(solver_id)
+                 .delete()
+                 .run(conn)
+            )
+
+    async def get_captcha_solver(self, solver_id):
+        '''
+        Get a CAPTCHA solver document.
+
+        :param str solver_id:
+        :returns: A database document.
+        :rtype: dict
+        '''
+        async with self._db_pool.connection() as conn:
+            doc = await r.table('captcha_solver').get(solver_id).run(conn)
+        return doc
+
+    async def list_captcha_solvers(self, limit, offset):
+        '''
+        Get a list of CAPTCHA solver documents sorted by name.
+
+        :param int limit:
+        :param int offset:
+        :returns: Total count of documents and list of current page.
+        :rtype: tuple(int, list)
+        '''
+        async with self._db_pool.connection() as conn:
+            count = await r.table('captcha_solver').count().run(conn)
+            docs = await (
+                r.table('captcha_solver')
+                 .order_by('name')
+                 .skip(offset)
+                 .limit(limit)
+                 .run(conn)
+            )
+        return count, docs
+
+    async def set_captcha_solver(self, doc, now):
+        '''
+        Insert/update CAPTCHA solver. Populate created_at/updated_at fields.
+
+        :param dict doc: A database document.
+        :param datetime now: The datetime to place in updated (and possibly
+            created) fields.
+        :returns: ID of new CAPTCHA document, if any.
+        :rtype: str
+        '''
+        doc['updated_at'] = now
+
+        async with self._db_pool.connection() as conn:
+            if 'id' in doc:
+                await r.table('captcha_solver').update(doc).run(conn)
+                solver_id = None
+            else:
+                doc['created_at'] = now
+                result = await r.table('captcha_solver').insert(doc).run(conn)
+                solver_id = result['generated_keys'][0]
+
+        return solver_id
+
+
+
