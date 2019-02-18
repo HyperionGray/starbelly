@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9b6652621c72b54f6f76d97855c59b9526e53e14f5a01fc4e0250edf05baa0ba"
+            "sha256": "84ad4474022bdd6f7b71c273643277508bb691da844d0de3e8dc4e9ceac231fd"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -607,8 +607,7 @@
             "version": "==1.4.3"
         },
         "rethinkdb": {
-            "git": "https://github.com/mehaase/rethinkdb-python.git",
-            "ref": "f4316eee8270a9652995c64d4d375f1791d1853f"
+            "file": "https://s3-us-west-2.amazonaws.com/hyperiongray/rethinkdb-2.4.0-mark1.tar.gz"
         },
         "robotexclusionrulesparser": {
             "hashes": [
@@ -648,7 +647,6 @@
                 "sha256:ed537844348402ed53420187b3a6948c576986d0b2811a987a49613b6a26f29e",
                 "sha256:fcca54733e692fe03b8584f7d4b9344f4b6e3a74f5b326c6e5f5e9d2504bdce7"
             ],
-            "markers": "extra == 'with-deps'",
             "version": "==0.20.2"
         },
         "scipy": {
@@ -682,7 +680,6 @@
                 "sha256:f31338ee269d201abe76083a990905473987371ff6f3fdb76a3f9073a361cf37",
                 "sha256:f6b88c8d302c3dac8dff7766955e38d670c82e0d79edfc7eae47d6bb2c186594"
             ],
-            "markers": "extra == 'with-deps'",
             "version": "==1.2.1"
         },
         "six": {
@@ -697,7 +694,6 @@
                 "sha256:2f59aad3055e01a778a79a6352891cac04788e8b52688aa5bc8b11be7717861e",
                 "sha256:6e9a42bc3de96941d5f7262335130955b8c380b1356147622368f385075705d9"
             ],
-            "markers": "extra == 'with-deps'",
             "version": "==0.3.6"
         },
         "sniffio": {

@@ -8,7 +8,6 @@ name = "pypi"
 cchardet = "*"
 coveralls = "*"
 feedparser = "*"
-formasaurus = {extras = ["with-deps"], version = "*"}
 humanize = "*"
 lxml = "*"
 multidict = "*"
@@ -16,7 +15,7 @@ protobuf = "*"
 psutil = "*"
 python-dateutil = "*"
 python-mimeparse = "*"
-rethinkdb = {ref = "master", git = "https://github.com/mehaase/rethinkdb-python.git"}
+rethinkdb = {file = "https://s3-us-west-2.amazonaws.com/hyperiongray/rethinkdb-2.4.0-mark1.tar.gz"}
 robotexclusionrulesparser = "*"
 trio = "*"
 trio-websocket = "*"
@@ -33,6 +32,7 @@ aiohttp = "*"
 aiohttp-socks = "*"
 async-timeout = "*"
 pytest-mock = "*"
+formasaurus = {extras = ["with-deps"],version = "*"}
 
 [dev-packages]
 nose = "*"
