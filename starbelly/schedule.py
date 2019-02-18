@@ -1,6 +1,7 @@
 import calendar
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import dateutil
 import functools
 import heapq
 import logging
@@ -10,7 +11,6 @@ from rethinkdb import RethinkDB
 import trio
 
 from .job import JobStateEvent, RunState
-from protobuf import pb_date
 from starbelly.starbelly_pb2 import (
     JobScheduleTiming as PbJobScheduleTiming,
     JobScheduleTimeUnit as PbJobScheduleTimeUnit,
@@ -23,6 +23,16 @@ r = RethinkDB()
 
 class ScheduleValidationError(Exception):
     ''' Custom error for job schedule validation. '''
+
+
+#TODO remove me or move me somewhere more appropriate?
+def pb_date(pb, date_attr):
+    if pb.HasField(date_attr):
+        dt = dateutil.parser.parse(getattr(pb, date_attr))
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = None
+    return dt
 
 
 @dataclass
