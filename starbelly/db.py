@@ -457,7 +457,7 @@ class ServerDb:
 
     async def delete_captcha_solver(self, solver_id):
         '''
-        Delete a CAPTCHA solver document.
+        Delete a CAPTCHA solver.
 
         This checks if any policies are depending on the CAPTCHA solver. If so
         it raises ValueError.
@@ -483,7 +483,7 @@ class ServerDb:
 
     async def get_captcha_solver(self, solver_id):
         '''
-        Get a CAPTCHA solver document.
+        Get a CAPTCHA solver.
 
         :param str solver_id:
         :returns: A database document.
@@ -495,7 +495,7 @@ class ServerDb:
 
     async def list_captcha_solvers(self, limit, offset):
         '''
-        Get a list of CAPTCHA solver documents sorted by name.
+        Get a list of CAPTCHA solvers sorted by name.
 
         :param int limit:
         :param int offset:
@@ -535,6 +535,140 @@ class ServerDb:
                 solver_id = result['generated_keys'][0]
 
         return solver_id
+
+    async def delete_domain_login(self, domain):
+        '''
+        Delete the login for a given domain.
+
+        :param str domain:
+        '''
+        async with self._db_pool.connection() as conn:
+            await (
+                r.table('domain_login')
+                 .get(domain)
+                 .delete()
+                 .run(conn)
+            )
+
+    async def get_domain_login(self, domain):
+        '''
+        Get the login for a given domain.
+
+        :param str domain:
+        :returns: A database document.
+        :rtype: dict
+        '''
+        async with self._db_pool.connection() as conn:
+            count = await r.table('domain_login').count().run(conn)
+            domain_login = await (
+                r.table('domain_login')
+                 .get(domain)
+                 .run(conn)
+            )
+        return domain_login
+
+    async def list_domain_logins(self, limit, offset):
+        '''
+        Get a list of domain logins sorted by domain.
+
+        :param int limit:
+        :param int offset:
+        :returns: Total count of documents and list of current page.
+        :rtype: tuple(int, list)
+        '''
+        docs = list()
+        async with self._db_pool.connection() as conn:
+            count = await r.table('domain_login').count().run(conn)
+            cursor = await (
+                r.table('domain_login')
+                 .order_by(index='domain')
+                 .skip(offset)
+                 .limit(limit)
+                 .run(conn)
+            )
+            async with cursor:
+                async for doc in cursor:
+                    docs.append(doc)
+        return count, docs
+
+    async def set_domain_login(self, doc):
+        '''
+        Insert/update a domain login.
+
+        :param dict doc: A database document.
+        '''
+        async with self._db_pool.connection() as conn:
+            await (
+                r.table('domain_login')
+                 .insert(doc, conflict='update')
+                 .run(conn)
+            )
+
+    async def delete_policy(self, policy_id):
+        '''
+        Delete the specified policy.
+
+        :param str policy_id:
+        '''
+        async with self._db_pool.connection() as conn:
+            await r.table('policy').get(policy_id).delete().run(conn)
+
+    async def get_policy(self, policy_id):
+        '''
+        Get a policy.
+
+        :param str policy_id:
+        :returns: A database document.
+        :rtype: dict
+        '''
+        async with self._db_pool.connection() as conn:
+            policy_doc = await r.table('policy').get(policy_id).run(conn)
+        return policy_doc
+
+    async def list_policies(self, limit, offset):
+        '''
+        Get a list of policies sorted by name.
+
+        :param int limit:
+        :param int offset:
+        :returns: Total count of documents and list of current page.
+        :rtype: tuple(int, list)
+        '''
+        policies = list()
+        policy_table = r.table('policy')
+        query = policy_table.order_by(index='name').skip(offset).limit(limit)
+
+        async with self._db_pool.connection() as conn:
+            count = await policy_table.count().run(conn)
+            cursor = await query.run(conn)
+            async with cursor:
+                async for policy in cursor:
+                    policies.append(policy)
+
+        return count, policies
+
+    async def set_policy(self, doc, now):
+        '''
+        Insert/update a policy.
+
+        :param dict doc: A database document.
+        :param datetime now: The datetime to place in updated (and possibly
+            created) fields.
+        :returns: ID of new CAPTCHA document, if any.
+        :rtype: str
+        '''
+        async with self._db_pool.connection() as conn:
+            if 'id' in doc:
+                doc['updated_at'] = now
+                await r.table('policy').get(doc['id']).update(doc).run(conn)
+                policy_id = None
+            else:
+                doc['created_at'] = now
+                doc['updated_at'] = now
+                result = await r.table('policy').insert(doc).run(conn)
+                policy_id = result['generated_keys'][0]
+
+        return policy_id
 
 
 

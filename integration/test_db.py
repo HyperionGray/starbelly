@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 from operator import itemgetter
 import pickle
 
@@ -18,6 +19,7 @@ from starbelly.downloader import DownloadResponse
 from starbelly.job import RunState
 
 
+logger = logging.getLogger(__name__)
 r = RethinkDB()
 r.set_loop_type('trio')
 
@@ -36,6 +38,15 @@ async def captcha_solver_table(db_pool):
     yield r.table('captcha_solver')
     async with db_pool.connection() as conn:
         await r.table_drop('captcha_solver').run(conn)
+
+
+@pytest.fixture
+async def domain_login_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('domain_login', primary_key='domain').run(conn)
+    yield r.table('domain_login')
+    async with db_pool.connection() as conn:
+        await r.table_drop('domain_login').run(conn)
 
 
 @pytest.fixture
@@ -65,18 +76,11 @@ async def job_table(db_pool):
 
 
 @pytest.fixture
-async def login_table(db_pool):
-    async with db_pool.connection() as conn:
-        await r.table_create('domain_login', primary_key='domain').run(conn)
-    yield r.table('domain_login')
-    async with db_pool.connection() as conn:
-        await r.table_drop('domain_login').run(conn)
-
-
-@pytest.fixture
 async def policy_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create('policy').run(conn)
+        await r.table('policy').index_create('name').run(conn)
+        await r.table('policy').index_wait('name').run(conn)
     yield r.table('policy')
     async with db_pool.connection() as conn:
         await r.table_drop('policy').run(conn)
@@ -605,9 +609,9 @@ class TestCrawlStorageDb:
 
 
 class TestLoginDb:
-    async def test_get_login(self, db_pool, login_table):
+    async def test_get_login(self, db_pool, domain_login_table):
         async with db_pool.connection() as conn:
-            await login_table.insert({
+            await domain_login_table.insert({
                 'domain': 'login.example',
                 'login_url': 'https://login.example/login.html',
                 'users': [
@@ -742,44 +746,6 @@ class TestServerDb():
             'max_length': 5,
         }
 
-    def _make_policy_doc(self, captcha_id):
-        created_at = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        return {
-            'name': 'Test Policy',
-            'created_at': created_at,
-            'updated_at': created_at,
-            'authentication': {
-                'enabled': False,
-            },
-            'captcha_solver_id': captcha_id,
-            'limits': {
-                'max_cost': 10,
-                'max_duration': 3600,
-                'max_items': 10_000,
-            },
-            'mime_type_rules': [
-                {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
-                {'save': False},
-            ],
-            'proxy_rules': [],
-            'robots_txt': {
-                'usage': 'IGNORE',
-            },
-            'url_normalization': {
-                'enabled': True,
-                'strip_parameters': [],
-            },
-            'url_rules': [
-                {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
-                 'pattern': '^https?://({SEED_DOMAINS})/'},
-                {'action': 'MULTIPLY', 'amount': 0},
-            ],
-            'user_agents': [
-                {'name': 'Test User Agent'}
-            ],
-        },
-
-
     async def test_delete_captcha_solver(self, db_pool, captcha_solver_table,
             policy_table):
         ''' Create two captchas and try to delete them. One can be deleted
@@ -815,7 +781,7 @@ class TestServerDb():
 
     async def test_list_captcha_solvers(self, db_pool, captcha_solver_table):
         ''' Create 7 docs. Get pages of 5 items each. '''
-        captcha_docs = [self._make_captcha_doc()] * 7
+        captcha_docs = [self._make_captcha_doc() for _ in range(7)]
         async with db_pool.connection() as conn:
             result = await captcha_solver_table.insert(captcha_docs).run(conn)
 
@@ -848,3 +814,179 @@ class TestServerDb():
         captcha_doc['id'] = captcha_id
         captcha_id = await server_db.set_captcha_solver(captcha_doc, now)
         assert captcha_id is None
+
+    def _make_domain_login(self):
+        return {
+            'domain': 'login.example',
+            'login_url': 'https://login.example/login.aspx',
+            'login_test': None,
+            'users': [
+                {'username': 'john.doe', 'password': 'fake', 'working': True},
+                {'username': 'jane.doe', 'password': 'fake', 'working': True},
+            ],
+        }
+
+    async def test_delete_domain_login(self, db_pool, domain_login_table):
+        domain_login = self._make_domain_login()
+        async with db_pool.connection() as conn:
+            result = await domain_login_table.insert(domain_login).run(conn)
+        server_db = ServerDb(db_pool)
+        await server_db.delete_domain_login('login.example')
+        async with db_pool.connection() as conn:
+            count = await domain_login_table.count().run(conn)
+        assert count == 0
+
+    async def test_get_domain_login(self, db_pool, domain_login_table):
+        domain_login = self._make_domain_login()
+        async with db_pool.connection() as conn:
+            result = await domain_login_table.insert(domain_login).run(conn)
+        server_db = ServerDb(db_pool)
+        doc = await server_db.get_domain_login('login.example')
+        assert doc['login_url'] == 'https://login.example/login.aspx'
+        assert doc['users'][0]['username'] == 'john.doe'
+
+    async def test_list_domain_logins(self, db_pool, domain_login_table):
+        ''' Create 7 docs. Get pages of 5 items each. '''
+        # This table's primary key is domain, so we'll change the domain for
+        # each login to make it unique.
+        domain_logins = list()
+        for i in range(7):
+            dl = self._make_domain_login()
+            dl['domain'] = 'login{}.example'.format(i)
+            dl['login_url'] = 'https://login{}.example/login.aspx'.format(i)
+            domain_logins.append(dl)
+        async with db_pool.connection() as conn:
+            result = await domain_login_table.insert(domain_logins).run(conn)
+
+        # Get first page:
+        server_db = ServerDb(db_pool)
+        count, docs = await server_db.list_domain_logins(limit=5, offset=0)
+        assert count == 7
+        assert len(docs) == 5
+        assert docs[0]['login_url'] == 'https://login0.example/login.aspx'
+
+        # Get second page:
+        count, docs = await server_db.list_domain_logins(limit=5, offset=5)
+        assert count == 7
+        assert len(docs) == 2
+        assert docs[0]['login_url'] == 'https://login5.example/login.aspx'
+
+    async def test_set_domain_login(self, db_pool, domain_login_table):
+        # Insert domain login:
+        domain_login = self._make_domain_login()
+        server_db = ServerDb(db_pool)
+        await server_db.set_domain_login(domain_login)
+        async with db_pool.connection() as conn:
+            result = await domain_login_table.get('login.example').run(conn)
+        assert result['login_url'] == 'https://login.example/login.aspx'
+        assert len(result['users']) == 2
+
+        # Update domain login:
+        domain_login['login_url'] = 'https://login.example/login.php'
+        await server_db.set_domain_login(domain_login)
+        async with db_pool.connection() as conn:
+            result = await domain_login_table.get('login.example').run(conn)
+        assert result['login_url'] == 'https://login.example/login.php'
+        assert len(result['users']) == 2
+
+    def _make_policy_doc(self, captcha_id=None):
+        created_at = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        return {
+            'name': 'Test Policy',
+            'created_at': created_at,
+            'updated_at': created_at,
+            'authentication': {
+                'enabled': False,
+            },
+            'captcha_solver_id': captcha_id,
+            'limits': {
+                'max_cost': 10,
+                'max_duration': 3600,
+                'max_items': 10_000,
+            },
+            'mime_type_rules': [
+                {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+                {'save': False},
+            ],
+            'proxy_rules': [],
+            'robots_txt': {
+                'usage': 'IGNORE',
+            },
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': [],
+            },
+            'url_rules': [
+                {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+                 'pattern': '^https?://({SEED_DOMAINS})/'},
+                {'action': 'MULTIPLY', 'amount': 0},
+            ],
+            'user_agents': [
+                {'name': 'Test User Agent'}
+            ],
+        }
+
+    async def test_delete_policy(self, db_pool, policy_table):
+        policy = self._make_policy_doc()
+        async with db_pool.connection() as conn:
+            result = await policy_table.insert(policy).run(conn)
+            policy_id = result['generated_keys'][0]
+        server_db = ServerDb(db_pool)
+        await server_db.delete_policy(policy_id)
+        async with db_pool.connection() as conn:
+            count = await policy_table.count().run(conn)
+        assert count == 0
+
+    async def test_get_policy(self, db_pool, policy_table):
+        policy = self._make_policy_doc()
+        async with db_pool.connection() as conn:
+            result = await policy_table.insert(policy).run(conn)
+            policy_id = result['generated_keys'][0]
+        server_db = ServerDb(db_pool)
+        doc = await server_db.get_policy(policy_id)
+        assert doc['name'] == 'Test Policy'
+
+    async def test_list_policies(self, db_pool, policy_table):
+        ''' Create 7 docs. Get pages of 5 items each. '''
+        # This table's primary key is domain, so we'll change the domain for
+        # each login to make it unique.
+        policies = [self._make_policy_doc() for _ in range(7)]
+        async with db_pool.connection() as conn:
+            result = await policy_table.insert(policies).run(conn)
+
+        # Get first page:
+        server_db = ServerDb(db_pool)
+        count, docs = await server_db.list_policies(limit=5, offset=0)
+        assert count == 7
+        assert len(docs) == 5
+        assert docs[0]['name'] == 'Test Policy'
+
+        # Get second page:
+        count, docs = await server_db.list_policies(limit=5, offset=5)
+        assert count == 7
+        assert len(docs) == 2
+        assert docs[0]['name'] == 'Test Policy'
+
+    async def test_set_policy(self, db_pool, policy_table):
+        # Insert policy:
+        policy_doc = self._make_policy_doc()
+        server_db = ServerDb(db_pool)
+        now = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        policy_id = await server_db.set_policy(policy_doc, now)
+        assert policy_id is not None
+        async with db_pool.connection() as conn:
+            policy2_doc = await policy_table.get(policy_id).run(conn)
+        assert policy2_doc['name'] == 'Test Policy'
+        assert policy2_doc['created_at'] == now
+        assert policy2_doc['updated_at'] == now
+
+        # Update policy:
+        policy2_doc['name'] = 'Test Policy 2'
+        now2 = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        policy2_id = await server_db.set_policy(policy2_doc, now2)
+        assert policy2_id is None
+        async with db_pool.connection() as conn:
+            result = await policy_table.get(policy_id).run(conn)
+        assert result['name'] == 'Test Policy 2'
+        assert result['created_at'] == now
+        assert result['updated_at'] == now2

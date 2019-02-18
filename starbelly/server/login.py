@@ -1,50 +1,31 @@
-from . import api_handler
+from . import api_handler, InvalidRequestException
 
 
 @api_handler
-async def delete_domain_login(server, command, socket):
+async def delete_domain_login(command, server_db):
     ''' Delete a domain login and all of its users. '''
     if command.HasField('domain'):
         domain = command.domain
     else:
         raise InvalidRequestException('domain is required.')
-
-    async with self._db_pool.connection() as conn:
-        await (
-            r.table('domain_login')
-             .get(domain)
-             .delete()
-             .run(conn)
-        )
-
-    return Response()
+    await server_db.delete_domain_login(domain)
 
 
 @api_handler
-async def get_domain_login(self, command, socket):
+async def get_domain_login(command, response, server_db):
     ''' Get a domain login. '''
     if not command.HasField('domain'):
         raise InvalidRequestException('domain is required.')
 
     domain = command.domain
-    async with self._db_pool.connection() as conn:
-        count = await r.table('domain_login').count().run(conn)
-        domain_login = await (
-            r.table('domain_login')
-             .get(domain)
-             .run(conn)
-        )
-
+    domain_login = await server_db.get_domain_login(domain)
     if domain_login is None:
         raise InvalidRequestException('No domain credentials found for'
             ' domain={}'.format(domain))
-
-    response = Response()
     response.domain_login.domain = domain_login['domain']
     response.domain_login.login_url = domain_login['login_url']
     if domain_login['login_test'] is not None:
         response.domain_login.login_test = domain_login['login_test']
-    response.domain_login.auth_count = len(domain_login['users'])
 
     for user in domain_login['users']:
         dl_user = response.domain_login.users.add()
@@ -52,43 +33,29 @@ async def get_domain_login(self, command, socket):
         dl_user.password = user['password']
         dl_user.working = user['working']
 
-    return response
-
 
 @api_handler
-async def list_domain_logins(self, command, socket):
+async def list_domain_logins(command, response, server_db):
     ''' Return a list of domain logins. '''
     limit = command.page.limit
-    skip = command.page.offset
-
-    async with self._db_pool.connection() as conn:
-        count = await r.table('domain_login').count().run(conn)
-        cursor = await (
-            r.table('domain_login')
-             .order_by(index='domain')
-             .skip(skip)
-             .limit(limit)
-             .run(conn)
-        )
-
-    response = Response()
+    offset = command.page.offset
+    count, docs = await server_db.list_domain_logins(limit, offset)
     response.list_domain_logins.total = count
-
-    async for domain_doc in cursor:
+    for doc in docs:
         dl = response.list_domain_logins.logins.add()
-        dl.domain = domain_doc['domain']
-        dl.login_url = domain_doc['login_url']
-        if domain_doc['login_test'] is not None:
-            dl.login_test = domain_doc['login_test']
-        # Not very efficient way to count users, but don't know a better
-        # way...
-        dl.auth_count = len(domain_doc['users'])
-
-    return response
+        dl.domain = doc['domain']
+        dl.login_url = doc['login_url']
+        if doc['login_test'] is not None:
+            dl.login_test = doc['login_test']
+        for user_doc in doc['users']:
+            user = dl.users.add()
+            user.username = user_doc['username']
+            user.password = user_doc['password']
+            user.working = user_doc['working']
 
 
 @api_handler
-async def set_domain_login(self, command, socket):
+async def set_domain_login(command, server_db):
     ''' Create or update a domain login. '''
     domain_login = command.login
 
@@ -96,13 +63,7 @@ async def set_domain_login(self, command, socket):
         raise InvalidRequestException('domain is required.')
 
     domain = domain_login.domain
-    async with self._db_pool.connection() as conn:
-        doc = await (
-            r.table('domain_login')
-             .get(domain)
-             .run(conn)
-        )
-
+    doc = await server_db.get_domain_login(domain)
     if doc is None:
         if not domain_login.HasField('login_url'):
             raise InvalidRequestException('login_url is required to'
@@ -128,19 +89,4 @@ async def set_domain_login(self, command, socket):
             'working': user.working,
         })
 
-    async with self._db_pool.connection() as conn:
-        # replace() is supposed to upsert, but for some reason it doesn't,
-        # so I'm calling insert() explicitly.
-        response = await (
-            r.table('domain_login')
-             .replace(doc)
-             .run(conn)
-        )
-        if response['replaced'] == 0:
-            await (
-                r.table('domain_login')
-                 .insert(doc)
-                 .run(conn)
-            )
-
-    return Response()
+    await server_db.set_domain_login(doc)

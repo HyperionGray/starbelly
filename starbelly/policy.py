@@ -42,7 +42,8 @@ class Policy:
         :param pb: An empty protobuf.
         :type pb: starbelly.starbelly_pb2.Policy
         '''
-        pb.policy_id = UUID(doc['id']).bytes
+        if 'id' in doc:
+            pb.policy_id = UUID(doc['id']).bytes
         pb.name = doc['name']
         pb.created_at = doc['created_at'].isoformat()
         pb.updated_at = doc['updated_at'].isoformat()
