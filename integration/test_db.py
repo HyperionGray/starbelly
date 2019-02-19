@@ -99,6 +99,17 @@ async def response_table(db_pool):
 
 
 @pytest.fixture
+async def rate_limit_table(db_pool):
+    async with db_pool.connection() as conn:
+        await r.table_create('rate_limit', primary_key='token').run(conn)
+        await r.table('rate_limit').index_create('name').run(conn)
+        await r.table('rate_limit').index_wait('name').run(conn)
+    yield r.table('rate_limit')
+    async with db_pool.connection() as conn:
+        await r.table_drop('rate_limit').run(conn)
+
+
+@pytest.fixture
 async def response_body_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create('response_body').run(conn)
@@ -982,7 +993,7 @@ class TestServerDb():
 
         # Update policy:
         policy2_doc['name'] = 'Test Policy 2'
-        now2 = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        now2 = datetime(2019, 1, 1, 13, 0, 0, tzinfo=timezone.utc)
         policy2_id = await server_db.set_policy(policy2_doc, now2)
         assert policy2_id is None
         async with db_pool.connection() as conn:
@@ -990,3 +1001,107 @@ class TestServerDb():
         assert result['name'] == 'Test Policy 2'
         assert result['created_at'] == now
         assert result['updated_at'] == now2
+
+    async def test_list_rate_limits(self, db_pool, rate_limit_table):
+        token = '\xaa' * 16
+        async with db_pool.connection() as conn:
+            await rate_limit_table.insert({
+                'name': 'domain:rate-limit.example',
+                'token': token,
+                'delay': 1.5,
+            }).run(conn)
+        server_db = ServerDb(db_pool)
+        count, rate_limits = await server_db.list_rate_limits(10, 0)
+        assert count == 1
+        assert rate_limits[0]['name'] == 'domain:rate-limit.example'
+        assert rate_limits[0]['token'] == token
+        assert rate_limits[0]['delay'] == 1.5
+
+    async def test_set_rate_limit(self, db_pool, rate_limit_table):
+        token = '\xaa' * 16
+        server_db = ServerDb(db_pool)
+        await server_db.set_rate_limit('domain:rate-limit.example', token, 1.5)
+        async with db_pool.connection() as conn:
+            rate_limit = await rate_limit_table.get(token).run(conn)
+        assert rate_limit['name'] == 'domain:rate-limit.example'
+        assert rate_limit['token'] == token
+        assert rate_limit['delay'] == 1.5
+
+    def _make_schedule_doc(self):
+        dt = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        return {
+            'schedule_name': 'Test Schedule',
+            'enabled': True,
+            'created_at': dt,
+            'updated_at': dt,
+            'time_unit': 'DAYS',
+            'num_units': 7,
+            'timing': 'REGULAR_INTERVAL',
+            'job_name': 'Test Job #{JOB_COUNT}',
+            'job_count': 1,
+            'seeds': ['https://schedule.example'],
+            'tags': ['schedule1', 'schedule2'],
+            'policy_id': 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        }
+
+    async def test_delete_schedule(self, db_pool, schedule_table):
+        schedule = self._make_schedule_doc()
+        async with db_pool.connection() as conn:
+            result = await schedule_table.insert(schedule).run(conn)
+            schedule_id = result['generated_keys'][0]
+        server_db = ServerDb(db_pool)
+        await server_db.delete_schedule(schedule_id)
+        async with db_pool.connection() as conn:
+            count = await schedule_table.count().run(conn)
+        assert count == 0
+
+    async def test_get_schedule(self, db_pool, schedule_table):
+        schedule = self._make_schedule_doc()
+        async with db_pool.connection() as conn:
+            result = await schedule_table.insert(schedule).run(conn)
+            schedule_id = result['generated_keys'][0]
+        server_db = ServerDb(db_pool)
+        doc = await server_db.get_schedule(schedule_id)
+        assert doc['schedule_name'] == 'Test Schedule'
+
+    async def test_list_schedules(self, db_pool, schedule_table):
+        ''' Create 7 docs. Get pages of 5 items each. '''
+        # This table's primary key is domain, so we'll change the domain for
+        # each login to make it unique.
+        schedules = [self._make_schedule_doc() for _ in range(7)]
+        async with db_pool.connection() as conn:
+            result = await schedule_table.insert(schedules).run(conn)
+
+        # Get first page:
+        server_db = ServerDb(db_pool)
+        count, docs = await server_db.list_schedules(limit=5, offset=0)
+        assert count == 7
+        assert len(docs) == 5
+        assert docs[0]['schedule_name'] == 'Test Schedule'
+
+        # Get second page:
+        count, docs = await server_db.list_schedules(limit=5, offset=5)
+        assert count == 7
+        assert len(docs) == 2
+        assert docs[0]['schedule_name'] == 'Test Schedule'
+
+    async def test_set_schedule(self, db_pool, job_table, schedule_table):
+        # Insert policy:
+        schedule_doc = self._make_schedule_doc()
+        server_db = ServerDb(db_pool)
+        now = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        result = await server_db.set_schedule(schedule_doc, now)
+        assert 'latest_job' in result
+        assert result['schedule_name'] == 'Test Schedule'
+        assert result['created_at'] == now
+        assert result['updated_at'] == now
+
+        # Update policy:
+        schedule2_doc = result.copy()
+        schedule2_doc['schedule_name'] = 'Test Schedule 2'
+        now2 = datetime(2019, 1, 1, 13, 0, 0, tzinfo=timezone.utc)
+        result2 = await server_db.set_schedule(schedule2_doc, now2)
+        assert 'latest_job' in result2
+        assert result2['schedule_name'] == 'Test Schedule 2'
+        assert result2['created_at'] == now
+        assert result2['updated_at'] == now2

@@ -12,8 +12,8 @@ import trio
 
 from .job import JobStateEvent, RunState
 from starbelly.starbelly_pb2 import (
-    JobScheduleTiming as PbJobScheduleTiming,
-    JobScheduleTimeUnit as PbJobScheduleTimeUnit,
+    ScheduleTiming as PbScheduleTiming,
+    ScheduleTimeUnit as PbScheduleTimeUnit,
 )
 
 
@@ -75,7 +75,7 @@ class Schedule:
         :param dict doc:
         '''
         return cls(
-            doc['id'],
+            doc.get('id'),
             doc['schedule_name'],
             doc['enabled'],
             doc['created_at'],
@@ -98,14 +98,14 @@ class Schedule:
         :param pb:
         '''
         return cls(
-            pb.schedule_id,
+            pb.schedule_id if pb.HasField('schedule_id') else None,
             pb.schedule_name,
             pb.enabled,
             pb_date(pb, 'created_at'),
             pb_date(pb, 'updated_at'),
-            PbJobScheduleTimeUnit.Name(pb.time_unit),
+            PbScheduleTimeUnit.Name(pb.time_unit),
             pb.num_units,
-            PbJobScheduleTiming.Name(pb.timing),
+            PbScheduleTiming.Name(pb.timing),
             pb.job_name,
             pb.job_count,
             [seed for seed in pb.seeds],
@@ -142,14 +142,15 @@ class Schedule:
 
         :param pb: A schedule protobuf.
         '''
-        pb.schedule_id = UUID(self.id).bytes
+        if self.id:
+            pb.schedule_id = UUID(self.id).bytes
         pb.schedule_name = self.name
         pb.enabled = self.enabled
         pb.created_at = self.created_at.isoformat()
         pb.updated_at = self.updated_at.isoformat()
-        pb.time_unit = PbJobScheduleTimeUnit.Value(self.time_unit)
+        pb.time_unit = PbScheduleTimeUnit.Value(self.time_unit)
         pb.num_units = self.num_units
-        pb.timing = PbJobScheduleTiming.Value(self.timing)
+        pb.timing = PbScheduleTiming.Value(self.timing)
         pb.job_name = self.job_name
         pb.job_count = self.job_count
         for seed in self.seeds:
@@ -263,18 +264,23 @@ class Scheduler:
         self._nursery = None
         self._running_jobs = dict()
 
-    def add_schedule(self, schedule, latest_job):
+    def add_schedule(self, schedule_doc):
         '''
         Add a new schedule.
 
-        :param Schedule schedule:
-        :param latest_job: (Optional) The most recent job for this schedule, or
-            None if this schedule has never run.
-        :type latest_job: dict or None
+        The database document ``schedule_doc`` must include a ``latest_job``
+        key which can be ``None`` (if no jobs have run) or contain run state
+        and started/completed at for the most recent job.
+
+        :param dict schedule_doc:
         '''
+        schedule = Schedule.from_doc(schedule_doc)
+
         if schedule.id in self._schedules:
             raise Exception('Schedule ID {} has already been added.'.format(
                 schedule.id))
+
+        latest_job = schedule_doc['latest_job']
         self._schedules[schedule.id] = schedule
 
         # Schedule the next job for this schedule.
@@ -327,9 +333,7 @@ class Scheduler:
         :returns: This method runs until cancelled.
         '''
         async for schedule_doc in self._db.get_schedule_docs():
-            schedule = Schedule.from_doc(schedule_doc)
-            latest_job = schedule_doc['latest_job']
-            self.add_schedule(schedule, latest_job)
+            self.add_schedule(schedule_doc)
 
         async with trio.open_nursery() as nursery:
             nursery.start_soon(self._listen_task, name='Schedule Job Listener')

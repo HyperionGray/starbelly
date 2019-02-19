@@ -15,9 +15,9 @@ from starbelly.schedule import (
     ScheduleValidationError
 )
 from starbelly.starbelly_pb2 import (
-    JobSchedule as PbJobSchedule,
-    JobScheduleTiming as PbJobScheduleTiming,
-    JobScheduleTimeUnit as PbJobScheduleTimeUnit,
+    Schedule as PbSchedule,
+    ScheduleTiming as PbScheduleTiming,
+    ScheduleTimeUnit as PbScheduleTimeUnit,
 )
 
 
@@ -128,7 +128,7 @@ async def test_schedule_doc_to_pb():
         'tags': ['tag1', 'tag2'],
         'policy_id': str(policy_id)
     }
-    pb = PbJobSchedule()
+    pb = PbSchedule()
     schedule = Schedule.from_doc(doc)
     schedule.to_pb(pb)
     assert pb.schedule_id == schedule_id.bytes
@@ -136,9 +136,9 @@ async def test_schedule_doc_to_pb():
     assert pb.enabled
     assert pb.created_at == '2017-11-29T15:19:50'
     assert pb.updated_at == '2018-11-29T15:19:50'
-    assert pb.time_unit == PbJobScheduleTimeUnit.Value('HOURS')
+    assert pb.time_unit == PbScheduleTimeUnit.Value('HOURS')
     assert pb.num_units == 3
-    assert pb.timing == PbJobScheduleTiming.Value('REGULAR_INTERVAL')
+    assert pb.timing == PbScheduleTiming.Value('REGULAR_INTERVAL')
     assert pb.job_name == 'Test Job #{COUNT}'
     assert pb.job_count == 1
     assert pb.seeds[0] == 'http://one.example'
@@ -148,15 +148,15 @@ async def test_schedule_doc_to_pb():
 
 
 async def test_schedule_pb_to_doc():
-    pb = PbJobSchedule()
+    pb = PbSchedule()
     pb.schedule_id = b'\x12>Eg\xe8\x9b\x12\xd3\xa4VBfUD\x00\x01'
     pb.schedule_name = 'Test Schedule'
     pb.enabled = True
     pb.created_at = '2017-11-29T15:19:50'
     pb.updated_at = '2018-11-29T15:19:50'
-    pb.time_unit = PbJobScheduleTimeUnit.Value('HOURS')
+    pb.time_unit = PbScheduleTimeUnit.Value('HOURS')
     pb.num_units = 3
-    pb.timing = PbJobScheduleTiming.Value('REGULAR_INTERVAL')
+    pb.timing = PbScheduleTiming.Value('REGULAR_INTERVAL')
     pb.job_name = 'Test Job #{COUNT}'
     pb.job_count = 1
     pb.seeds.append('http://one.example')
@@ -255,13 +255,14 @@ def test_invalid_schedule():
 
 # This test is async because it depends on trio.current_time()
 async def test_add_schedule_twice():
-    schedule = make_schedule(1)
+    schedule_doc = make_schedule(1).to_doc()
+    schedule_doc['latest_job'] = None
     db_pool = Mock()
     crawl_manager = Mock()
     scheduler = Scheduler(db_pool, crawl_manager)
-    scheduler.add_schedule(schedule, latest_job=None)
+    scheduler.add_schedule(schedule_doc)
     with pytest.raises(Exception):
-        scheduler.add_schedule(schedule, latest_job=None)
+        scheduler.add_schedule(schedule_doc)
 
 
 def test_schedule_time_units(autojump_clock):

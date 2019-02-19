@@ -24,7 +24,8 @@ collection pipeline.
     configuration
     policy
     administration
-    api
+    websocket_api
+    protobuf
     development
     internals
     changelog

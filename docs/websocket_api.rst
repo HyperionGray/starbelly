@@ -1,7 +1,7 @@
 .. _api-documentation:
 
-API Documentation
-=================
+WebSocket API
+=============
 
 Overview
 --------
@@ -75,6 +75,9 @@ Protobuf is a binary serialization format that supports common data types like
 integers, strings, lists, and maps. It is similar in purpose to JSON, but
 protobuf is more efficient in terms of encoding overhead and serialization
 speed.
+
+For complete specification of the available protobuf messages, see
+:doc:`protobuf`.
 
 Example Session
 ---------------

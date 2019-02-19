@@ -8,6 +8,8 @@ from trio_websocket import ConnectionClosed, open_websocket
 
 from . import AsyncMock, fail_after
 from starbelly.policy import Policy as PythonPolicy
+from starbelly.rate_limiter import GLOBAL_RATE_LIMIT_TOKEN
+from starbelly.schedule import Schedule as PythonSchedule
 from starbelly.server import InvalidRequestException, Server
 from starbelly.server.captcha import (
     delete_captcha_solver,
@@ -26,6 +28,16 @@ from starbelly.server.policy import (
     get_policy,
     list_policies,
     set_policy,
+)
+from starbelly.server.rate_limit import (
+    list_rate_limits,
+    set_rate_limit,
+)
+from starbelly.server.schedule import (
+    delete_schedule,
+    get_schedule,
+    list_schedules,
+    set_schedule,
 )
 from starbelly.starbelly_pb2 import *
 
@@ -291,7 +303,7 @@ async def test_set_delete_domain_login():
 
 
 @fail_after(3)
-async def test_get_list_set_policy():
+async def test_policy():
     policy_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     created_at = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     policy_doc = {
@@ -329,6 +341,7 @@ async def test_get_list_set_policy():
         ],
     }
     server_db = Mock()
+    server_db.delete_policy = AsyncMock()
     server_db.get_policy = AsyncMock(return_value=policy_doc)
     server_db.list_policies = AsyncMock(return_value=(1, [policy_doc]))
     server_db.set_policy = AsyncMock(return_value=policy_id)
@@ -352,7 +365,7 @@ async def test_get_list_set_policy():
     command3.page.limit = 10
     command3.page.offset = 0
     response3 = Response()
-    login = await list_policies(command3, response3, server_db)
+    await list_policies(command3, response3, server_db)
     assert response3.list_policies.total == 1
     assert response3.list_policies.policies[0].name == 'Test Policy'
 
@@ -365,21 +378,149 @@ async def test_get_list_set_policy():
     await set_policy(command4, response4, server_db)
     assert response4.new_policy.policy_id == b'\xaa' * 16
 
-
-@fail_after(3)
-async def test_delete_policy():
-    policy_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-    server_db = Mock()
-    server_db.delete_policy = AsyncMock()
-    server_db.set_policy = AsyncMock(return_value=policy_id)
-
     # Delete policy requires policy id
-    command1 = RequestDeletePolicy()
+    command5 = RequestDeletePolicy()
     with pytest.raises(InvalidRequestException):
-        await delete_policy(command1, server_db)
+        await delete_policy(command5, server_db)
 
     # Delete policy
-    command2 = RequestDeletePolicy()
-    command2.policy_id = b'\xaa' * 16
-    await delete_policy(command2, server_db)
+    command6 = RequestDeletePolicy()
+    command6.policy_id = b'\xaa' * 16
+    await delete_policy(command6, server_db)
     assert server_db.delete_policy.call_args[0] == policy_id
+
+
+@fail_after(3)
+async def test_list_rate_limits():
+    token = b'\xaa' * 16
+    rate_limit = {
+        'name': 'domain:rate-limit.example',
+        'token': token,
+        'delay': 1.5,
+    }
+    command1 = RequestListRateLimits()
+    response1 = Response()
+    server_db = Mock()
+    server_db.list_rate_limits = AsyncMock(return_value=(1, [rate_limit]))
+    await list_rate_limits(command1, response1, server_db)
+    rate_limits = response1.list_rate_limits
+    assert rate_limits.total == 1
+    assert rate_limits.rate_limits[0].name == 'domain:rate-limit.example'
+    assert rate_limits.rate_limits[0].token == token
+    assert rate_limits.rate_limits[0].delay == 1.5
+    assert rate_limits.rate_limits[0].domain == 'rate-limit.example'
+
+
+@fail_after(3)
+async def test_set_rate_limit():
+    # Set a rate limit on a domain
+    command1 = RequestSetRateLimit()
+    command1.domain = 'rate-limit.example'
+    command1.delay = 1.5
+    rate_limiter = Mock()
+    token = b'\xaa' * 16
+    rate_limiter.get_domain_token.return_value = token
+    server_db = Mock()
+    server_db.set_rate_limit = AsyncMock()
+    await set_rate_limit(command1, rate_limiter, server_db)
+    assert server_db.set_rate_limit.call_args[0] == 'domain:rate-limit.example'
+    assert server_db.set_rate_limit.call_args[1] == token
+    assert server_db.set_rate_limit.call_args[2] == 1.5
+    assert rate_limiter.set_rate_limit.called
+
+    # Delete a rate limit on a domain
+    command2 = RequestSetRateLimit()
+    command2.domain = 'rate-limit.example'
+    await set_rate_limit(command2, rate_limiter, server_db)
+    assert server_db.set_rate_limit.call_args[0] == 'domain:rate-limit.example'
+    assert server_db.set_rate_limit.call_args[1] == token
+    assert server_db.set_rate_limit.call_args[2] == None
+    assert rate_limiter.delete_rate_limit.called
+
+    # Set the global rate limit
+    command3 = RequestSetRateLimit()
+    command3.delay = 1.5
+    await set_rate_limit(command3, rate_limiter, server_db)
+    assert server_db.set_rate_limit.call_args[0] == 'Global Rate Limit'
+    assert server_db.set_rate_limit.call_args[1] == GLOBAL_RATE_LIMIT_TOKEN
+    assert server_db.set_rate_limit.call_args[2] == 1.5
+    assert rate_limiter.set_rate_limit.called
+
+    # It is an error to delete the global rate limit
+    command4 = RequestSetRateLimit()
+    with pytest.raises(InvalidRequestException):
+        await set_rate_limit(command4, rate_limiter, server_db)
+
+
+@fail_after(3)
+async def test_schedule():
+    schedule_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    dt = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    schedule_doc = {
+        'id': schedule_id,
+        'schedule_name': 'Test Schedule',
+        'enabled': True,
+        'created_at': dt,
+        'updated_at': dt,
+        'time_unit': 'DAYS',
+        'num_units': 7,
+        'timing': 'REGULAR_INTERVAL',
+        'job_name': 'Test Job #{COUNT}',
+        'job_count': 1,
+        'seeds': ['https://schedule.example'],
+        'tags': ['schedule1', 'schedule2'],
+        'policy_id': 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    }
+    scheduler = Mock()
+    server_db = Mock()
+    server_db.delete_schedule = AsyncMock()
+    server_db.get_schedule = AsyncMock(return_value=schedule_doc)
+    server_db.list_schedules = AsyncMock(return_value=(1, [schedule_doc]))
+    server_db.set_schedule = AsyncMock(return_value=schedule_doc)
+
+    # Get schedule requires ID
+    command1 = RequestGetSchedule()
+    response1 = Response()
+    with pytest.raises(InvalidRequestException):
+        await get_schedule(command1, response1, server_db)
+
+    # Get a schedule
+    command2 = RequestGetSchedule()
+    command2.schedule_id = b'\xaa' * 16
+    response2 = Response()
+    await get_schedule(command2, response2, server_db)
+    assert server_db.get_schedule.call_args[0] == schedule_id
+    assert response2.schedule.schedule_name == 'Test Schedule'
+
+    # List schedules
+    command3 = RequestListSchedules()
+    command3.page.limit = 10
+    command3.page.offset = 0
+    response3 = Response()
+    await list_schedules(command3, response3, server_db)
+    list_ = response3.list_schedules
+    assert list_.total == 1
+    assert list_.schedules[0].schedule_name == 'Test Schedule'
+
+    # Set schedule
+    command4 = RequestSetSchedule()
+    schedule2_doc = schedule_doc.copy()
+    del schedule2_doc['id']
+    PythonSchedule.from_doc(schedule2_doc).to_pb(command4.schedule)
+    response4 = Response()
+    await set_schedule(command4, response4, scheduler, server_db)
+    assert response4.new_schedule.schedule_id == b'\xaa' * 16
+    assert server_db.set_schedule.called
+    assert scheduler.add_schedule.called
+
+    # Delete schedule requires id
+    command5 = RequestDeleteSchedule()
+    with pytest.raises(InvalidRequestException):
+        await delete_schedule(command5, scheduler, server_db)
+
+    # Delete policy
+    command6 = RequestDeleteSchedule()
+    command6.schedule_id = b'\xaa' * 16
+    await delete_schedule(command6, scheduler, server_db)
+    assert server_db.delete_schedule.call_args[0] == schedule_id
+    assert scheduler.remove_schedule.called

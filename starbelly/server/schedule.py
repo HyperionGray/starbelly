@@ -1,64 +1,55 @@
-from . import api_handler
+from datetime import datetime, timezone
+from uuid import UUID
+
+from . import api_handler, InvalidRequestException
+from ..schedule import Schedule
 
 
 @api_handler
-async def delete_job_schedule(server, command, socket):
+async def delete_schedule(command, scheduler, server_db):
     ''' Delete a job schedule. '''
+    if not command.HasField('schedule_id'):
+        raise InvalidRequestException('Schedule ID is required')
     schedule_id = str(UUID(bytes=command.schedule_id))
-    async with db_pool.connection() as conn:
-        await r.table('job_schedule').get(schedule_id).delete().run(conn)
-    self._scheduler.remove_schedule(schedule_id)
-    return Response()
+    await server_db.delete_schedule(schedule_id)
+    scheduler.remove_schedule(schedule_id)
 
 
 @api_handler
-async def get_job_schedule(self, command, socket):
+async def get_schedule(command, response, server_db):
     ''' Get metadata for a job schedule. '''
+    if not command.HasField('schedule_id'):
+        raise InvalidRequestException('Schedule ID is required')
     schedule_id = str(UUID(bytes=command.schedule_id))
-    async with db_pool.connection() as conn:
-        doc = await r.table('job_schedule').get(schedule_id).run(conn)
-    response = Response()
+    doc = await server_db.get_schedule(schedule_id)
     if doc is None:
         response.is_success = False
         response.error_message = f'No schedule exists with ID={schedule_id}'
     else:
-        pb = response.job_schedule
-        Scheduler.doc_to_pb(doc, pb)
-    return response
+        pb = response.schedule
+        Schedule.from_doc(doc).to_pb(pb)
 
 
 @api_handler
-async def list_job_schedules(self, command, socket):
+async def list_schedules(command, response, server_db):
     ''' Return a list of job schedules. '''
     limit = command.page.limit
     offset = command.page.offset
-    schedules = list()
-    query = (
-        r.table('job_schedule')
-         .order_by(index='schedule_name')
-         .skip(offset)
-         .limit(limit)
-    )
-    async with db_pool.connection() as conn:
-        count = await r.table('job_schedule').count().run(conn)
-        cursor = await query.run(conn)
-        async for schedule in cursor:
-            schedules.append(schedule)
-        await cursor.close()
-    response = Response()
-    response.list_jobs.total = count
+    count, schedules = await server_db.list_schedules(limit, offset)
+    response.list_schedules.total = count
     for doc in schedules:
-        pb = response.list_job_schedules.job_schedules.add()
-        Scheduler.doc_to_pb(doc, pb)
-    return response
+        pb = response.list_schedules.schedules.add()
+        Schedule.from_doc(doc).to_pb(pb)
 
 
 @api_handler
-async def set_job_schedule(self, command, socket):
+async def set_schedule(command, response, scheduler, server_db):
     ''' Create or update job schedule metadata. '''
-    doc = Scheduler.pb_to_doc(command.job_schedule)
-    schedule_id = await set_job_schedule(self._db_pool, doc)
-    response = Response()
-    if schedule_id is not None:
-        response.new_job_schedule.schedule_id = UUID(schedule_id).bytes
-    return response
+    doc = Schedule.from_pb(command.schedule).to_doc()
+    now = datetime.now(timezone.utc)
+    schedule_doc = await server_db.set_schedule(doc, now)
+    if doc['id']:
+        scheduler.remove_schedule(doc['id'])
+    else:
+        response.new_schedule.schedule_id = UUID(schedule_doc['id']).bytes
+    scheduler.add_schedule(schedule_doc)

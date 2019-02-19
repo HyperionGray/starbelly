@@ -190,7 +190,7 @@ class Connection:
                 raise InvalidRequestException('Invalid command name: {}'
                     .format(command_name)) from None
 
-            # Inject dependencies into argument list and call handler.
+            # Inject dependencies into argument list, then call the handler.
             argspec = inspect.getargspec(handler)
             args = list()
             for var in argspec[0]:
@@ -199,8 +199,12 @@ class Connection:
                     args.append(command)
                 elif var == 'nursery':
                     args.append(self._nursery)
+                elif var == 'rate_limiter':
+                    args.append(self._rate_limiter)
                 elif var == 'response':
                     args.append(message.response)
+                elif var == 'scheduler':
+                    args.append(self._scheduler)
                 elif var == 'websocket':
                     args.append(self._ws)
                 else:

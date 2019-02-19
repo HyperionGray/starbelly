@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='starbelly.proto',
   package='',
   syntax='proto2',
-  serialized_pb=_b('\n\x0fstarbelly.proto\"\x92\x01\n\rCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12*\n\x08\x61ntigate\x18\x05 \x01(\x0b\x32\x16.CaptchaSolverAntigateH\x00\x42\x0c\n\nSolverType\"\xe1\x01\n\x15\x43\x61ptchaSolverAntigate\x12\x13\n\x0bservice_url\x18\x01 \x01(\t\x12\x0f\n\x07\x61pi_key\x18\x02 \x01(\t\x12\x16\n\x0erequire_phrase\x18\x03 \x01(\x08\x12\x16\n\x0e\x63\x61se_sensitive\x18\x04 \x01(\x08\x12\x34\n\ncharacters\x18\x05 \x01(\x0e\x32 .CaptchaSolverAntigateCharacters\x12\x14\n\x0crequire_math\x18\x06 \x01(\x08\x12\x12\n\nmin_length\x18\x07 \x01(\x05\x12\x12\n\nmax_length\x18\x08 \x01(\x05\"\x98\x02\n\rCrawlResponse\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ompleted_at\x18\x02 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x03 \x01(\t\x12\x0c\n\x04\x63ost\x18\x04 \x01(\x01\x12\x10\n\x08\x64uration\x18\x05 \x01(\x01\x12\x11\n\texception\x18\x06 \x01(\t\x12\x18\n\x07headers\x18\x07 \x03(\x0b\x32\x07.Header\x12\x15\n\ris_compressed\x18\x08 \x01(\x08\x12\x12\n\nis_success\x18\t \x01(\x08\x12\x0e\n\x06job_id\x18\n \x01(\x0c\x12\x12\n\nstarted_at\x18\x0b \x01(\t\x12\x13\n\x0bstatus_code\x18\x0c \x01(\x05\x12\x0b\n\x03url\x18\r \x01(\t\x12\x0f\n\x07url_can\x18\x0e \x01(\t\"$\n\x06Header\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"y\n\x0b\x44omainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\x12\x11\n\tlogin_url\x18\x02 \x01(\t\x12\x12\n\nlogin_test\x18\x03 \x01(\t\x12\x12\n\nauth_count\x18\x04 \x01(\x05\x12\x1f\n\x05users\x18\x05 \x03(\x0b\x32\x10.DomainLoginUser\"F\n\x0f\x44omainLoginUser\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x0f\n\x07working\x18\x03 \x01(\x08\"\x93\x02\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12\x1c\n\x08job_list\x18\x02 \x01(\x0b\x32\x08.JobListH\x00\x12-\n\x11job_schedule_list\x18\x07 \x01(\x0b\x32\x10.JobScheduleListH\x00\x12(\n\x0eresource_frame\x18\x03 \x01(\x0b\x32\x0e.ResourceFrameH\x00\x12\x32\n\x13subscription_closed\x18\x04 \x01(\x0b\x32\x13.SubscriptionClosedH\x00\x12\x1e\n\tsync_item\x18\x05 \x01(\x0b\x32\t.SyncItemH\x00\x12\x1e\n\ttask_tree\x18\x06 \x01(\x0b\x32\t.TaskTreeH\x00\x42\x06\n\x04\x42ody\"\x96\x03\n\x03Job\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\r\n\x05seeds\x18\x02 \x03(\t\x12\x17\n\x06policy\x18\x03 \x01(\x0b\x32\x07.Policy\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x1a\n\x08tag_list\x18\x05 \x01(\x0b\x32\x08.TagList\x12\x1f\n\trun_state\x18\x06 \x01(\x0e\x32\x0c.JobRunState\x12\x12\n\nstarted_at\x18\x07 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x08 \x01(\t\x12\x16\n\nitem_count\x18\t \x01(\x05:\x02-1\x12\x1e\n\x12http_success_count\x18\n \x01(\x05:\x02-1\x12\x1c\n\x10http_error_count\x18\x0b \x01(\x05:\x02-1\x12\x1b\n\x0f\x65xception_count\x18\x0c \x01(\x05:\x02-1\x12\x36\n\x12http_status_counts\x18\r \x03(\x0b\x32\x1a.Job.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\x1d\n\x07JobList\x12\x12\n\x04jobs\x18\x01 \x03(\x0b\x32\x04.Job\"\xb5\x02\n\x0bJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\x12\x12\n\ncreated_at\x18\x02 \x01(\t\x12\x12\n\nupdated_at\x18\x03 \x01(\t\x12\x0f\n\x07\x65nabled\x18\x04 \x01(\x08\x12\'\n\ttime_unit\x18\x05 \x01(\x0e\x32\x14.JobScheduleTimeUnit\x12\x11\n\tnum_units\x18\x06 \x01(\x05\x12\"\n\x06timing\x18\x07 \x01(\x0e\x32\x12.JobScheduleTiming\x12\x15\n\rschedule_name\x18\x08 \x01(\t\x12\x10\n\x08job_name\x18\t \x01(\t\x12\r\n\x05seeds\x18\n \x03(\t\x12\x11\n\tpolicy_id\x18\x0b \x01(\x0c\x12\x1a\n\x08tag_list\x18\x0c \x01(\x0b\x32\x08.TagList\x12\x11\n\tjob_count\x18\r \x01(\x05\"6\n\x0fJobScheduleList\x12#\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x0c.JobSchedule\")\n\x04Page\x12\x11\n\x05limit\x18\x01 \x01(\x05:\x02\x31\x30\x12\x0e\n\x06offset\x18\x02 \x01(\x05\"\xb3\x03\n\x06Policy\x12\x11\n\tpolicy_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12\x19\n\x11\x63\x61ptcha_solver_id\x18\x0e \x01(\x0c\x12-\n\x0e\x61uthentication\x18\x06 \x01(\x0b\x32\x15.PolicyAuthentication\x12\x1d\n\x06limits\x18\x07 \x01(\x0b\x32\r.PolicyLimits\x12%\n\x0bproxy_rules\x18\x08 \x03(\x0b\x32\x10.PolicyProxyRule\x12,\n\x0fmime_type_rules\x18\t \x03(\x0b\x32\x13.PolicyMimeTypeRule\x12$\n\nrobots_txt\x18\n \x01(\x0b\x32\x10.PolicyRobotsTxt\x12\x32\n\x11url_normalization\x18\r \x01(\x0b\x32\x17.PolicyUrlNormalization\x12!\n\turl_rules\x18\x0b \x03(\x0b\x32\x0e.PolicyUrlRule\x12%\n\x0buser_agents\x18\x0c \x03(\x0b\x32\x10.PolicyUserAgent\"\'\n\x14PolicyAuthentication\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\"I\n\x0cPolicyLimits\x12\x10\n\x08max_cost\x18\x01 \x01(\x01\x12\x14\n\x0cmax_duration\x18\x02 \x01(\x01\x12\x11\n\tmax_items\x18\x03 \x01(\x05\"Q\n\x12PolicyMimeTypeRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12\x1c\n\x05match\x18\x02 \x01(\x0e\x32\r.PatternMatch\x12\x0c\n\x04save\x18\x03 \x01(\x08\"S\n\x0fPolicyProxyRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12\x1c\n\x05match\x18\x02 \x01(\x0e\x32\r.PatternMatch\x12\x11\n\tproxy_url\x18\x03 \x01(\t\"c\n\x0fPolicyRobotsTxt\x12%\n\x05usage\x18\x01 \x02(\x0e\x32\x16.PolicyRobotsTxt.Usage\")\n\x05Usage\x12\x08\n\x04OBEY\x10\x01\x12\n\n\x06INVERT\x10\x02\x12\n\n\x06IGNORE\x10\x03\"C\n\x16PolicyUrlNormalization\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x12\x18\n\x10strip_parameters\x18\x02 \x03(\t\"\x96\x01\n\rPolicyUrlRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12\x1c\n\x05match\x18\x02 \x01(\x0e\x32\r.PatternMatch\x12%\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32\x15.PolicyUrlRule.Action\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\"\x1f\n\x06\x41\x63tion\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08MULTIPLY\x10\x02\"\x1f\n\x0fPolicyUserAgent\x12\x0c\n\x04name\x18\x01 \x02(\t\"8\n\tRateLimit\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x64\x65lay\x18\x02 \x01(\x02\x12\x0e\n\x06\x64omain\x18\x03 \x01(\t\"\xff\x0b\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12<\n\x15\x64\x65lete_captcha_solver\x18\x1f \x01(\x0b\x32\x1b.RequestDeleteCaptchaSolverH\x00\x12\x36\n\x12get_captcha_solver\x18\x1c \x01(\x0b\x32\x18.RequestGetCaptchaSolverH\x00\x12:\n\x14list_captcha_solvers\x18\x1d \x01(\x0b\x32\x1a.RequestListCaptchaSolversH\x00\x12\x36\n\x12set_captcha_solver\x18\x1e \x01(\x0b\x32\x18.RequestSetCaptchaSolverH\x00\x12\'\n\ndelete_job\x18\x03 \x01(\x0b\x32\x11.RequestDeleteJobH\x00\x12!\n\x07get_job\x18\x06 \x01(\x0b\x32\x0e.RequestGetJobH\x00\x12,\n\rget_job_items\x18\x07 \x01(\x0b\x32\x13.RequestGetJobItemsH\x00\x12%\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x10.RequestListJobsH\x00\x12!\n\x07set_job\x18\x10 \x01(\x0b\x32\x0e.RequestSetJobH\x00\x12\x38\n\x13\x64\x65lete_job_schedule\x18\x18 \x01(\x0b\x32\x19.RequestDeleteJobScheduleH\x00\x12\x32\n\x10get_job_schedule\x18\x19 \x01(\x0b\x32\x16.RequestGetJobScheduleH\x00\x12\x36\n\x12list_job_schedules\x18\x1a \x01(\x0b\x32\x18.RequestListJobSchedulesH\x00\x12\x32\n\x10set_job_schedule\x18\x1b \x01(\x0b\x32\x16.RequestSetJobScheduleH\x00\x12-\n\rdelete_policy\x18\x04 \x01(\x0b\x32\x14.RequestDeletePolicyH\x00\x12\'\n\nget_policy\x18\x08 \x01(\x0b\x32\x11.RequestGetPolicyH\x00\x12-\n\rlist_policies\x18\x0c \x01(\x0b\x32\x14.RequestListPoliciesH\x00\x12\'\n\nset_policy\x18\x11 \x01(\x0b\x32\x11.RequestSetPolicyH\x00\x12\x38\n\x13\x64\x65lete_domain_login\x18\x02 \x01(\x0b\x32\x19.RequestDeleteDomainLoginH\x00\x12\x32\n\x10get_domain_login\x18\x05 \x01(\x0b\x32\x16.RequestGetDomainLoginH\x00\x12\x36\n\x12list_domain_logins\x18\n \x01(\x0b\x32\x18.RequestListDomainLoginsH\x00\x12\x32\n\x10set_domain_login\x18\x0f \x01(\x0b\x32\x16.RequestSetDomainLoginH\x00\x12\x30\n\x0fget_rate_limits\x18\t \x01(\x0b\x32\x15.RequestGetRateLimitsH\x00\x12.\n\x0eset_rate_limit\x18\x12 \x01(\x0b\x32\x14.RequestSetRateLimitH\x00\x12\x39\n\x13performance_profile\x18\r \x01(\x0b\x32\x1a.RequestPerformanceProfileH\x00\x12:\n\x14subscribe_job_status\x18\x13 \x01(\x0b\x32\x1a.RequestSubscribeJobStatusH\x00\x12\x36\n\x12subscribe_job_sync\x18\x14 \x01(\x0b\x32\x18.RequestSubscribeJobSyncH\x00\x12\x46\n\x1asubscribe_resource_monitor\x18\x15 \x01(\x0b\x32 .RequestSubscribeResourceMonitorH\x00\x12>\n\x16subscribe_task_monitor\x18\x16 \x01(\x0b\x32\x1c.RequestSubscribeTaskMonitorH\x00\x12*\n\x0bunsubscribe\x18\x17 \x01(\x0b\x32\x13.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"\xaa\x07\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12 \n\x06solver\x18\x16 \x01(\x0b\x32\x0e.CaptchaSolverH\x00\x12/\n\nnew_solver\x18\x18 \x01(\x0b\x32\x19.ResponseNewCaptchaSolverH\x00\x12;\n\x14list_captcha_solvers\x18\x17 \x01(\x0b\x32\x1b.ResponseListCaptchaSolversH\x00\x12$\n\x0c\x64omain_login\x18\x05 \x01(\x0b\x32\x0c.DomainLoginH\x00\x12-\n\x11\x64omain_login_user\x18\x06 \x01(\x0b\x32\x10.DomainLoginUserH\x00\x12\x37\n\x12list_domain_logins\x18\t \x01(\x0b\x32\x19.ResponseListDomainLoginsH\x00\x12\x13\n\x03job\x18\x07 \x01(\x0b\x32\x04.JobH\x00\x12\"\n\x07new_job\x18\x0e \x01(\x0b\x32\x0f.ResponseNewJobH\x00\x12(\n\nlist_items\x18\n \x01(\x0b\x32\x12.ResponseListItemsH\x00\x12&\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x11.ResponseListJobsH\x00\x12$\n\x0cjob_schedule\x18\x13 \x01(\x0b\x32\x0c.JobScheduleH\x00\x12\x33\n\x10new_job_schedule\x18\x15 \x01(\x0b\x32\x17.ResponseNewJobScheduleH\x00\x12\x37\n\x12list_job_schedules\x18\x14 \x01(\x0b\x32\x19.ResponseListJobSchedulesH\x00\x12\x19\n\x06policy\x18\x08 \x01(\x0b\x32\x07.PolicyH\x00\x12(\n\nnew_policy\x18\x0f \x01(\x0b\x32\x12.ResponseNewPolicyH\x00\x12.\n\rlist_policies\x18\x0c \x01(\x0b\x32\x15.ResponseListPoliciesH\x00\x12\x33\n\x10list_rate_limits\x18\r \x01(\x0b\x32\x17.ResponseListRateLimitsH\x00\x12\x34\n\x10new_subscription\x18\x10 \x01(\x0b\x32\x18.ResponseNewSubscriptionH\x00\x12:\n\x13performance_profile\x18\x11 \x01(\x0b\x32\x1b.ResponsePerformanceProfileH\x00\x42\x06\n\x04\x42ody\"/\n\x1aRequestDeleteCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x01(\x0c\",\n\x17RequestGetCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x02(\x0c\"0\n\x19RequestListCaptchaSolvers\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"L\n\x1aResponseListCaptchaSolvers\x12\x1f\n\x07solvers\x18\x01 \x03(\x0b\x32\x0e.CaptchaSolver\x12\r\n\x05total\x18\x02 \x01(\x05\"9\n\x17RequestSetCaptchaSolver\x12\x1e\n\x06solver\x18\x01 \x01(\x0b\x32\x0e.CaptchaSolver\"-\n\x18ResponseNewCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x02(\x0c\"*\n\x18RequestDeleteDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\"\'\n\x15RequestGetDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x02(\t\".\n\x17RequestListDomainLogins\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"G\n\x18ResponseListDomainLogins\x12\x1c\n\x06logins\x18\x01 \x03(\x0b\x32\x0c.DomainLogin\x12\r\n\x05total\x18\x02 \x01(\x05\"4\n\x15RequestSetDomainLogin\x12\x1b\n\x05login\x18\x01 \x01(\x0b\x32\x0c.DomainLogin\"\"\n\x10RequestDeleteJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"\x1f\n\rRequestGetJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"_\n\x0fRequestListJobs\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\x12\x15\n\rstarted_after\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\x12\x13\n\x0bschedule_id\x18\x04 \x01(\x0c\"5\n\x10ResponseListJobs\x12\x12\n\x04jobs\x18\x01 \x03(\x0b\x32\x04.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"\x8c\x01\n\rRequestSetJob\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x1f\n\trun_state\x18\x02 \x01(\x0e\x32\x0c.JobRunState\x12\x11\n\tpolicy_id\x18\x03 \x01(\x0c\x12\r\n\x05seeds\x18\x04 \x03(\t\x12\x0c\n\x04name\x18\x05 \x01(\t\x12\x1a\n\x08tag_list\x18\x06 \x01(\x0b\x32\x08.TagList\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"\xa2\x01\n\x12RequestGetJobItems\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x17\n\x0finclude_success\x18\x02 \x01(\x08\x12\x15\n\rinclude_error\x18\x03 \x01(\x08\x12\x19\n\x11include_exception\x18\x04 \x01(\x08\x12\x1c\n\x0e\x63ompression_ok\x18\x05 \x01(\x08:\x04true\x12\x13\n\x04page\x18\x06 \x01(\x0b\x32\x05.Page\"A\n\x11ResponseListItems\x12\x1d\n\x05items\x18\x01 \x03(\x0b\x32\x0e.CrawlResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"/\n\x18RequestDeleteJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\",\n\x15RequestGetJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\".\n\x17RequestListJobSchedules\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"N\n\x18ResponseListJobSchedules\x12#\n\rjob_schedules\x18\x01 \x03(\x0b\x32\x0c.JobSchedule\x12\r\n\x05total\x18\x02 \x01(\x05\";\n\x15RequestSetJobSchedule\x12\"\n\x0cjob_schedule\x18\x01 \x01(\x0b\x32\x0c.JobSchedule\"-\n\x16ResponseNewJobSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"(\n\x13RequestDeletePolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"%\n\x10RequestGetPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"*\n\x13RequestListPolicies\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"@\n\x14ResponseListPolicies\x12\x19\n\x08policies\x18\x01 \x03(\x0b\x32\x07.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"+\n\x10RequestSetPolicy\x12\x17\n\x06policy\x18\x01 \x02(\x0b\x32\x07.Policy\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"+\n\x14RequestGetRateLimits\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"H\n\x16ResponseListRateLimits\x12\x1f\n\x0brate_limits\x18\x01 \x03(\x0b\x32\n.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\"5\n\x13RequestSetRateLimit\x12\x1e\n\nrate_limit\x18\x01 \x02(\x0b\x32\n.RateLimit\"\\\n\x19RequestPerformanceProfile\x12\x13\n\x08\x64uration\x18\x01 \x01(\x01:\x01\x35\x12\x1b\n\x07sort_by\x18\x02 \x01(\t:\ntotal_time\x12\r\n\x05top_n\x18\x03 \x01(\x05\"\xaa\x01\n\x1aPerformanceProfileFunction\x12\x0c\n\x04\x66ile\x18\x01 \x01(\t\x12\x13\n\x0bline_number\x18\x02 \x01(\x05\x12\x10\n\x08\x66unction\x18\x03 \x01(\t\x12\r\n\x05\x63\x61lls\x18\x04 \x01(\x05\x12\x1b\n\x13non_recursive_calls\x18\x05 \x01(\x05\x12\x12\n\ntotal_time\x18\x06 \x01(\x01\x12\x17\n\x0f\x63umulative_time\x18\x07 \x01(\x01\"u\n\x1aResponsePerformanceProfile\x12\x13\n\x0btotal_calls\x18\x01 \x01(\x05\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12.\n\tfunctions\x18\x03 \x03(\x0b\x32\x1b.PerformanceProfileFunction\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"[\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\x12\x1c\n\x0e\x63ompression_ok\x18\x03 \x01(\x08:\x04true\"7\n\x08SyncItem\x12\x1c\n\x04item\x18\x01 \x02(\x0b\x32\x0e.CrawlResponse\x12\r\n\x05token\x18\x02 \x02(\x0c\"V\n\rServerMessage\x12\x17\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x06.EventH\x00\x12\x1d\n\x08response\x18\x02 \x01(\x0b\x32\t.ResponseH\x00\x42\r\n\x0bMessageType\"7\n\x1fRequestSubscribeResourceMonitor\x12\x14\n\x07history\x18\x01 \x01(\x05:\x03\x33\x30\x30\"C\n\x1bRequestSubscribeTaskMonitor\x12\x11\n\x06period\x18\x01 \x01(\x01:\x01\x33\x12\x11\n\x05top_n\x18\x02 \x01(\x05:\x02\x32\x30\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"t\n\x12SubscriptionClosed\x12*\n\x06reason\x18\x01 \x02(\x0e\x32\x1a.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\"!\n\x06Reason\x12\x0c\n\x08\x43OMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\"\xa2\x02\n\rResourceFrame\x12\x11\n\ttimestamp\x18\x01 \x01(\t\x12\x1f\n\x04\x63pus\x18\x02 \x03(\x0b\x32\x11.ResourceFrameCpu\x12$\n\x06memory\x18\x03 \x01(\x0b\x32\x14.ResourceFrameMemory\x12!\n\x05\x64isks\x18\x04 \x03(\x0b\x32\x12.ResourceFrameDisk\x12\'\n\x08networks\x18\x05 \x03(\x0b\x32\x15.ResourceFrameNetwork\x12\x1f\n\x04jobs\x18\x06 \x03(\x0b\x32\x11.ResourceFrameJob\x12\x19\n\x11\x63urrent_downloads\x18\x07 \x01(\x05\x12\x19\n\x11maximum_downloads\x18\x08 \x01(\x05\x12\x14\n\x0crate_limiter\x18\t \x01(\x05\"!\n\x10ResourceFrameCpu\x12\r\n\x05usage\x18\x01 \x01(\x01\"K\n\x10ResourceFrameJob\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x19\n\x11\x63urrent_downloads\x18\x03 \x01(\x05\"?\n\x11ResourceFrameDisk\x12\r\n\x05mount\x18\x01 \x01(\t\x12\x0c\n\x04used\x18\x02 \x01(\x03\x12\r\n\x05total\x18\x03 \x01(\x03\"2\n\x13ResourceFrameMemory\x12\x0c\n\x04used\x18\x01 \x01(\x03\x12\r\n\x05total\x18\x02 \x01(\x03\"D\n\x14ResourceFrameNetwork\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04sent\x18\x02 \x01(\x03\x12\x10\n\x08received\x18\x03 \x01(\x03\"\x17\n\x07TagList\x12\x0c\n\x04tags\x18\x01 \x03(\t\"5\n\x08TaskTree\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x1b\n\x08subtasks\x18\x02 \x03(\x0b\x32\t.TaskTree*U\n\x1f\x43\x61ptchaSolverAntigateCharacters\x12\x10\n\x0c\x41LPHANUMERIC\x10\x01\x12\x10\n\x0cNUMBERS_ONLY\x10\x02\x12\x0e\n\nALPHA_ONLY\x10\x03*^\n\x0bJobRunState\x12\r\n\tCANCELLED\x10\x01\x12\r\n\tCOMPLETED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\x0b\n\x07PENDING\x10\x04\x12\x0b\n\x07RUNNING\x10\x05\x12\x0b\n\x07\x44\x45LETED\x10\x06*Y\n\x13JobScheduleTimeUnit\x12\x0b\n\x07MINUTES\x10\x01\x12\t\n\x05HOURS\x10\x02\x12\x08\n\x04\x44\x41YS\x10\x03\x12\t\n\x05WEEKS\x10\x04\x12\n\n\x06MONTHS\x10\x05\x12\t\n\x05YEARS\x10\x06*J\n\x11JobScheduleTiming\x12\x1f\n\x1b\x41\x46TER_PREVIOUS_JOB_FINISHED\x10\x01\x12\x14\n\x10REGULAR_INTERVAL\x10\x02*/\n\x0cPatternMatch\x12\x0b\n\x07MATCHES\x10\x01\x12\x12\n\x0e\x44OES_NOT_MATCH\x10\x02')
+  serialized_pb=_b('\n\x0fstarbelly.proto\"\x92\x01\n\rCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12*\n\x08\x61ntigate\x18\x05 \x01(\x0b\x32\x16.CaptchaSolverAntigateH\x00\x42\x0c\n\nSolverType\"\xe1\x01\n\x15\x43\x61ptchaSolverAntigate\x12\x13\n\x0bservice_url\x18\x01 \x01(\t\x12\x0f\n\x07\x61pi_key\x18\x02 \x01(\t\x12\x16\n\x0erequire_phrase\x18\x03 \x01(\x08\x12\x16\n\x0e\x63\x61se_sensitive\x18\x04 \x01(\x08\x12\x34\n\ncharacters\x18\x05 \x01(\x0e\x32 .CaptchaSolverAntigateCharacters\x12\x14\n\x0crequire_math\x18\x06 \x01(\x08\x12\x12\n\nmin_length\x18\x07 \x01(\x05\x12\x12\n\nmax_length\x18\x08 \x01(\x05\"\x98\x02\n\rCrawlResponse\x12\x0c\n\x04\x62ody\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ompleted_at\x18\x02 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x03 \x01(\t\x12\x0c\n\x04\x63ost\x18\x04 \x01(\x01\x12\x10\n\x08\x64uration\x18\x05 \x01(\x01\x12\x11\n\texception\x18\x06 \x01(\t\x12\x18\n\x07headers\x18\x07 \x03(\x0b\x32\x07.Header\x12\x15\n\ris_compressed\x18\x08 \x01(\x08\x12\x12\n\nis_success\x18\t \x01(\x08\x12\x0e\n\x06job_id\x18\n \x01(\x0c\x12\x12\n\nstarted_at\x18\x0b \x01(\t\x12\x13\n\x0bstatus_code\x18\x0c \x01(\x05\x12\x0b\n\x03url\x18\r \x01(\t\x12\x0f\n\x07url_can\x18\x0e \x01(\t\"$\n\x06Header\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"e\n\x0b\x44omainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\x12\x11\n\tlogin_url\x18\x02 \x01(\t\x12\x12\n\nlogin_test\x18\x03 \x01(\t\x12\x1f\n\x05users\x18\x05 \x03(\x0b\x32\x10.DomainLoginUser\"F\n\x0f\x44omainLoginUser\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x0f\n\x07working\x18\x03 \x01(\x08\"\x8c\x02\n\x05\x45vent\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\x12\x1c\n\x08job_list\x18\x02 \x01(\x0b\x32\x08.JobListH\x00\x12&\n\rschedule_list\x18\x07 \x01(\x0b\x32\r.ScheduleListH\x00\x12(\n\x0eresource_frame\x18\x03 \x01(\x0b\x32\x0e.ResourceFrameH\x00\x12\x32\n\x13subscription_closed\x18\x04 \x01(\x0b\x32\x13.SubscriptionClosedH\x00\x12\x1e\n\tsync_item\x18\x05 \x01(\x0b\x32\t.SyncItemH\x00\x12\x1e\n\ttask_tree\x18\x06 \x01(\x0b\x32\t.TaskTreeH\x00\x42\x06\n\x04\x42ody\"\x96\x03\n\x03Job\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\r\n\x05seeds\x18\x02 \x03(\t\x12\x17\n\x06policy\x18\x03 \x01(\x0b\x32\x07.Policy\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x1a\n\x08tag_list\x18\x05 \x01(\x0b\x32\x08.TagList\x12\x1f\n\trun_state\x18\x06 \x01(\x0e\x32\x0c.JobRunState\x12\x12\n\nstarted_at\x18\x07 \x01(\t\x12\x14\n\x0c\x63ompleted_at\x18\x08 \x01(\t\x12\x16\n\nitem_count\x18\t \x01(\x05:\x02-1\x12\x1e\n\x12http_success_count\x18\n \x01(\x05:\x02-1\x12\x1c\n\x10http_error_count\x18\x0b \x01(\x05:\x02-1\x12\x1b\n\x0f\x65xception_count\x18\x0c \x01(\x05:\x02-1\x12\x36\n\x12http_status_counts\x18\r \x03(\x0b\x32\x1a.Job.HttpStatusCountsEntry\x1a\x37\n\x15HttpStatusCountsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\x1d\n\x07JobList\x12\x12\n\x04jobs\x18\x01 \x03(\x0b\x32\x04.Job\"\xac\x02\n\x08Schedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\x12\x12\n\ncreated_at\x18\x02 \x01(\t\x12\x12\n\nupdated_at\x18\x03 \x01(\t\x12\x0f\n\x07\x65nabled\x18\x04 \x01(\x08\x12$\n\ttime_unit\x18\x05 \x01(\x0e\x32\x11.ScheduleTimeUnit\x12\x11\n\tnum_units\x18\x06 \x01(\x05\x12\x1f\n\x06timing\x18\x07 \x01(\x0e\x32\x0f.ScheduleTiming\x12\x15\n\rschedule_name\x18\x08 \x01(\t\x12\x10\n\x08job_name\x18\t \x01(\t\x12\r\n\x05seeds\x18\n \x03(\t\x12\x11\n\tpolicy_id\x18\x0b \x01(\x0c\x12\x1a\n\x08tag_list\x18\x0c \x01(\x0b\x32\x08.TagList\x12\x11\n\tjob_count\x18\r \x01(\x05\",\n\x0cScheduleList\x12\x1c\n\tschedules\x18\x01 \x03(\x0b\x32\t.Schedule\")\n\x04Page\x12\x11\n\x05limit\x18\x01 \x01(\x05:\x02\x31\x30\x12\x0e\n\x06offset\x18\x02 \x01(\x05\"\xb3\x03\n\x06Policy\x12\x11\n\tpolicy_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t\x12\x12\n\nupdated_at\x18\x04 \x01(\t\x12\x19\n\x11\x63\x61ptcha_solver_id\x18\x0e \x01(\x0c\x12-\n\x0e\x61uthentication\x18\x06 \x01(\x0b\x32\x15.PolicyAuthentication\x12\x1d\n\x06limits\x18\x07 \x01(\x0b\x32\r.PolicyLimits\x12%\n\x0bproxy_rules\x18\x08 \x03(\x0b\x32\x10.PolicyProxyRule\x12,\n\x0fmime_type_rules\x18\t \x03(\x0b\x32\x13.PolicyMimeTypeRule\x12$\n\nrobots_txt\x18\n \x01(\x0b\x32\x10.PolicyRobotsTxt\x12\x32\n\x11url_normalization\x18\r \x01(\x0b\x32\x17.PolicyUrlNormalization\x12!\n\turl_rules\x18\x0b \x03(\x0b\x32\x0e.PolicyUrlRule\x12%\n\x0buser_agents\x18\x0c \x03(\x0b\x32\x10.PolicyUserAgent\"\'\n\x14PolicyAuthentication\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\"I\n\x0cPolicyLimits\x12\x10\n\x08max_cost\x18\x01 \x01(\x01\x12\x14\n\x0cmax_duration\x18\x02 \x01(\x01\x12\x11\n\tmax_items\x18\x03 \x01(\x05\"Q\n\x12PolicyMimeTypeRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12\x1c\n\x05match\x18\x02 \x01(\x0e\x32\r.PatternMatch\x12\x0c\n\x04save\x18\x03 \x01(\x08\"S\n\x0fPolicyProxyRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12\x1c\n\x05match\x18\x02 \x01(\x0e\x32\r.PatternMatch\x12\x11\n\tproxy_url\x18\x03 \x01(\t\"c\n\x0fPolicyRobotsTxt\x12%\n\x05usage\x18\x01 \x02(\x0e\x32\x16.PolicyRobotsTxt.Usage\")\n\x05Usage\x12\x08\n\x04OBEY\x10\x01\x12\n\n\x06INVERT\x10\x02\x12\n\n\x06IGNORE\x10\x03\"C\n\x16PolicyUrlNormalization\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x12\x18\n\x10strip_parameters\x18\x02 \x03(\t\"\x96\x01\n\rPolicyUrlRule\x12\x0f\n\x07pattern\x18\x01 \x01(\t\x12\x1c\n\x05match\x18\x02 \x01(\x0e\x32\r.PatternMatch\x12%\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32\x15.PolicyUrlRule.Action\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\"\x1f\n\x06\x41\x63tion\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08MULTIPLY\x10\x02\"\x1f\n\x0fPolicyUserAgent\x12\x0c\n\x04name\x18\x01 \x02(\t\"\xe5\x0b\n\x07Request\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12<\n\x15\x64\x65lete_captcha_solver\x18\x1f \x01(\x0b\x32\x1b.RequestDeleteCaptchaSolverH\x00\x12\x36\n\x12get_captcha_solver\x18\x1c \x01(\x0b\x32\x18.RequestGetCaptchaSolverH\x00\x12:\n\x14list_captcha_solvers\x18\x1d \x01(\x0b\x32\x1a.RequestListCaptchaSolversH\x00\x12\x36\n\x12set_captcha_solver\x18\x1e \x01(\x0b\x32\x18.RequestSetCaptchaSolverH\x00\x12\'\n\ndelete_job\x18\x03 \x01(\x0b\x32\x11.RequestDeleteJobH\x00\x12!\n\x07get_job\x18\x06 \x01(\x0b\x32\x0e.RequestGetJobH\x00\x12,\n\rget_job_items\x18\x07 \x01(\x0b\x32\x13.RequestGetJobItemsH\x00\x12%\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x10.RequestListJobsH\x00\x12!\n\x07set_job\x18\x10 \x01(\x0b\x32\x0e.RequestSetJobH\x00\x12\x31\n\x0f\x64\x65lete_schedule\x18\x18 \x01(\x0b\x32\x16.RequestDeleteScheduleH\x00\x12+\n\x0cget_schedule\x18\x19 \x01(\x0b\x32\x13.RequestGetScheduleH\x00\x12/\n\x0elist_schedules\x18\x1a \x01(\x0b\x32\x15.RequestListSchedulesH\x00\x12+\n\x0cset_schedule\x18\x1b \x01(\x0b\x32\x13.RequestSetScheduleH\x00\x12-\n\rdelete_policy\x18\x04 \x01(\x0b\x32\x14.RequestDeletePolicyH\x00\x12\'\n\nget_policy\x18\x08 \x01(\x0b\x32\x11.RequestGetPolicyH\x00\x12-\n\rlist_policies\x18\x0c \x01(\x0b\x32\x14.RequestListPoliciesH\x00\x12\'\n\nset_policy\x18\x11 \x01(\x0b\x32\x11.RequestSetPolicyH\x00\x12\x38\n\x13\x64\x65lete_domain_login\x18\x02 \x01(\x0b\x32\x19.RequestDeleteDomainLoginH\x00\x12\x32\n\x10get_domain_login\x18\x05 \x01(\x0b\x32\x16.RequestGetDomainLoginH\x00\x12\x36\n\x12list_domain_logins\x18\n \x01(\x0b\x32\x18.RequestListDomainLoginsH\x00\x12\x32\n\x10set_domain_login\x18\x0f \x01(\x0b\x32\x16.RequestSetDomainLoginH\x00\x12\x32\n\x10list_rate_limits\x18\t \x01(\x0b\x32\x16.RequestListRateLimitsH\x00\x12.\n\x0eset_rate_limit\x18\x12 \x01(\x0b\x32\x14.RequestSetRateLimitH\x00\x12\x39\n\x13performance_profile\x18\r \x01(\x0b\x32\x1a.RequestPerformanceProfileH\x00\x12:\n\x14subscribe_job_status\x18\x13 \x01(\x0b\x32\x1a.RequestSubscribeJobStatusH\x00\x12\x36\n\x12subscribe_job_sync\x18\x14 \x01(\x0b\x32\x18.RequestSubscribeJobSyncH\x00\x12\x46\n\x1asubscribe_resource_monitor\x18\x15 \x01(\x0b\x32 .RequestSubscribeResourceMonitorH\x00\x12>\n\x16subscribe_task_monitor\x18\x16 \x01(\x0b\x32\x1c.RequestSubscribeTaskMonitorH\x00\x12*\n\x0bunsubscribe\x18\x17 \x01(\x0b\x32\x13.RequestUnsubscribeH\x00\x42\t\n\x07\x43ommand\"\x95\x07\n\x08Response\x12\x12\n\nrequest_id\x18\x01 \x02(\x05\x12\x12\n\nis_success\x18\x02 \x02(\x08\x12\x15\n\rerror_message\x18\x03 \x01(\t\x12 \n\x06solver\x18\x16 \x01(\x0b\x32\x0e.CaptchaSolverH\x00\x12/\n\nnew_solver\x18\x18 \x01(\x0b\x32\x19.ResponseNewCaptchaSolverH\x00\x12;\n\x14list_captcha_solvers\x18\x17 \x01(\x0b\x32\x1b.ResponseListCaptchaSolversH\x00\x12$\n\x0c\x64omain_login\x18\x05 \x01(\x0b\x32\x0c.DomainLoginH\x00\x12-\n\x11\x64omain_login_user\x18\x06 \x01(\x0b\x32\x10.DomainLoginUserH\x00\x12\x37\n\x12list_domain_logins\x18\t \x01(\x0b\x32\x19.ResponseListDomainLoginsH\x00\x12\x13\n\x03job\x18\x07 \x01(\x0b\x32\x04.JobH\x00\x12\"\n\x07new_job\x18\x0e \x01(\x0b\x32\x0f.ResponseNewJobH\x00\x12(\n\nlist_items\x18\n \x01(\x0b\x32\x12.ResponseListItemsH\x00\x12&\n\tlist_jobs\x18\x0b \x01(\x0b\x32\x11.ResponseListJobsH\x00\x12\x1d\n\x08schedule\x18\x13 \x01(\x0b\x32\t.ScheduleH\x00\x12,\n\x0cnew_schedule\x18\x15 \x01(\x0b\x32\x14.ResponseNewScheduleH\x00\x12\x30\n\x0elist_schedules\x18\x14 \x01(\x0b\x32\x16.ResponseListSchedulesH\x00\x12\x19\n\x06policy\x18\x08 \x01(\x0b\x32\x07.PolicyH\x00\x12(\n\nnew_policy\x18\x0f \x01(\x0b\x32\x12.ResponseNewPolicyH\x00\x12.\n\rlist_policies\x18\x0c \x01(\x0b\x32\x15.ResponseListPoliciesH\x00\x12\x33\n\x10list_rate_limits\x18\r \x01(\x0b\x32\x17.ResponseListRateLimitsH\x00\x12\x34\n\x10new_subscription\x18\x10 \x01(\x0b\x32\x18.ResponseNewSubscriptionH\x00\x12:\n\x13performance_profile\x18\x11 \x01(\x0b\x32\x1b.ResponsePerformanceProfileH\x00\x42\x06\n\x04\x42ody\"/\n\x1aRequestDeleteCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x01(\x0c\",\n\x17RequestGetCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x02(\x0c\"0\n\x19RequestListCaptchaSolvers\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"L\n\x1aResponseListCaptchaSolvers\x12\x1f\n\x07solvers\x18\x01 \x03(\x0b\x32\x0e.CaptchaSolver\x12\r\n\x05total\x18\x02 \x01(\x05\"9\n\x17RequestSetCaptchaSolver\x12\x1e\n\x06solver\x18\x01 \x01(\x0b\x32\x0e.CaptchaSolver\"-\n\x18ResponseNewCaptchaSolver\x12\x11\n\tsolver_id\x18\x01 \x02(\x0c\"*\n\x18RequestDeleteDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\"\'\n\x15RequestGetDomainLogin\x12\x0e\n\x06\x64omain\x18\x01 \x02(\t\".\n\x17RequestListDomainLogins\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"G\n\x18ResponseListDomainLogins\x12\x1c\n\x06logins\x18\x01 \x03(\x0b\x32\x0c.DomainLogin\x12\r\n\x05total\x18\x02 \x01(\x05\"4\n\x15RequestSetDomainLogin\x12\x1b\n\x05login\x18\x01 \x01(\x0b\x32\x0c.DomainLogin\"\"\n\x10RequestDeleteJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"\x1f\n\rRequestGetJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"_\n\x0fRequestListJobs\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\x12\x15\n\rstarted_after\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\x12\x13\n\x0bschedule_id\x18\x04 \x01(\x0c\"5\n\x10ResponseListJobs\x12\x12\n\x04jobs\x18\x01 \x03(\x0b\x32\x04.Job\x12\r\n\x05total\x18\x02 \x01(\x05\"\x8c\x01\n\rRequestSetJob\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x1f\n\trun_state\x18\x02 \x01(\x0e\x32\x0c.JobRunState\x12\x11\n\tpolicy_id\x18\x03 \x01(\x0c\x12\r\n\x05seeds\x18\x04 \x03(\t\x12\x0c\n\x04name\x18\x05 \x01(\t\x12\x1a\n\x08tag_list\x18\x06 \x01(\x0b\x32\x08.TagList\" \n\x0eResponseNewJob\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\"\xa2\x01\n\x12RequestGetJobItems\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x17\n\x0finclude_success\x18\x02 \x01(\x08\x12\x15\n\rinclude_error\x18\x03 \x01(\x08\x12\x19\n\x11include_exception\x18\x04 \x01(\x08\x12\x1c\n\x0e\x63ompression_ok\x18\x05 \x01(\x08:\x04true\x12\x13\n\x04page\x18\x06 \x01(\x0b\x32\x05.Page\"A\n\x11ResponseListItems\x12\x1d\n\x05items\x18\x01 \x03(\x0b\x32\x0e.CrawlResponse\x12\r\n\x05total\x18\x02 \x01(\x05\",\n\x15RequestDeleteSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\")\n\x12RequestGetSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"+\n\x14RequestListSchedules\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"D\n\x15ResponseListSchedules\x12\x1c\n\tschedules\x18\x01 \x03(\x0b\x32\t.Schedule\x12\r\n\x05total\x18\x02 \x01(\x05\"1\n\x12RequestSetSchedule\x12\x1b\n\x08schedule\x18\x01 \x01(\x0b\x32\t.Schedule\"*\n\x13ResponseNewSchedule\x12\x13\n\x0bschedule_id\x18\x01 \x02(\x0c\"(\n\x13RequestDeletePolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"%\n\x10RequestGetPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"*\n\x13RequestListPolicies\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"@\n\x14ResponseListPolicies\x12\x19\n\x08policies\x18\x01 \x03(\x0b\x32\x07.Policy\x12\r\n\x05total\x18\x02 \x01(\x05\"+\n\x10RequestSetPolicy\x12\x17\n\x06policy\x18\x01 \x02(\x0b\x32\x07.Policy\"&\n\x11ResponseNewPolicy\x12\x11\n\tpolicy_id\x18\x01 \x02(\x0c\"G\n\tRateLimit\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x64\x65lay\x18\x02 \x01(\x02\x12\r\n\x05token\x18\x03 \x01(\x0c\x12\x0e\n\x06\x64omain\x18\x04 \x01(\t\",\n\x15RequestListRateLimits\x12\x13\n\x04page\x18\x01 \x01(\x0b\x32\x05.Page\"H\n\x16ResponseListRateLimits\x12\x1f\n\x0brate_limits\x18\x01 \x03(\x0b\x32\n.RateLimit\x12\r\n\x05total\x18\x02 \x01(\x05\"4\n\x13RequestSetRateLimit\x12\x0e\n\x06\x64omain\x18\x01 \x01(\t\x12\r\n\x05\x64\x65lay\x18\x02 \x01(\x02\"\\\n\x19RequestPerformanceProfile\x12\x13\n\x08\x64uration\x18\x01 \x01(\x01:\x01\x35\x12\x1b\n\x07sort_by\x18\x02 \x01(\t:\ntotal_time\x12\r\n\x05top_n\x18\x03 \x01(\x05\"\xaa\x01\n\x1aPerformanceProfileFunction\x12\x0c\n\x04\x66ile\x18\x01 \x01(\t\x12\x13\n\x0bline_number\x18\x02 \x01(\x05\x12\x10\n\x08\x66unction\x18\x03 \x01(\t\x12\r\n\x05\x63\x61lls\x18\x04 \x01(\x05\x12\x1b\n\x13non_recursive_calls\x18\x05 \x01(\x05\x12\x12\n\ntotal_time\x18\x06 \x01(\x01\x12\x17\n\x0f\x63umulative_time\x18\x07 \x01(\x01\"u\n\x1aResponsePerformanceProfile\x12\x13\n\x0btotal_calls\x18\x01 \x01(\x05\x12\x12\n\ntotal_time\x18\x02 \x01(\x01\x12.\n\tfunctions\x18\x03 \x03(\x0b\x32\x1b.PerformanceProfileFunction\"4\n\x19RequestSubscribeJobStatus\x12\x17\n\x0cmin_interval\x18\x01 \x01(\x01:\x01\x31\"[\n\x17RequestSubscribeJobSync\x12\x0e\n\x06job_id\x18\x01 \x02(\x0c\x12\x12\n\nsync_token\x18\x02 \x01(\x0c\x12\x1c\n\x0e\x63ompression_ok\x18\x03 \x01(\x08:\x04true\"7\n\x08SyncItem\x12\x1c\n\x04item\x18\x01 \x02(\x0b\x32\x0e.CrawlResponse\x12\r\n\x05token\x18\x02 \x02(\x0c\"V\n\rServerMessage\x12\x17\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x06.EventH\x00\x12\x1d\n\x08response\x18\x02 \x01(\x0b\x32\t.ResponseH\x00\x42\r\n\x0bMessageType\"7\n\x1fRequestSubscribeResourceMonitor\x12\x14\n\x07history\x18\x01 \x01(\x05:\x03\x33\x30\x30\"C\n\x1bRequestSubscribeTaskMonitor\x12\x11\n\x06period\x18\x01 \x01(\x01:\x01\x33\x12\x11\n\x05top_n\x18\x02 \x01(\x05:\x02\x32\x30\"2\n\x17ResponseNewSubscription\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"-\n\x12RequestUnsubscribe\x12\x17\n\x0fsubscription_id\x18\x01 \x02(\x05\"t\n\x12SubscriptionClosed\x12*\n\x06reason\x18\x01 \x02(\x0e\x32\x1a.SubscriptionClosed.Reason\x12\x0f\n\x07message\x18\x02 \x01(\t\"!\n\x06Reason\x12\x0c\n\x08\x43OMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\"\xa2\x02\n\rResourceFrame\x12\x11\n\ttimestamp\x18\x01 \x01(\t\x12\x1f\n\x04\x63pus\x18\x02 \x03(\x0b\x32\x11.ResourceFrameCpu\x12$\n\x06memory\x18\x03 \x01(\x0b\x32\x14.ResourceFrameMemory\x12!\n\x05\x64isks\x18\x04 \x03(\x0b\x32\x12.ResourceFrameDisk\x12\'\n\x08networks\x18\x05 \x03(\x0b\x32\x15.ResourceFrameNetwork\x12\x1f\n\x04jobs\x18\x06 \x03(\x0b\x32\x11.ResourceFrameJob\x12\x19\n\x11\x63urrent_downloads\x18\x07 \x01(\x05\x12\x19\n\x11maximum_downloads\x18\x08 \x01(\x05\x12\x14\n\x0crate_limiter\x18\t \x01(\x05\"!\n\x10ResourceFrameCpu\x12\r\n\x05usage\x18\x01 \x01(\x01\"K\n\x10ResourceFrameJob\x12\x0e\n\x06job_id\x18\x01 \x01(\x0c\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x19\n\x11\x63urrent_downloads\x18\x03 \x01(\x05\"?\n\x11ResourceFrameDisk\x12\r\n\x05mount\x18\x01 \x01(\t\x12\x0c\n\x04used\x18\x02 \x01(\x03\x12\r\n\x05total\x18\x03 \x01(\x03\"2\n\x13ResourceFrameMemory\x12\x0c\n\x04used\x18\x01 \x01(\x03\x12\r\n\x05total\x18\x02 \x01(\x03\"D\n\x14ResourceFrameNetwork\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04sent\x18\x02 \x01(\x03\x12\x10\n\x08received\x18\x03 \x01(\x03\"\x17\n\x07TagList\x12\x0c\n\x04tags\x18\x01 \x03(\t\"5\n\x08TaskTree\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x1b\n\x08subtasks\x18\x02 \x03(\x0b\x32\t.TaskTree*U\n\x1f\x43\x61ptchaSolverAntigateCharacters\x12\x10\n\x0c\x41LPHANUMERIC\x10\x01\x12\x10\n\x0cNUMBERS_ONLY\x10\x02\x12\x0e\n\nALPHA_ONLY\x10\x03*^\n\x0bJobRunState\x12\r\n\tCANCELLED\x10\x01\x12\r\n\tCOMPLETED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\x0b\n\x07PENDING\x10\x04\x12\x0b\n\x07RUNNING\x10\x05\x12\x0b\n\x07\x44\x45LETED\x10\x06*V\n\x10ScheduleTimeUnit\x12\x0b\n\x07MINUTES\x10\x01\x12\t\n\x05HOURS\x10\x02\x12\x08\n\x04\x44\x41YS\x10\x03\x12\t\n\x05WEEKS\x10\x04\x12\n\n\x06MONTHS\x10\x05\x12\t\n\x05YEARS\x10\x06*G\n\x0eScheduleTiming\x12\x1f\n\x1b\x41\x46TER_PREVIOUS_JOB_FINISHED\x10\x01\x12\x14\n\x10REGULAR_INTERVAL\x10\x02*/\n\x0cPatternMatch\x12\x0b\n\x07MATCHES\x10\x01\x12\x12\n\x0e\x44OES_NOT_MATCH\x10\x02')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -45,8 +45,8 @@ _CAPTCHASOLVERANTIGATECHARACTERS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=9349,
-  serialized_end=9434,
+  serialized_start=9239,
+  serialized_end=9324,
 )
 _sym_db.RegisterEnumDescriptor(_CAPTCHASOLVERANTIGATECHARACTERS)
 
@@ -84,15 +84,15 @@ _JOBRUNSTATE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=9436,
-  serialized_end=9530,
+  serialized_start=9326,
+  serialized_end=9420,
 )
 _sym_db.RegisterEnumDescriptor(_JOBRUNSTATE)
 
 JobRunState = enum_type_wrapper.EnumTypeWrapper(_JOBRUNSTATE)
-_JOBSCHEDULETIMEUNIT = _descriptor.EnumDescriptor(
-  name='JobScheduleTimeUnit',
-  full_name='JobScheduleTimeUnit',
+_SCHEDULETIMEUNIT = _descriptor.EnumDescriptor(
+  name='ScheduleTimeUnit',
+  full_name='ScheduleTimeUnit',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -123,15 +123,15 @@ _JOBSCHEDULETIMEUNIT = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=9532,
-  serialized_end=9621,
+  serialized_start=9422,
+  serialized_end=9508,
 )
-_sym_db.RegisterEnumDescriptor(_JOBSCHEDULETIMEUNIT)
+_sym_db.RegisterEnumDescriptor(_SCHEDULETIMEUNIT)
 
-JobScheduleTimeUnit = enum_type_wrapper.EnumTypeWrapper(_JOBSCHEDULETIMEUNIT)
-_JOBSCHEDULETIMING = _descriptor.EnumDescriptor(
-  name='JobScheduleTiming',
-  full_name='JobScheduleTiming',
+ScheduleTimeUnit = enum_type_wrapper.EnumTypeWrapper(_SCHEDULETIMEUNIT)
+_SCHEDULETIMING = _descriptor.EnumDescriptor(
+  name='ScheduleTiming',
+  full_name='ScheduleTiming',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -146,12 +146,12 @@ _JOBSCHEDULETIMING = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=9623,
-  serialized_end=9697,
+  serialized_start=9510,
+  serialized_end=9581,
 )
-_sym_db.RegisterEnumDescriptor(_JOBSCHEDULETIMING)
+_sym_db.RegisterEnumDescriptor(_SCHEDULETIMING)
 
-JobScheduleTiming = enum_type_wrapper.EnumTypeWrapper(_JOBSCHEDULETIMING)
+ScheduleTiming = enum_type_wrapper.EnumTypeWrapper(_SCHEDULETIMING)
 _PATTERNMATCH = _descriptor.EnumDescriptor(
   name='PatternMatch',
   full_name='PatternMatch',
@@ -169,8 +169,8 @@ _PATTERNMATCH = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=9699,
-  serialized_end=9746,
+  serialized_start=9583,
+  serialized_end=9630,
 )
 _sym_db.RegisterEnumDescriptor(_PATTERNMATCH)
 
@@ -217,8 +217,8 @@ _POLICYROBOTSTXT_USAGE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2821,
-  serialized_end=2862,
+  serialized_start=2775,
+  serialized_end=2816,
 )
 _sym_db.RegisterEnumDescriptor(_POLICYROBOTSTXT_USAGE)
 
@@ -239,8 +239,8 @@ _POLICYURLRULE_ACTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3053,
-  serialized_end=3084,
+  serialized_start=3007,
+  serialized_end=3038,
 )
 _sym_db.RegisterEnumDescriptor(_POLICYURLRULE_ACTION)
 
@@ -261,8 +261,8 @@ _SUBSCRIPTIONCLOSED_REASON = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=8642,
-  serialized_end=8675,
+  serialized_start=8532,
+  serialized_end=8565,
 )
 _sym_db.RegisterEnumDescriptor(_SUBSCRIPTIONCLOSED_REASON)
 
@@ -598,14 +598,7 @@ _DOMAINLOGIN = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='auth_count', full_name='DomainLogin.auth_count', index=3,
-      number=4, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='users', full_name='DomainLogin.users', index=4,
+      name='users', full_name='DomainLogin.users', index=3,
       number=5, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -624,7 +617,7 @@ _DOMAINLOGIN = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=717,
-  serialized_end=838,
+  serialized_end=818,
 )
 
 
@@ -668,8 +661,8 @@ _DOMAINLOGINUSER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=840,
-  serialized_end=910,
+  serialized_start=820,
+  serialized_end=890,
 )
 
 
@@ -695,7 +688,7 @@ _EVENT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='job_schedule_list', full_name='Event.job_schedule_list', index=2,
+      name='schedule_list', full_name='Event.schedule_list', index=2,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -744,8 +737,8 @@ _EVENT = _descriptor.Descriptor(
       name='Body', full_name='Event.Body',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=913,
-  serialized_end=1188,
+  serialized_start=893,
+  serialized_end=1161,
 )
 
 
@@ -782,8 +775,8 @@ _JOB_HTTPSTATUSCOUNTSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1542,
-  serialized_end=1597,
+  serialized_start=1515,
+  serialized_end=1570,
 )
 
 _JOB = _descriptor.Descriptor(
@@ -896,8 +889,8 @@ _JOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1191,
-  serialized_end=1597,
+  serialized_start=1164,
+  serialized_end=1570,
 )
 
 
@@ -927,104 +920,104 @@ _JOBLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1599,
-  serialized_end=1628,
+  serialized_start=1572,
+  serialized_end=1601,
 )
 
 
-_JOBSCHEDULE = _descriptor.Descriptor(
-  name='JobSchedule',
-  full_name='JobSchedule',
+_SCHEDULE = _descriptor.Descriptor(
+  name='Schedule',
+  full_name='Schedule',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='schedule_id', full_name='JobSchedule.schedule_id', index=0,
+      name='schedule_id', full_name='Schedule.schedule_id', index=0,
       number=1, type=12, cpp_type=9, label=2,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='created_at', full_name='JobSchedule.created_at', index=1,
+      name='created_at', full_name='Schedule.created_at', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='updated_at', full_name='JobSchedule.updated_at', index=2,
+      name='updated_at', full_name='Schedule.updated_at', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='enabled', full_name='JobSchedule.enabled', index=3,
+      name='enabled', full_name='Schedule.enabled', index=3,
       number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_unit', full_name='JobSchedule.time_unit', index=4,
+      name='time_unit', full_name='Schedule.time_unit', index=4,
       number=5, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='num_units', full_name='JobSchedule.num_units', index=5,
+      name='num_units', full_name='Schedule.num_units', index=5,
       number=6, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='timing', full_name='JobSchedule.timing', index=6,
+      name='timing', full_name='Schedule.timing', index=6,
       number=7, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='schedule_name', full_name='JobSchedule.schedule_name', index=7,
+      name='schedule_name', full_name='Schedule.schedule_name', index=7,
       number=8, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='job_name', full_name='JobSchedule.job_name', index=8,
+      name='job_name', full_name='Schedule.job_name', index=8,
       number=9, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='seeds', full_name='JobSchedule.seeds', index=9,
+      name='seeds', full_name='Schedule.seeds', index=9,
       number=10, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='policy_id', full_name='JobSchedule.policy_id', index=10,
+      name='policy_id', full_name='Schedule.policy_id', index=10,
       number=11, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='tag_list', full_name='JobSchedule.tag_list', index=11,
+      name='tag_list', full_name='Schedule.tag_list', index=11,
       number=12, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='job_count', full_name='JobSchedule.job_count', index=12,
+      name='job_count', full_name='Schedule.job_count', index=12,
       number=13, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1042,20 +1035,20 @@ _JOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1631,
-  serialized_end=1940,
+  serialized_start=1604,
+  serialized_end=1904,
 )
 
 
-_JOBSCHEDULELIST = _descriptor.Descriptor(
-  name='JobScheduleList',
-  full_name='JobScheduleList',
+_SCHEDULELIST = _descriptor.Descriptor(
+  name='ScheduleList',
+  full_name='ScheduleList',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='job_schedules', full_name='JobScheduleList.job_schedules', index=0,
+      name='schedules', full_name='ScheduleList.schedules', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1073,8 +1066,8 @@ _JOBSCHEDULELIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1942,
-  serialized_end=1996,
+  serialized_start=1906,
+  serialized_end=1950,
 )
 
 
@@ -1111,8 +1104,8 @@ _PAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1998,
-  serialized_end=2039,
+  serialized_start=1952,
+  serialized_end=1993,
 )
 
 
@@ -1226,8 +1219,8 @@ _POLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2042,
-  serialized_end=2477,
+  serialized_start=1996,
+  serialized_end=2431,
 )
 
 
@@ -1257,8 +1250,8 @@ _POLICYAUTHENTICATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2479,
-  serialized_end=2518,
+  serialized_start=2433,
+  serialized_end=2472,
 )
 
 
@@ -1302,8 +1295,8 @@ _POLICYLIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2520,
-  serialized_end=2593,
+  serialized_start=2474,
+  serialized_end=2547,
 )
 
 
@@ -1347,8 +1340,8 @@ _POLICYMIMETYPERULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2595,
-  serialized_end=2676,
+  serialized_start=2549,
+  serialized_end=2630,
 )
 
 
@@ -1392,8 +1385,8 @@ _POLICYPROXYRULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2678,
-  serialized_end=2761,
+  serialized_start=2632,
+  serialized_end=2715,
 )
 
 
@@ -1424,8 +1417,8 @@ _POLICYROBOTSTXT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2763,
-  serialized_end=2862,
+  serialized_start=2717,
+  serialized_end=2816,
 )
 
 
@@ -1462,8 +1455,8 @@ _POLICYURLNORMALIZATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2864,
-  serialized_end=2931,
+  serialized_start=2818,
+  serialized_end=2885,
 )
 
 
@@ -1515,8 +1508,8 @@ _POLICYURLRULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2934,
-  serialized_end=3084,
+  serialized_start=2888,
+  serialized_end=3038,
 )
 
 
@@ -1546,53 +1539,8 @@ _POLICYUSERAGENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3086,
-  serialized_end=3117,
-)
-
-
-_RATELIMIT = _descriptor.Descriptor(
-  name='RateLimit',
-  full_name='RateLimit',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='name', full_name='RateLimit.name', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='delay', full_name='RateLimit.delay', index=1,
-      number=2, type=2, cpp_type=6, label=1,
-      has_default_value=False, default_value=float(0),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='domain', full_name='RateLimit.domain', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto2',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=3119,
-  serialized_end=3175,
+  serialized_start=3040,
+  serialized_end=3071,
 )
 
 
@@ -1674,28 +1622,28 @@ _REQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='delete_job_schedule', full_name='Request.delete_job_schedule', index=10,
+      name='delete_schedule', full_name='Request.delete_schedule', index=10,
       number=24, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='get_job_schedule', full_name='Request.get_job_schedule', index=11,
+      name='get_schedule', full_name='Request.get_schedule', index=11,
       number=25, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_job_schedules', full_name='Request.list_job_schedules', index=12,
+      name='list_schedules', full_name='Request.list_schedules', index=12,
       number=26, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='set_job_schedule', full_name='Request.set_job_schedule', index=13,
+      name='set_schedule', full_name='Request.set_schedule', index=13,
       number=27, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1758,7 +1706,7 @@ _REQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='get_rate_limits', full_name='Request.get_rate_limits', index=22,
+      name='list_rate_limits', full_name='Request.list_rate_limits', index=22,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1828,8 +1776,8 @@ _REQUEST = _descriptor.Descriptor(
       name='Command', full_name='Request.Command',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3178,
-  serialized_end=4713,
+  serialized_start=3074,
+  serialized_end=4583,
 )
 
 
@@ -1932,21 +1880,21 @@ _RESPONSE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='job_schedule', full_name='Response.job_schedule', index=13,
+      name='schedule', full_name='Response.schedule', index=13,
       number=19, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='new_job_schedule', full_name='Response.new_job_schedule', index=14,
+      name='new_schedule', full_name='Response.new_schedule', index=14,
       number=21, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='list_job_schedules', full_name='Response.list_job_schedules', index=15,
+      name='list_schedules', full_name='Response.list_schedules', index=15,
       number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -2009,8 +1957,8 @@ _RESPONSE = _descriptor.Descriptor(
       name='Body', full_name='Response.Body',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=4716,
-  serialized_end=5654,
+  serialized_start=4586,
+  serialized_end=5503,
 )
 
 
@@ -2040,8 +1988,8 @@ _REQUESTDELETECAPTCHASOLVER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5656,
-  serialized_end=5703,
+  serialized_start=5505,
+  serialized_end=5552,
 )
 
 
@@ -2071,8 +2019,8 @@ _REQUESTGETCAPTCHASOLVER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5705,
-  serialized_end=5749,
+  serialized_start=5554,
+  serialized_end=5598,
 )
 
 
@@ -2102,8 +2050,8 @@ _REQUESTLISTCAPTCHASOLVERS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5751,
-  serialized_end=5799,
+  serialized_start=5600,
+  serialized_end=5648,
 )
 
 
@@ -2140,8 +2088,8 @@ _RESPONSELISTCAPTCHASOLVERS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5801,
-  serialized_end=5877,
+  serialized_start=5650,
+  serialized_end=5726,
 )
 
 
@@ -2171,8 +2119,8 @@ _REQUESTSETCAPTCHASOLVER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5879,
-  serialized_end=5936,
+  serialized_start=5728,
+  serialized_end=5785,
 )
 
 
@@ -2202,8 +2150,8 @@ _RESPONSENEWCAPTCHASOLVER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5938,
-  serialized_end=5983,
+  serialized_start=5787,
+  serialized_end=5832,
 )
 
 
@@ -2233,8 +2181,8 @@ _REQUESTDELETEDOMAINLOGIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5985,
-  serialized_end=6027,
+  serialized_start=5834,
+  serialized_end=5876,
 )
 
 
@@ -2264,8 +2212,8 @@ _REQUESTGETDOMAINLOGIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6029,
-  serialized_end=6068,
+  serialized_start=5878,
+  serialized_end=5917,
 )
 
 
@@ -2295,8 +2243,8 @@ _REQUESTLISTDOMAINLOGINS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6070,
-  serialized_end=6116,
+  serialized_start=5919,
+  serialized_end=5965,
 )
 
 
@@ -2333,8 +2281,8 @@ _RESPONSELISTDOMAINLOGINS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6118,
-  serialized_end=6189,
+  serialized_start=5967,
+  serialized_end=6038,
 )
 
 
@@ -2364,8 +2312,8 @@ _REQUESTSETDOMAINLOGIN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6191,
-  serialized_end=6243,
+  serialized_start=6040,
+  serialized_end=6092,
 )
 
 
@@ -2395,8 +2343,8 @@ _REQUESTDELETEJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6245,
-  serialized_end=6279,
+  serialized_start=6094,
+  serialized_end=6128,
 )
 
 
@@ -2426,8 +2374,8 @@ _REQUESTGETJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6281,
-  serialized_end=6312,
+  serialized_start=6130,
+  serialized_end=6161,
 )
 
 
@@ -2478,8 +2426,8 @@ _REQUESTLISTJOBS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6314,
-  serialized_end=6409,
+  serialized_start=6163,
+  serialized_end=6258,
 )
 
 
@@ -2516,8 +2464,8 @@ _RESPONSELISTJOBS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6411,
-  serialized_end=6464,
+  serialized_start=6260,
+  serialized_end=6313,
 )
 
 
@@ -2582,8 +2530,8 @@ _REQUESTSETJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6467,
-  serialized_end=6607,
+  serialized_start=6316,
+  serialized_end=6456,
 )
 
 
@@ -2613,8 +2561,8 @@ _RESPONSENEWJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6609,
-  serialized_end=6641,
+  serialized_start=6458,
+  serialized_end=6490,
 )
 
 
@@ -2679,8 +2627,8 @@ _REQUESTGETJOBITEMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6644,
-  serialized_end=6806,
+  serialized_start=6493,
+  serialized_end=6655,
 )
 
 
@@ -2717,20 +2665,20 @@ _RESPONSELISTITEMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6808,
-  serialized_end=6873,
+  serialized_start=6657,
+  serialized_end=6722,
 )
 
 
-_REQUESTDELETEJOBSCHEDULE = _descriptor.Descriptor(
-  name='RequestDeleteJobSchedule',
-  full_name='RequestDeleteJobSchedule',
+_REQUESTDELETESCHEDULE = _descriptor.Descriptor(
+  name='RequestDeleteSchedule',
+  full_name='RequestDeleteSchedule',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='schedule_id', full_name='RequestDeleteJobSchedule.schedule_id', index=0,
+      name='schedule_id', full_name='RequestDeleteSchedule.schedule_id', index=0,
       number=1, type=12, cpp_type=9, label=2,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -2748,20 +2696,20 @@ _REQUESTDELETEJOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6875,
-  serialized_end=6922,
+  serialized_start=6724,
+  serialized_end=6768,
 )
 
 
-_REQUESTGETJOBSCHEDULE = _descriptor.Descriptor(
-  name='RequestGetJobSchedule',
-  full_name='RequestGetJobSchedule',
+_REQUESTGETSCHEDULE = _descriptor.Descriptor(
+  name='RequestGetSchedule',
+  full_name='RequestGetSchedule',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='schedule_id', full_name='RequestGetJobSchedule.schedule_id', index=0,
+      name='schedule_id', full_name='RequestGetSchedule.schedule_id', index=0,
       number=1, type=12, cpp_type=9, label=2,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -2779,20 +2727,20 @@ _REQUESTGETJOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6924,
-  serialized_end=6968,
+  serialized_start=6770,
+  serialized_end=6811,
 )
 
 
-_REQUESTLISTJOBSCHEDULES = _descriptor.Descriptor(
-  name='RequestListJobSchedules',
-  full_name='RequestListJobSchedules',
+_REQUESTLISTSCHEDULES = _descriptor.Descriptor(
+  name='RequestListSchedules',
+  full_name='RequestListSchedules',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='page', full_name='RequestListJobSchedules.page', index=0,
+      name='page', full_name='RequestListSchedules.page', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -2810,27 +2758,27 @@ _REQUESTLISTJOBSCHEDULES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6970,
-  serialized_end=7016,
+  serialized_start=6813,
+  serialized_end=6856,
 )
 
 
-_RESPONSELISTJOBSCHEDULES = _descriptor.Descriptor(
-  name='ResponseListJobSchedules',
-  full_name='ResponseListJobSchedules',
+_RESPONSELISTSCHEDULES = _descriptor.Descriptor(
+  name='ResponseListSchedules',
+  full_name='ResponseListSchedules',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='job_schedules', full_name='ResponseListJobSchedules.job_schedules', index=0,
+      name='schedules', full_name='ResponseListSchedules.schedules', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='total', full_name='ResponseListJobSchedules.total', index=1,
+      name='total', full_name='ResponseListSchedules.total', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -2848,20 +2796,20 @@ _RESPONSELISTJOBSCHEDULES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7018,
-  serialized_end=7096,
+  serialized_start=6858,
+  serialized_end=6926,
 )
 
 
-_REQUESTSETJOBSCHEDULE = _descriptor.Descriptor(
-  name='RequestSetJobSchedule',
-  full_name='RequestSetJobSchedule',
+_REQUESTSETSCHEDULE = _descriptor.Descriptor(
+  name='RequestSetSchedule',
+  full_name='RequestSetSchedule',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='job_schedule', full_name='RequestSetJobSchedule.job_schedule', index=0,
+      name='schedule', full_name='RequestSetSchedule.schedule', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -2879,20 +2827,20 @@ _REQUESTSETJOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7098,
-  serialized_end=7157,
+  serialized_start=6928,
+  serialized_end=6977,
 )
 
 
-_RESPONSENEWJOBSCHEDULE = _descriptor.Descriptor(
-  name='ResponseNewJobSchedule',
-  full_name='ResponseNewJobSchedule',
+_RESPONSENEWSCHEDULE = _descriptor.Descriptor(
+  name='ResponseNewSchedule',
+  full_name='ResponseNewSchedule',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='schedule_id', full_name='ResponseNewJobSchedule.schedule_id', index=0,
+      name='schedule_id', full_name='ResponseNewSchedule.schedule_id', index=0,
       number=1, type=12, cpp_type=9, label=2,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -2910,8 +2858,8 @@ _RESPONSENEWJOBSCHEDULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7159,
-  serialized_end=7204,
+  serialized_start=6979,
+  serialized_end=7021,
 )
 
 
@@ -2941,8 +2889,8 @@ _REQUESTDELETEPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7206,
-  serialized_end=7246,
+  serialized_start=7023,
+  serialized_end=7063,
 )
 
 
@@ -2972,8 +2920,8 @@ _REQUESTGETPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7248,
-  serialized_end=7285,
+  serialized_start=7065,
+  serialized_end=7102,
 )
 
 
@@ -3003,8 +2951,8 @@ _REQUESTLISTPOLICIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7287,
-  serialized_end=7329,
+  serialized_start=7104,
+  serialized_end=7146,
 )
 
 
@@ -3041,8 +2989,8 @@ _RESPONSELISTPOLICIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7331,
-  serialized_end=7395,
+  serialized_start=7148,
+  serialized_end=7212,
 )
 
 
@@ -3072,8 +3020,8 @@ _REQUESTSETPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7397,
-  serialized_end=7440,
+  serialized_start=7214,
+  serialized_end=7257,
 )
 
 
@@ -3103,20 +3051,72 @@ _RESPONSENEWPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7442,
-  serialized_end=7480,
+  serialized_start=7259,
+  serialized_end=7297,
 )
 
 
-_REQUESTGETRATELIMITS = _descriptor.Descriptor(
-  name='RequestGetRateLimits',
-  full_name='RequestGetRateLimits',
+_RATELIMIT = _descriptor.Descriptor(
+  name='RateLimit',
+  full_name='RateLimit',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='page', full_name='RequestGetRateLimits.page', index=0,
+      name='name', full_name='RateLimit.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='delay', full_name='RateLimit.delay', index=1,
+      number=2, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='token', full_name='RateLimit.token', index=2,
+      number=3, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='domain', full_name='RateLimit.domain', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=7299,
+  serialized_end=7370,
+)
+
+
+_REQUESTLISTRATELIMITS = _descriptor.Descriptor(
+  name='RequestListRateLimits',
+  full_name='RequestListRateLimits',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='page', full_name='RequestListRateLimits.page', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -3134,8 +3134,8 @@ _REQUESTGETRATELIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7482,
-  serialized_end=7525,
+  serialized_start=7372,
+  serialized_end=7416,
 )
 
 
@@ -3172,8 +3172,8 @@ _RESPONSELISTRATELIMITS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7527,
-  serialized_end=7599,
+  serialized_start=7418,
+  serialized_end=7490,
 )
 
 
@@ -3185,9 +3185,16 @@ _REQUESTSETRATELIMIT = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='rate_limit', full_name='RequestSetRateLimit.rate_limit', index=0,
-      number=1, type=11, cpp_type=10, label=2,
-      has_default_value=False, default_value=None,
+      name='domain', full_name='RequestSetRateLimit.domain', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='delay', full_name='RequestSetRateLimit.delay', index=1,
+      number=2, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -3203,8 +3210,8 @@ _REQUESTSETRATELIMIT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7601,
-  serialized_end=7654,
+  serialized_start=7492,
+  serialized_end=7544,
 )
 
 
@@ -3248,8 +3255,8 @@ _REQUESTPERFORMANCEPROFILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7656,
-  serialized_end=7748,
+  serialized_start=7546,
+  serialized_end=7638,
 )
 
 
@@ -3321,8 +3328,8 @@ _PERFORMANCEPROFILEFUNCTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7751,
-  serialized_end=7921,
+  serialized_start=7641,
+  serialized_end=7811,
 )
 
 
@@ -3366,8 +3373,8 @@ _RESPONSEPERFORMANCEPROFILE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7923,
-  serialized_end=8040,
+  serialized_start=7813,
+  serialized_end=7930,
 )
 
 
@@ -3397,8 +3404,8 @@ _REQUESTSUBSCRIBEJOBSTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8042,
-  serialized_end=8094,
+  serialized_start=7932,
+  serialized_end=7984,
 )
 
 
@@ -3442,8 +3449,8 @@ _REQUESTSUBSCRIBEJOBSYNC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8096,
-  serialized_end=8187,
+  serialized_start=7986,
+  serialized_end=8077,
 )
 
 
@@ -3480,8 +3487,8 @@ _SYNCITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8189,
-  serialized_end=8244,
+  serialized_start=8079,
+  serialized_end=8134,
 )
 
 
@@ -3521,8 +3528,8 @@ _SERVERMESSAGE = _descriptor.Descriptor(
       name='MessageType', full_name='ServerMessage.MessageType',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=8246,
-  serialized_end=8332,
+  serialized_start=8136,
+  serialized_end=8222,
 )
 
 
@@ -3552,8 +3559,8 @@ _REQUESTSUBSCRIBERESOURCEMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8334,
-  serialized_end=8389,
+  serialized_start=8224,
+  serialized_end=8279,
 )
 
 
@@ -3590,8 +3597,8 @@ _REQUESTSUBSCRIBETASKMONITOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8391,
-  serialized_end=8458,
+  serialized_start=8281,
+  serialized_end=8348,
 )
 
 
@@ -3621,8 +3628,8 @@ _RESPONSENEWSUBSCRIPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8460,
-  serialized_end=8510,
+  serialized_start=8350,
+  serialized_end=8400,
 )
 
 
@@ -3652,8 +3659,8 @@ _REQUESTUNSUBSCRIBE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8512,
-  serialized_end=8557,
+  serialized_start=8402,
+  serialized_end=8447,
 )
 
 
@@ -3691,8 +3698,8 @@ _SUBSCRIPTIONCLOSED = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8559,
-  serialized_end=8675,
+  serialized_start=8449,
+  serialized_end=8565,
 )
 
 
@@ -3778,8 +3785,8 @@ _RESOURCEFRAME = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8678,
-  serialized_end=8968,
+  serialized_start=8568,
+  serialized_end=8858,
 )
 
 
@@ -3809,8 +3816,8 @@ _RESOURCEFRAMECPU = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8970,
-  serialized_end=9003,
+  serialized_start=8860,
+  serialized_end=8893,
 )
 
 
@@ -3854,8 +3861,8 @@ _RESOURCEFRAMEJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=9005,
-  serialized_end=9080,
+  serialized_start=8895,
+  serialized_end=8970,
 )
 
 
@@ -3899,8 +3906,8 @@ _RESOURCEFRAMEDISK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=9082,
-  serialized_end=9145,
+  serialized_start=8972,
+  serialized_end=9035,
 )
 
 
@@ -3937,8 +3944,8 @@ _RESOURCEFRAMEMEMORY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=9147,
-  serialized_end=9197,
+  serialized_start=9037,
+  serialized_end=9087,
 )
 
 
@@ -3982,8 +3989,8 @@ _RESOURCEFRAMENETWORK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=9199,
-  serialized_end=9267,
+  serialized_start=9089,
+  serialized_end=9157,
 )
 
 
@@ -4013,8 +4020,8 @@ _TAGLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=9269,
-  serialized_end=9292,
+  serialized_start=9159,
+  serialized_end=9182,
 )
 
 
@@ -4051,8 +4058,8 @@ _TASKTREE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=9294,
-  serialized_end=9347,
+  serialized_start=9184,
+  serialized_end=9237,
 )
 
 _CAPTCHASOLVER.fields_by_name['antigate'].message_type = _CAPTCHASOLVERANTIGATE
@@ -4063,7 +4070,7 @@ _CAPTCHASOLVERANTIGATE.fields_by_name['characters'].enum_type = _CAPTCHASOLVERAN
 _CRAWLRESPONSE.fields_by_name['headers'].message_type = _HEADER
 _DOMAINLOGIN.fields_by_name['users'].message_type = _DOMAINLOGINUSER
 _EVENT.fields_by_name['job_list'].message_type = _JOBLIST
-_EVENT.fields_by_name['job_schedule_list'].message_type = _JOBSCHEDULELIST
+_EVENT.fields_by_name['schedule_list'].message_type = _SCHEDULELIST
 _EVENT.fields_by_name['resource_frame'].message_type = _RESOURCEFRAME
 _EVENT.fields_by_name['subscription_closed'].message_type = _SUBSCRIPTIONCLOSED
 _EVENT.fields_by_name['sync_item'].message_type = _SYNCITEM
@@ -4072,8 +4079,8 @@ _EVENT.oneofs_by_name['Body'].fields.append(
   _EVENT.fields_by_name['job_list'])
 _EVENT.fields_by_name['job_list'].containing_oneof = _EVENT.oneofs_by_name['Body']
 _EVENT.oneofs_by_name['Body'].fields.append(
-  _EVENT.fields_by_name['job_schedule_list'])
-_EVENT.fields_by_name['job_schedule_list'].containing_oneof = _EVENT.oneofs_by_name['Body']
+  _EVENT.fields_by_name['schedule_list'])
+_EVENT.fields_by_name['schedule_list'].containing_oneof = _EVENT.oneofs_by_name['Body']
 _EVENT.oneofs_by_name['Body'].fields.append(
   _EVENT.fields_by_name['resource_frame'])
 _EVENT.fields_by_name['resource_frame'].containing_oneof = _EVENT.oneofs_by_name['Body']
@@ -4092,10 +4099,10 @@ _JOB.fields_by_name['tag_list'].message_type = _TAGLIST
 _JOB.fields_by_name['run_state'].enum_type = _JOBRUNSTATE
 _JOB.fields_by_name['http_status_counts'].message_type = _JOB_HTTPSTATUSCOUNTSENTRY
 _JOBLIST.fields_by_name['jobs'].message_type = _JOB
-_JOBSCHEDULE.fields_by_name['time_unit'].enum_type = _JOBSCHEDULETIMEUNIT
-_JOBSCHEDULE.fields_by_name['timing'].enum_type = _JOBSCHEDULETIMING
-_JOBSCHEDULE.fields_by_name['tag_list'].message_type = _TAGLIST
-_JOBSCHEDULELIST.fields_by_name['job_schedules'].message_type = _JOBSCHEDULE
+_SCHEDULE.fields_by_name['time_unit'].enum_type = _SCHEDULETIMEUNIT
+_SCHEDULE.fields_by_name['timing'].enum_type = _SCHEDULETIMING
+_SCHEDULE.fields_by_name['tag_list'].message_type = _TAGLIST
+_SCHEDULELIST.fields_by_name['schedules'].message_type = _SCHEDULE
 _POLICY.fields_by_name['authentication'].message_type = _POLICYAUTHENTICATION
 _POLICY.fields_by_name['limits'].message_type = _POLICYLIMITS
 _POLICY.fields_by_name['proxy_rules'].message_type = _POLICYPROXYRULE
@@ -4120,10 +4127,10 @@ _REQUEST.fields_by_name['get_job'].message_type = _REQUESTGETJOB
 _REQUEST.fields_by_name['get_job_items'].message_type = _REQUESTGETJOBITEMS
 _REQUEST.fields_by_name['list_jobs'].message_type = _REQUESTLISTJOBS
 _REQUEST.fields_by_name['set_job'].message_type = _REQUESTSETJOB
-_REQUEST.fields_by_name['delete_job_schedule'].message_type = _REQUESTDELETEJOBSCHEDULE
-_REQUEST.fields_by_name['get_job_schedule'].message_type = _REQUESTGETJOBSCHEDULE
-_REQUEST.fields_by_name['list_job_schedules'].message_type = _REQUESTLISTJOBSCHEDULES
-_REQUEST.fields_by_name['set_job_schedule'].message_type = _REQUESTSETJOBSCHEDULE
+_REQUEST.fields_by_name['delete_schedule'].message_type = _REQUESTDELETESCHEDULE
+_REQUEST.fields_by_name['get_schedule'].message_type = _REQUESTGETSCHEDULE
+_REQUEST.fields_by_name['list_schedules'].message_type = _REQUESTLISTSCHEDULES
+_REQUEST.fields_by_name['set_schedule'].message_type = _REQUESTSETSCHEDULE
 _REQUEST.fields_by_name['delete_policy'].message_type = _REQUESTDELETEPOLICY
 _REQUEST.fields_by_name['get_policy'].message_type = _REQUESTGETPOLICY
 _REQUEST.fields_by_name['list_policies'].message_type = _REQUESTLISTPOLICIES
@@ -4132,7 +4139,7 @@ _REQUEST.fields_by_name['delete_domain_login'].message_type = _REQUESTDELETEDOMA
 _REQUEST.fields_by_name['get_domain_login'].message_type = _REQUESTGETDOMAINLOGIN
 _REQUEST.fields_by_name['list_domain_logins'].message_type = _REQUESTLISTDOMAINLOGINS
 _REQUEST.fields_by_name['set_domain_login'].message_type = _REQUESTSETDOMAINLOGIN
-_REQUEST.fields_by_name['get_rate_limits'].message_type = _REQUESTGETRATELIMITS
+_REQUEST.fields_by_name['list_rate_limits'].message_type = _REQUESTLISTRATELIMITS
 _REQUEST.fields_by_name['set_rate_limit'].message_type = _REQUESTSETRATELIMIT
 _REQUEST.fields_by_name['performance_profile'].message_type = _REQUESTPERFORMANCEPROFILE
 _REQUEST.fields_by_name['subscribe_job_status'].message_type = _REQUESTSUBSCRIBEJOBSTATUS
@@ -4168,17 +4175,17 @@ _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['set_job'])
 _REQUEST.fields_by_name['set_job'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
-  _REQUEST.fields_by_name['delete_job_schedule'])
-_REQUEST.fields_by_name['delete_job_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+  _REQUEST.fields_by_name['delete_schedule'])
+_REQUEST.fields_by_name['delete_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
-  _REQUEST.fields_by_name['get_job_schedule'])
-_REQUEST.fields_by_name['get_job_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+  _REQUEST.fields_by_name['get_schedule'])
+_REQUEST.fields_by_name['get_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
-  _REQUEST.fields_by_name['list_job_schedules'])
-_REQUEST.fields_by_name['list_job_schedules'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+  _REQUEST.fields_by_name['list_schedules'])
+_REQUEST.fields_by_name['list_schedules'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
-  _REQUEST.fields_by_name['set_job_schedule'])
-_REQUEST.fields_by_name['set_job_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+  _REQUEST.fields_by_name['set_schedule'])
+_REQUEST.fields_by_name['set_schedule'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['delete_policy'])
 _REQUEST.fields_by_name['delete_policy'].containing_oneof = _REQUEST.oneofs_by_name['Command']
@@ -4204,8 +4211,8 @@ _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['set_domain_login'])
 _REQUEST.fields_by_name['set_domain_login'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
-  _REQUEST.fields_by_name['get_rate_limits'])
-_REQUEST.fields_by_name['get_rate_limits'].containing_oneof = _REQUEST.oneofs_by_name['Command']
+  _REQUEST.fields_by_name['list_rate_limits'])
+_REQUEST.fields_by_name['list_rate_limits'].containing_oneof = _REQUEST.oneofs_by_name['Command']
 _REQUEST.oneofs_by_name['Command'].fields.append(
   _REQUEST.fields_by_name['set_rate_limit'])
 _REQUEST.fields_by_name['set_rate_limit'].containing_oneof = _REQUEST.oneofs_by_name['Command']
@@ -4237,9 +4244,9 @@ _RESPONSE.fields_by_name['job'].message_type = _JOB
 _RESPONSE.fields_by_name['new_job'].message_type = _RESPONSENEWJOB
 _RESPONSE.fields_by_name['list_items'].message_type = _RESPONSELISTITEMS
 _RESPONSE.fields_by_name['list_jobs'].message_type = _RESPONSELISTJOBS
-_RESPONSE.fields_by_name['job_schedule'].message_type = _JOBSCHEDULE
-_RESPONSE.fields_by_name['new_job_schedule'].message_type = _RESPONSENEWJOBSCHEDULE
-_RESPONSE.fields_by_name['list_job_schedules'].message_type = _RESPONSELISTJOBSCHEDULES
+_RESPONSE.fields_by_name['schedule'].message_type = _SCHEDULE
+_RESPONSE.fields_by_name['new_schedule'].message_type = _RESPONSENEWSCHEDULE
+_RESPONSE.fields_by_name['list_schedules'].message_type = _RESPONSELISTSCHEDULES
 _RESPONSE.fields_by_name['policy'].message_type = _POLICY
 _RESPONSE.fields_by_name['new_policy'].message_type = _RESPONSENEWPOLICY
 _RESPONSE.fields_by_name['list_policies'].message_type = _RESPONSELISTPOLICIES
@@ -4277,14 +4284,14 @@ _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['list_jobs'])
 _RESPONSE.fields_by_name['list_jobs'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
-  _RESPONSE.fields_by_name['job_schedule'])
-_RESPONSE.fields_by_name['job_schedule'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
+  _RESPONSE.fields_by_name['schedule'])
+_RESPONSE.fields_by_name['schedule'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
-  _RESPONSE.fields_by_name['new_job_schedule'])
-_RESPONSE.fields_by_name['new_job_schedule'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
+  _RESPONSE.fields_by_name['new_schedule'])
+_RESPONSE.fields_by_name['new_schedule'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
-  _RESPONSE.fields_by_name['list_job_schedules'])
-_RESPONSE.fields_by_name['list_job_schedules'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
+  _RESPONSE.fields_by_name['list_schedules'])
+_RESPONSE.fields_by_name['list_schedules'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
 _RESPONSE.oneofs_by_name['Body'].fields.append(
   _RESPONSE.fields_by_name['policy'])
 _RESPONSE.fields_by_name['policy'].containing_oneof = _RESPONSE.oneofs_by_name['Body']
@@ -4315,15 +4322,14 @@ _REQUESTSETJOB.fields_by_name['run_state'].enum_type = _JOBRUNSTATE
 _REQUESTSETJOB.fields_by_name['tag_list'].message_type = _TAGLIST
 _REQUESTGETJOBITEMS.fields_by_name['page'].message_type = _PAGE
 _RESPONSELISTITEMS.fields_by_name['items'].message_type = _CRAWLRESPONSE
-_REQUESTLISTJOBSCHEDULES.fields_by_name['page'].message_type = _PAGE
-_RESPONSELISTJOBSCHEDULES.fields_by_name['job_schedules'].message_type = _JOBSCHEDULE
-_REQUESTSETJOBSCHEDULE.fields_by_name['job_schedule'].message_type = _JOBSCHEDULE
+_REQUESTLISTSCHEDULES.fields_by_name['page'].message_type = _PAGE
+_RESPONSELISTSCHEDULES.fields_by_name['schedules'].message_type = _SCHEDULE
+_REQUESTSETSCHEDULE.fields_by_name['schedule'].message_type = _SCHEDULE
 _REQUESTLISTPOLICIES.fields_by_name['page'].message_type = _PAGE
 _RESPONSELISTPOLICIES.fields_by_name['policies'].message_type = _POLICY
 _REQUESTSETPOLICY.fields_by_name['policy'].message_type = _POLICY
-_REQUESTGETRATELIMITS.fields_by_name['page'].message_type = _PAGE
+_REQUESTLISTRATELIMITS.fields_by_name['page'].message_type = _PAGE
 _RESPONSELISTRATELIMITS.fields_by_name['rate_limits'].message_type = _RATELIMIT
-_REQUESTSETRATELIMIT.fields_by_name['rate_limit'].message_type = _RATELIMIT
 _RESPONSEPERFORMANCEPROFILE.fields_by_name['functions'].message_type = _PERFORMANCEPROFILEFUNCTION
 _SYNCITEM.fields_by_name['item'].message_type = _CRAWLRESPONSE
 _SERVERMESSAGE.fields_by_name['event'].message_type = _EVENT
@@ -4351,8 +4357,8 @@ DESCRIPTOR.message_types_by_name['DomainLoginUser'] = _DOMAINLOGINUSER
 DESCRIPTOR.message_types_by_name['Event'] = _EVENT
 DESCRIPTOR.message_types_by_name['Job'] = _JOB
 DESCRIPTOR.message_types_by_name['JobList'] = _JOBLIST
-DESCRIPTOR.message_types_by_name['JobSchedule'] = _JOBSCHEDULE
-DESCRIPTOR.message_types_by_name['JobScheduleList'] = _JOBSCHEDULELIST
+DESCRIPTOR.message_types_by_name['Schedule'] = _SCHEDULE
+DESCRIPTOR.message_types_by_name['ScheduleList'] = _SCHEDULELIST
 DESCRIPTOR.message_types_by_name['Page'] = _PAGE
 DESCRIPTOR.message_types_by_name['Policy'] = _POLICY
 DESCRIPTOR.message_types_by_name['PolicyAuthentication'] = _POLICYAUTHENTICATION
@@ -4363,7 +4369,6 @@ DESCRIPTOR.message_types_by_name['PolicyRobotsTxt'] = _POLICYROBOTSTXT
 DESCRIPTOR.message_types_by_name['PolicyUrlNormalization'] = _POLICYURLNORMALIZATION
 DESCRIPTOR.message_types_by_name['PolicyUrlRule'] = _POLICYURLRULE
 DESCRIPTOR.message_types_by_name['PolicyUserAgent'] = _POLICYUSERAGENT
-DESCRIPTOR.message_types_by_name['RateLimit'] = _RATELIMIT
 DESCRIPTOR.message_types_by_name['Request'] = _REQUEST
 DESCRIPTOR.message_types_by_name['Response'] = _RESPONSE
 DESCRIPTOR.message_types_by_name['RequestDeleteCaptchaSolver'] = _REQUESTDELETECAPTCHASOLVER
@@ -4385,19 +4390,20 @@ DESCRIPTOR.message_types_by_name['RequestSetJob'] = _REQUESTSETJOB
 DESCRIPTOR.message_types_by_name['ResponseNewJob'] = _RESPONSENEWJOB
 DESCRIPTOR.message_types_by_name['RequestGetJobItems'] = _REQUESTGETJOBITEMS
 DESCRIPTOR.message_types_by_name['ResponseListItems'] = _RESPONSELISTITEMS
-DESCRIPTOR.message_types_by_name['RequestDeleteJobSchedule'] = _REQUESTDELETEJOBSCHEDULE
-DESCRIPTOR.message_types_by_name['RequestGetJobSchedule'] = _REQUESTGETJOBSCHEDULE
-DESCRIPTOR.message_types_by_name['RequestListJobSchedules'] = _REQUESTLISTJOBSCHEDULES
-DESCRIPTOR.message_types_by_name['ResponseListJobSchedules'] = _RESPONSELISTJOBSCHEDULES
-DESCRIPTOR.message_types_by_name['RequestSetJobSchedule'] = _REQUESTSETJOBSCHEDULE
-DESCRIPTOR.message_types_by_name['ResponseNewJobSchedule'] = _RESPONSENEWJOBSCHEDULE
+DESCRIPTOR.message_types_by_name['RequestDeleteSchedule'] = _REQUESTDELETESCHEDULE
+DESCRIPTOR.message_types_by_name['RequestGetSchedule'] = _REQUESTGETSCHEDULE
+DESCRIPTOR.message_types_by_name['RequestListSchedules'] = _REQUESTLISTSCHEDULES
+DESCRIPTOR.message_types_by_name['ResponseListSchedules'] = _RESPONSELISTSCHEDULES
+DESCRIPTOR.message_types_by_name['RequestSetSchedule'] = _REQUESTSETSCHEDULE
+DESCRIPTOR.message_types_by_name['ResponseNewSchedule'] = _RESPONSENEWSCHEDULE
 DESCRIPTOR.message_types_by_name['RequestDeletePolicy'] = _REQUESTDELETEPOLICY
 DESCRIPTOR.message_types_by_name['RequestGetPolicy'] = _REQUESTGETPOLICY
 DESCRIPTOR.message_types_by_name['RequestListPolicies'] = _REQUESTLISTPOLICIES
 DESCRIPTOR.message_types_by_name['ResponseListPolicies'] = _RESPONSELISTPOLICIES
 DESCRIPTOR.message_types_by_name['RequestSetPolicy'] = _REQUESTSETPOLICY
 DESCRIPTOR.message_types_by_name['ResponseNewPolicy'] = _RESPONSENEWPOLICY
-DESCRIPTOR.message_types_by_name['RequestGetRateLimits'] = _REQUESTGETRATELIMITS
+DESCRIPTOR.message_types_by_name['RateLimit'] = _RATELIMIT
+DESCRIPTOR.message_types_by_name['RequestListRateLimits'] = _REQUESTLISTRATELIMITS
 DESCRIPTOR.message_types_by_name['ResponseListRateLimits'] = _RESPONSELISTRATELIMITS
 DESCRIPTOR.message_types_by_name['RequestSetRateLimit'] = _REQUESTSETRATELIMIT
 DESCRIPTOR.message_types_by_name['RequestPerformanceProfile'] = _REQUESTPERFORMANCEPROFILE
@@ -4422,8 +4428,8 @@ DESCRIPTOR.message_types_by_name['TagList'] = _TAGLIST
 DESCRIPTOR.message_types_by_name['TaskTree'] = _TASKTREE
 DESCRIPTOR.enum_types_by_name['CaptchaSolverAntigateCharacters'] = _CAPTCHASOLVERANTIGATECHARACTERS
 DESCRIPTOR.enum_types_by_name['JobRunState'] = _JOBRUNSTATE
-DESCRIPTOR.enum_types_by_name['JobScheduleTimeUnit'] = _JOBSCHEDULETIMEUNIT
-DESCRIPTOR.enum_types_by_name['JobScheduleTiming'] = _JOBSCHEDULETIMING
+DESCRIPTOR.enum_types_by_name['ScheduleTimeUnit'] = _SCHEDULETIMEUNIT
+DESCRIPTOR.enum_types_by_name['ScheduleTiming'] = _SCHEDULETIMING
 DESCRIPTOR.enum_types_by_name['PatternMatch'] = _PATTERNMATCH
 
 CaptchaSolver = _reflection.GeneratedProtocolMessageType('CaptchaSolver', (_message.Message,), dict(
@@ -4497,19 +4503,19 @@ JobList = _reflection.GeneratedProtocolMessageType('JobList', (_message.Message,
   ))
 _sym_db.RegisterMessage(JobList)
 
-JobSchedule = _reflection.GeneratedProtocolMessageType('JobSchedule', (_message.Message,), dict(
-  DESCRIPTOR = _JOBSCHEDULE,
+Schedule = _reflection.GeneratedProtocolMessageType('Schedule', (_message.Message,), dict(
+  DESCRIPTOR = _SCHEDULE,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:JobSchedule)
+  # @@protoc_insertion_point(class_scope:Schedule)
   ))
-_sym_db.RegisterMessage(JobSchedule)
+_sym_db.RegisterMessage(Schedule)
 
-JobScheduleList = _reflection.GeneratedProtocolMessageType('JobScheduleList', (_message.Message,), dict(
-  DESCRIPTOR = _JOBSCHEDULELIST,
+ScheduleList = _reflection.GeneratedProtocolMessageType('ScheduleList', (_message.Message,), dict(
+  DESCRIPTOR = _SCHEDULELIST,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:JobScheduleList)
+  # @@protoc_insertion_point(class_scope:ScheduleList)
   ))
-_sym_db.RegisterMessage(JobScheduleList)
+_sym_db.RegisterMessage(ScheduleList)
 
 Page = _reflection.GeneratedProtocolMessageType('Page', (_message.Message,), dict(
   DESCRIPTOR = _PAGE,
@@ -4580,13 +4586,6 @@ PolicyUserAgent = _reflection.GeneratedProtocolMessageType('PolicyUserAgent', (_
   # @@protoc_insertion_point(class_scope:PolicyUserAgent)
   ))
 _sym_db.RegisterMessage(PolicyUserAgent)
-
-RateLimit = _reflection.GeneratedProtocolMessageType('RateLimit', (_message.Message,), dict(
-  DESCRIPTOR = _RATELIMIT,
-  __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:RateLimit)
-  ))
-_sym_db.RegisterMessage(RateLimit)
 
 Request = _reflection.GeneratedProtocolMessageType('Request', (_message.Message,), dict(
   DESCRIPTOR = _REQUEST,
@@ -4735,47 +4734,47 @@ ResponseListItems = _reflection.GeneratedProtocolMessageType('ResponseListItems'
   ))
 _sym_db.RegisterMessage(ResponseListItems)
 
-RequestDeleteJobSchedule = _reflection.GeneratedProtocolMessageType('RequestDeleteJobSchedule', (_message.Message,), dict(
-  DESCRIPTOR = _REQUESTDELETEJOBSCHEDULE,
+RequestDeleteSchedule = _reflection.GeneratedProtocolMessageType('RequestDeleteSchedule', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTDELETESCHEDULE,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:RequestDeleteJobSchedule)
+  # @@protoc_insertion_point(class_scope:RequestDeleteSchedule)
   ))
-_sym_db.RegisterMessage(RequestDeleteJobSchedule)
+_sym_db.RegisterMessage(RequestDeleteSchedule)
 
-RequestGetJobSchedule = _reflection.GeneratedProtocolMessageType('RequestGetJobSchedule', (_message.Message,), dict(
-  DESCRIPTOR = _REQUESTGETJOBSCHEDULE,
+RequestGetSchedule = _reflection.GeneratedProtocolMessageType('RequestGetSchedule', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTGETSCHEDULE,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:RequestGetJobSchedule)
+  # @@protoc_insertion_point(class_scope:RequestGetSchedule)
   ))
-_sym_db.RegisterMessage(RequestGetJobSchedule)
+_sym_db.RegisterMessage(RequestGetSchedule)
 
-RequestListJobSchedules = _reflection.GeneratedProtocolMessageType('RequestListJobSchedules', (_message.Message,), dict(
-  DESCRIPTOR = _REQUESTLISTJOBSCHEDULES,
+RequestListSchedules = _reflection.GeneratedProtocolMessageType('RequestListSchedules', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTLISTSCHEDULES,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:RequestListJobSchedules)
+  # @@protoc_insertion_point(class_scope:RequestListSchedules)
   ))
-_sym_db.RegisterMessage(RequestListJobSchedules)
+_sym_db.RegisterMessage(RequestListSchedules)
 
-ResponseListJobSchedules = _reflection.GeneratedProtocolMessageType('ResponseListJobSchedules', (_message.Message,), dict(
-  DESCRIPTOR = _RESPONSELISTJOBSCHEDULES,
+ResponseListSchedules = _reflection.GeneratedProtocolMessageType('ResponseListSchedules', (_message.Message,), dict(
+  DESCRIPTOR = _RESPONSELISTSCHEDULES,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:ResponseListJobSchedules)
+  # @@protoc_insertion_point(class_scope:ResponseListSchedules)
   ))
-_sym_db.RegisterMessage(ResponseListJobSchedules)
+_sym_db.RegisterMessage(ResponseListSchedules)
 
-RequestSetJobSchedule = _reflection.GeneratedProtocolMessageType('RequestSetJobSchedule', (_message.Message,), dict(
-  DESCRIPTOR = _REQUESTSETJOBSCHEDULE,
+RequestSetSchedule = _reflection.GeneratedProtocolMessageType('RequestSetSchedule', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTSETSCHEDULE,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:RequestSetJobSchedule)
+  # @@protoc_insertion_point(class_scope:RequestSetSchedule)
   ))
-_sym_db.RegisterMessage(RequestSetJobSchedule)
+_sym_db.RegisterMessage(RequestSetSchedule)
 
-ResponseNewJobSchedule = _reflection.GeneratedProtocolMessageType('ResponseNewJobSchedule', (_message.Message,), dict(
-  DESCRIPTOR = _RESPONSENEWJOBSCHEDULE,
+ResponseNewSchedule = _reflection.GeneratedProtocolMessageType('ResponseNewSchedule', (_message.Message,), dict(
+  DESCRIPTOR = _RESPONSENEWSCHEDULE,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:ResponseNewJobSchedule)
+  # @@protoc_insertion_point(class_scope:ResponseNewSchedule)
   ))
-_sym_db.RegisterMessage(ResponseNewJobSchedule)
+_sym_db.RegisterMessage(ResponseNewSchedule)
 
 RequestDeletePolicy = _reflection.GeneratedProtocolMessageType('RequestDeletePolicy', (_message.Message,), dict(
   DESCRIPTOR = _REQUESTDELETEPOLICY,
@@ -4819,12 +4818,19 @@ ResponseNewPolicy = _reflection.GeneratedProtocolMessageType('ResponseNewPolicy'
   ))
 _sym_db.RegisterMessage(ResponseNewPolicy)
 
-RequestGetRateLimits = _reflection.GeneratedProtocolMessageType('RequestGetRateLimits', (_message.Message,), dict(
-  DESCRIPTOR = _REQUESTGETRATELIMITS,
+RateLimit = _reflection.GeneratedProtocolMessageType('RateLimit', (_message.Message,), dict(
+  DESCRIPTOR = _RATELIMIT,
   __module__ = 'starbelly_pb2'
-  # @@protoc_insertion_point(class_scope:RequestGetRateLimits)
+  # @@protoc_insertion_point(class_scope:RateLimit)
   ))
-_sym_db.RegisterMessage(RequestGetRateLimits)
+_sym_db.RegisterMessage(RateLimit)
+
+RequestListRateLimits = _reflection.GeneratedProtocolMessageType('RequestListRateLimits', (_message.Message,), dict(
+  DESCRIPTOR = _REQUESTLISTRATELIMITS,
+  __module__ = 'starbelly_pb2'
+  # @@protoc_insertion_point(class_scope:RequestListRateLimits)
+  ))
+_sym_db.RegisterMessage(RequestListRateLimits)
 
 ResponseListRateLimits = _reflection.GeneratedProtocolMessageType('ResponseListRateLimits', (_message.Message,), dict(
   DESCRIPTOR = _RESPONSELISTRATELIMITS,

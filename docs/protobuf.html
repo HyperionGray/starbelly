@@ -1,0 +1,3451 @@
+<!-- Adapted from https://github.com/pseudomuto/protoc-gen-doc/blob/master/resources/html.tmpl -->
+<style>
+  table {
+    width: 100%;
+    font-size: 80%;
+    border-collapse: collapse;
+    margin-bottom: 2em;
+  }
+
+  thead {
+    font-weight: 700;
+    background-color: #dcdcdc;
+  }
+
+  tbody tr:nth-child(even) {
+    background-color: #fbfbfb;
+  }
+
+  td {
+    border: 1px solid #ccc;
+    padding: 0.5ex 2ex;
+  }
+
+  td p {
+    text-indent: 1em;
+    font-size: 100%; /* Override sphinx theme. */
+    margin: 0;
+  }
+
+  td p:nth-child(1) {
+    text-indent: 0; /* No indent on first p in td */
+  }
+
+  /* Table of fields */
+  .field-table td:nth-child(1) { /* Field */
+    width: 10em;
+  }
+  .field-table td:nth-child(2) { /* Type */
+    width: 10em;
+  }
+  .field-table td:nth-child(3) { /* Label */
+    width: 6em;
+  }
+  .field-table td:nth-child(4) { /* Description */
+    width: auto;
+  }
+
+  /* Table of extensions */
+  .extension-table td:nth-child(1) { /* Extension */
+    width: 10em;
+  }
+  .extension-table td:nth-child(2) { /* Type */
+    width: 10em;
+  }
+  .extension-table td:nth-child(3) { /* Base */
+    width: 10em;
+  }
+  .extension-table td:nth-child(4) { /* Number */
+    width: 5em;
+  }
+  .extension-table td:nth-child(5) { /* Description */
+    width: auto;
+  }
+
+  /* Table of enum values. */
+  .enum-table td:nth-child(1) { /* Name */
+    width: 10em;
+  }
+  .enum-table td:nth-child(2) { /* Number */
+    width: 10em;
+  }
+  .enum-table td:nth-child(3) { /* Description */
+    width: auto;
+  }
+
+  /* Table of scalar value types. */
+  .scalar-value-types-table tr {
+    height: 3em;
+  }
+</style>
+
+
+  
+
+  
+    <h3 id=".CaptchaSolver">CaptchaSolver</h3>
+    <p>Generic CAPTCHA solver.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>solver_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>created_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>updated_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>antigate</td>
+              <td><a href="#.CaptchaSolverAntigate">CaptchaSolverAntigate</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".CaptchaSolverAntigate">CaptchaSolverAntigate</h3>
+    <p>CAPTCHA solver for Antigate-compatible API.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>service_url</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>api_key</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>require_phrase</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>case_sensitive</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>characters</td>
+              <td><a href="#.CaptchaSolverAntigateCharacters">CaptchaSolverAntigateCharacters</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>require_math</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>min_length</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>max_length</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".CrawlResponse">CrawlResponse</h3>
+    <p>Contains a crawl response, i.e. something downloaded by the crawler or the error/exception that resulted from attempting to download it.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>body</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>completed_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>content_type</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>cost</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>duration</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>exception</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>headers</td>
+              <td><a href="#.Header">Header</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>is_compressed</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>is_success</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>started_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>status_code</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>url</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>url_can</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".DomainLogin">DomainLogin</h3>
+    <p>Login information for a domain.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>domain</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>login_url</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>login_test</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>users</td>
+              <td><a href="#.DomainLoginUser">DomainLoginUser</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".DomainLoginUser">DomainLoginUser</h3>
+    <p>Username/password for a domain.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>username</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>password</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>working</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Event">Event</h3>
+    <p>An Event is sent for any active subscription whenever data is available for that subscription.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>subscription_id</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>job_list</td>
+              <td><a href="#.JobList">JobList</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>schedule_list</td>
+              <td><a href="#.ScheduleList">ScheduleList</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>resource_frame</td>
+              <td><a href="#.ResourceFrame">ResourceFrame</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>subscription_closed</td>
+              <td><a href="#.SubscriptionClosed">SubscriptionClosed</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>sync_item</td>
+              <td><a href="#.SyncItem">SyncItem</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>task_tree</td>
+              <td><a href="#.TaskTree">TaskTree</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Header">Header</h3>
+    <p>An HTTP header.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>key</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>value</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Job">Job</h3>
+    <p>A crawl job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>seeds</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>policy</td>
+              <td><a href="#.Policy">Policy</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>tag_list</td>
+              <td><a href="#.TagList">TagList</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>run_state</td>
+              <td><a href="#.JobRunState">JobRunState</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>started_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>completed_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>item_count</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> Default: -1</p></td>
+            </tr>
+          
+            <tr>
+              <td>http_success_count</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> Default: -1</p></td>
+            </tr>
+          
+            <tr>
+              <td>http_error_count</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> Default: -1</p></td>
+            </tr>
+          
+            <tr>
+              <td>exception_count</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> Default: -1</p></td>
+            </tr>
+          
+            <tr>
+              <td>http_status_counts</td>
+              <td><a href="#.Job.HttpStatusCountsEntry">Job.HttpStatusCountsEntry</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Job.HttpStatusCountsEntry">Job.HttpStatusCountsEntry</h3>
+    <p></p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>key</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>value</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".JobList">JobList</h3>
+    <p>A list of jobs.</p><p>This seemingly stupid message is necessary so that a list of jobs can be used as the body of a "oneof".</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>jobs</td>
+              <td><a href="#.Job">Job</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Page">Page</h3>
+    <p>For paginating large sets.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>limit</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> Default: 10</p></td>
+            </tr>
+          
+            <tr>
+              <td>offset</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PerformanceProfileFunction">PerformanceProfileFunction</h3>
+    <p>Performance profile data for a single function.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>file</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>line_number</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>function</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>calls</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>non_recursive_calls</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total_time</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>cumulative_time</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Policy">Policy</h3>
+    <p>Settings that dictate crawler behavior. Policy is set on a job-by-job basis.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>policy_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>created_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>updated_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>captcha_solver_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>authentication</td>
+              <td><a href="#.PolicyAuthentication">PolicyAuthentication</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>limits</td>
+              <td><a href="#.PolicyLimits">PolicyLimits</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>proxy_rules</td>
+              <td><a href="#.PolicyProxyRule">PolicyProxyRule</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>mime_type_rules</td>
+              <td><a href="#.PolicyMimeTypeRule">PolicyMimeTypeRule</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>robots_txt</td>
+              <td><a href="#.PolicyRobotsTxt">PolicyRobotsTxt</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>url_normalization</td>
+              <td><a href="#.PolicyUrlNormalization">PolicyUrlNormalization</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>url_rules</td>
+              <td><a href="#.PolicyUrlRule">PolicyUrlRule</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>user_agents</td>
+              <td><a href="#.PolicyUserAgent">PolicyUserAgent</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyAuthentication">PolicyAuthentication</h3>
+    <p>Settings for authenticated crawling.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>enabled</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyLimits">PolicyLimits</h3>
+    <p>Specifies limits on how far or how long a crawl runs.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>max_cost</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>max_duration</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>max_items</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyMimeTypeRule">PolicyMimeTypeRule</h3>
+    <p>Specifies whether to save or discard certain responses based on MIME type.</p><p>If pattern is not specified, then this rule applies to all responses.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>pattern</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>match</td>
+              <td><a href="#.PatternMatch">PatternMatch</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>save</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyProxyRule">PolicyProxyRule</h3>
+    <p>When and how to proxy requests.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>pattern</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>match</td>
+              <td><a href="#.PatternMatch">PatternMatch</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>proxy_url</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyRobotsTxt">PolicyRobotsTxt</h3>
+    <p>Specify handling of robots.txt.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>usage</td>
+              <td><a href="#.PolicyRobotsTxt.Usage">PolicyRobotsTxt.Usage</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyUrlNormalization">PolicyUrlNormalization</h3>
+    <p></p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>enabled</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>strip_parameters</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyUrlRule">PolicyUrlRule</h3>
+    <p>A rule for adjusting a URL's cost.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>pattern</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>match</td>
+              <td><a href="#.PatternMatch">PatternMatch</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>action</td>
+              <td><a href="#.PolicyUrlRule.Action">PolicyUrlRule.Action</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>amount</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".PolicyUserAgent">PolicyUserAgent</h3>
+    <p>Specifies a user agent string to send when downloading a resource.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RateLimit">RateLimit</h3>
+    <p>Model for a rate limit.</p><p>If domain is not specified, the global rate limit is modified. If delay is not specified, then the rate limit for the specified domain is deleted. Either delay or domain must be specified: you are not allowed to delete the global limit.</p><p>If the client sends a name, the server ignores it. The server will always send a name to the client.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>delay</td>
+              <td><a href="#.float">float</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>token</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>domain</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Request">Request</h3>
+    <p>A Request is issued by the client, and the server is expected to send exactly 1 Response for each Request.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>request_id</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>required</td>
+              <td><p>The request ID is included in the response so that the client can correlate requests and responses. (Responses may arrive in a different order than the requests were sent.) </p></td>
+            </tr>
+          
+            <tr>
+              <td>delete_captcha_solver</td>
+              <td><a href="#.RequestDeleteCaptchaSolver">RequestDeleteCaptchaSolver</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>get_captcha_solver</td>
+              <td><a href="#.RequestGetCaptchaSolver">RequestGetCaptchaSolver</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_captcha_solvers</td>
+              <td><a href="#.RequestListCaptchaSolvers">RequestListCaptchaSolvers</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>set_captcha_solver</td>
+              <td><a href="#.RequestSetCaptchaSolver">RequestSetCaptchaSolver</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>delete_job</td>
+              <td><a href="#.RequestDeleteJob">RequestDeleteJob</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>get_job</td>
+              <td><a href="#.RequestGetJob">RequestGetJob</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>get_job_items</td>
+              <td><a href="#.RequestGetJobItems">RequestGetJobItems</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_jobs</td>
+              <td><a href="#.RequestListJobs">RequestListJobs</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>set_job</td>
+              <td><a href="#.RequestSetJob">RequestSetJob</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>delete_schedule</td>
+              <td><a href="#.RequestDeleteSchedule">RequestDeleteSchedule</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>get_schedule</td>
+              <td><a href="#.RequestGetSchedule">RequestGetSchedule</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_schedules</td>
+              <td><a href="#.RequestListSchedules">RequestListSchedules</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>set_schedule</td>
+              <td><a href="#.RequestSetSchedule">RequestSetSchedule</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>delete_policy</td>
+              <td><a href="#.RequestDeletePolicy">RequestDeletePolicy</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>get_policy</td>
+              <td><a href="#.RequestGetPolicy">RequestGetPolicy</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_policies</td>
+              <td><a href="#.RequestListPolicies">RequestListPolicies</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>set_policy</td>
+              <td><a href="#.RequestSetPolicy">RequestSetPolicy</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>delete_domain_login</td>
+              <td><a href="#.RequestDeleteDomainLogin">RequestDeleteDomainLogin</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>get_domain_login</td>
+              <td><a href="#.RequestGetDomainLogin">RequestGetDomainLogin</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_domain_logins</td>
+              <td><a href="#.RequestListDomainLogins">RequestListDomainLogins</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>set_domain_login</td>
+              <td><a href="#.RequestSetDomainLogin">RequestSetDomainLogin</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_rate_limits</td>
+              <td><a href="#.RequestListRateLimits">RequestListRateLimits</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>set_rate_limit</td>
+              <td><a href="#.RequestSetRateLimit">RequestSetRateLimit</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>performance_profile</td>
+              <td><a href="#.RequestPerformanceProfile">RequestPerformanceProfile</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>subscribe_job_status</td>
+              <td><a href="#.RequestSubscribeJobStatus">RequestSubscribeJobStatus</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>subscribe_job_sync</td>
+              <td><a href="#.RequestSubscribeJobSync">RequestSubscribeJobSync</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>subscribe_resource_monitor</td>
+              <td><a href="#.RequestSubscribeResourceMonitor">RequestSubscribeResourceMonitor</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>subscribe_task_monitor</td>
+              <td><a href="#.RequestSubscribeTaskMonitor">RequestSubscribeTaskMonitor</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>unsubscribe</td>
+              <td><a href="#.RequestUnsubscribe">RequestUnsubscribe</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestDeleteCaptchaSolver">RequestDeleteCaptchaSolver</h3>
+    <p>Delete a CAPTCHA solver.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>solver_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestDeleteDomainLogin">RequestDeleteDomainLogin</h3>
+    <p>Delete a credential and all of its passwords.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>domain</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestDeleteJob">RequestDeleteJob</h3>
+    <p>Delete a job and all of its items.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestDeletePolicy">RequestDeletePolicy</h3>
+    <p>Delete a policy.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>policy_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestDeleteSchedule">RequestDeleteSchedule</h3>
+    <p>Delete a job schedule.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedule_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestGetCaptchaSolver">RequestGetCaptchaSolver</h3>
+    <p>Get a CAPTCHA solver by ID.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>solver_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestGetDomainLogin">RequestGetDomainLogin</h3>
+    <p>Get credential data for the specified domain.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>domain</td>
+              <td><a href="#.string">string</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestGetJob">RequestGetJob</h3>
+    <p>Get metadata for the specified job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestGetJobItems">RequestGetJobItems</h3>
+    <p>Get a list of items (crawl responses) from a job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>include_success</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>include_error</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>include_exception</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>compression_ok</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> Default: true</p></td>
+            </tr>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestGetPolicy">RequestGetPolicy</h3>
+    <p>Get a policy.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>policy_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestGetSchedule">RequestGetSchedule</h3>
+    <p>Get metadata for the specified job schedule.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedule_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestListCaptchaSolvers">RequestListCaptchaSolvers</h3>
+    <p>Get a list of CAPTCHA solvers.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestListDomainLogins">RequestListDomainLogins</h3>
+    <p>Get a list of domain logins.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestListJobs">RequestListJobs</h3>
+    <p>Get a list of jobs.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>started_after</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>tag</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>schedule_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestListPolicies">RequestListPolicies</h3>
+    <p>Get a list of policies.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestListRateLimits">RequestListRateLimits</h3>
+    <p>Show rate limits.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestListSchedules">RequestListSchedules</h3>
+    <p>Get a list of job schedules.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestPerformanceProfile">RequestPerformanceProfile</h3>
+    <p>Request a performance profile.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>duration</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> Default: 5</p></td>
+            </tr>
+          
+            <tr>
+              <td>sort_by</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> Default: total_time</p></td>
+            </tr>
+          
+            <tr>
+              <td>top_n</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSetCaptchaSolver">RequestSetCaptchaSolver</h3>
+    <p>Create or modify a CAPTCHA solver.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>solver</td>
+              <td><a href="#.CaptchaSolver">CaptchaSolver</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSetDomainLogin">RequestSetDomainLogin</h3>
+    <p>Add or update metadata for a domain login.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>login</td>
+              <td><a href="#.DomainLogin">DomainLogin</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSetJob">RequestSetJob</h3>
+    <p>Create a job or update state for an existing job.</p><p>Policy must be provided when creating a job and may not be changed when updating a job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>run_state</td>
+              <td><a href="#.JobRunState">JobRunState</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>policy_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>seeds</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>tag_list</td>
+              <td><a href="#.TagList">TagList</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSetPolicy">RequestSetPolicy</h3>
+    <p>Create or update a crawl policy.</p><p>If the policy's ID is blank, then the server will create a new policy. If the ID is not blank, then the server will update the corresponding policy.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>policy</td>
+              <td><a href="#.Policy">Policy</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSetRateLimit">RequestSetRateLimit</h3>
+    <p>Set a rate limit.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>domain</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>delay</td>
+              <td><a href="#.float">float</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSetSchedule">RequestSetSchedule</h3>
+    <p>Create or update a job schedule.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedule</td>
+              <td><a href="#.Schedule">Schedule</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSubscribeJobStatus">RequestSubscribeJobStatus</h3>
+    <p>Subscribe to job status, e.g. run state, statistics, etc.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>min_interval</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p>The minimum amount of time between jobs status messages. If multiple job statuses change in rapid succession, those changes are coalesced into a single event. Default: 1</p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSubscribeJobSync">RequestSubscribeJobSync</h3>
+    <p>Synchronize crawl responses.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>sync_token</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>compression_ok</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> Default: true</p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSubscribeResourceMonitor">RequestSubscribeResourceMonitor</h3>
+    <p>Subscribe to resource monitoring, e.g. CPU usage, memory usage, downloads/sec, etc.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>history</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> Default: 300</p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestSubscribeTaskMonitor">RequestSubscribeTaskMonitor</h3>
+    <p>Subscribe to updates about resource usage (CPU, memory, disk, etc.)</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>period</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> Default: 3</p></td>
+            </tr>
+          
+            <tr>
+              <td>top_n</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> Default: 20</p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestUnsubscribe">RequestUnsubscribe</h3>
+    <p>Close the specified subscription.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>subscription_id</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResourceFrame">ResourceFrame</h3>
+    <p>Data about resource consumption.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>timestamp</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>cpus</td>
+              <td><a href="#.ResourceFrameCpu">ResourceFrameCpu</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>memory</td>
+              <td><a href="#.ResourceFrameMemory">ResourceFrameMemory</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>disks</td>
+              <td><a href="#.ResourceFrameDisk">ResourceFrameDisk</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>networks</td>
+              <td><a href="#.ResourceFrameNetwork">ResourceFrameNetwork</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>jobs</td>
+              <td><a href="#.ResourceFrameJob">ResourceFrameJob</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>current_downloads</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>maximum_downloads</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>rate_limiter</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResourceFrameCpu">ResourceFrameCpu</h3>
+    <p>CPU usage.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>usage</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResourceFrameDisk">ResourceFrameDisk</h3>
+    <p>Disk usage.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>mount</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>used</td>
+              <td><a href="#.int64">int64</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int64">int64</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResourceFrameJob">ResourceFrameJob</h3>
+    <p>Resources used by a crawl job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>current_downloads</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResourceFrameMemory">ResourceFrameMemory</h3>
+    <p>Memory usage.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>used</td>
+              <td><a href="#.int64">int64</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int64">int64</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResourceFrameNetwork">ResourceFrameNetwork</h3>
+    <p>Network usage.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>sent</td>
+              <td><a href="#.int64">int64</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>received</td>
+              <td><a href="#.int64">int64</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Response">Response</h3>
+    <p>The server sends exactly one Response for each Request it receives.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>request_id</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>required</td>
+              <td><p>The request ID will match the request that prompted this response. </p></td>
+            </tr>
+          
+            <tr>
+              <td>is_success</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>error_message</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>solver</td>
+              <td><a href="#.CaptchaSolver">CaptchaSolver</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>new_solver</td>
+              <td><a href="#.ResponseNewCaptchaSolver">ResponseNewCaptchaSolver</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_captcha_solvers</td>
+              <td><a href="#.ResponseListCaptchaSolvers">ResponseListCaptchaSolvers</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>domain_login</td>
+              <td><a href="#.DomainLogin">DomainLogin</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>domain_login_user</td>
+              <td><a href="#.DomainLoginUser">DomainLoginUser</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_domain_logins</td>
+              <td><a href="#.ResponseListDomainLogins">ResponseListDomainLogins</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>job</td>
+              <td><a href="#.Job">Job</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>new_job</td>
+              <td><a href="#.ResponseNewJob">ResponseNewJob</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_items</td>
+              <td><a href="#.ResponseListItems">ResponseListItems</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_jobs</td>
+              <td><a href="#.ResponseListJobs">ResponseListJobs</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>schedule</td>
+              <td><a href="#.Schedule">Schedule</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>new_schedule</td>
+              <td><a href="#.ResponseNewSchedule">ResponseNewSchedule</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_schedules</td>
+              <td><a href="#.ResponseListSchedules">ResponseListSchedules</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>policy</td>
+              <td><a href="#.Policy">Policy</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>new_policy</td>
+              <td><a href="#.ResponseNewPolicy">ResponseNewPolicy</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_policies</td>
+              <td><a href="#.ResponseListPolicies">ResponseListPolicies</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>list_rate_limits</td>
+              <td><a href="#.ResponseListRateLimits">ResponseListRateLimits</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>new_subscription</td>
+              <td><a href="#.ResponseNewSubscription">ResponseNewSubscription</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>performance_profile</td>
+              <td><a href="#.ResponsePerformanceProfile">ResponsePerformanceProfile</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListCaptchaSolvers">ResponseListCaptchaSolvers</h3>
+    <p>Return a list of CAPTCHA solvers.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>solvers</td>
+              <td><a href="#.CaptchaSolver">CaptchaSolver</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of solvers (not the count of solvers included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListDomainLogins">ResponseListDomainLogins</h3>
+    <p>Return a list of domain logins.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>logins</td>
+              <td><a href="#.DomainLogin">DomainLogin</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of domains (not the count of domains included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListItems">ResponseListItems</h3>
+    <p>Return a list of items (crawl responses) for a job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>items</td>
+              <td><a href="#.CrawlResponse">CrawlResponse</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of items (not the count of items included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListJobs">ResponseListJobs</h3>
+    <p>Return a list of jobs.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>jobs</td>
+              <td><a href="#.Job">Job</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of jobs (not the count of jobs included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListPolicies">ResponseListPolicies</h3>
+    <p>Return a list of jobs.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>policies</td>
+              <td><a href="#.Policy">Policy</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of jobs (not the count of jobs included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListRateLimits">ResponseListRateLimits</h3>
+    <p>Return a list of rate limits.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>rate_limits</td>
+              <td><a href="#.RateLimit">RateLimit</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of rate limits (not the count of rate limits included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListSchedules">ResponseListSchedules</h3>
+    <p>Return a list of job schedules.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedules</td>
+              <td><a href="#.Schedule">Schedule</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of job schedules (not just the ones included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseNewCaptchaSolver">ResponseNewCaptchaSolver</h3>
+    <p>A response containing the ID of a newly created CAPTCHA solver.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>solver_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseNewJob">ResponseNewJob</h3>
+    <p>A response containing the ID of a newly created job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>job_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseNewPolicy">ResponseNewPolicy</h3>
+    <p>A response containing the ID of a newly created policy.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>policy_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseNewSchedule">ResponseNewSchedule</h3>
+    <p>A response containing the ID of a newly created job schedule.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedule_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseNewSubscription">ResponseNewSubscription</h3>
+    <p>A response containing the ID of a newly created subscription.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>subscription_id</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponsePerformanceProfile">ResponsePerformanceProfile</h3>
+    <p>Contains performance profile data.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>total_calls</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total_time</td>
+              <td><a href="#.double">double</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>functions</td>
+              <td><a href="#.PerformanceProfileFunction">PerformanceProfileFunction</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".Schedule">Schedule</h3>
+    <p>Schedule information for a job.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedule_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>created_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>updated_at</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>enabled</td>
+              <td><a href="#.bool">bool</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>time_unit</td>
+              <td><a href="#.ScheduleTimeUnit">ScheduleTimeUnit</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>num_units</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>timing</td>
+              <td><a href="#.ScheduleTiming">ScheduleTiming</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>schedule_name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>job_name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>seeds</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>policy_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>tag_list</td>
+              <td><a href="#.TagList">TagList</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>job_count</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ScheduleList">ScheduleList</h3>
+    <p>A list of job schedules.</p><p>This seemingly stupid message is necessary so that a list of job schedules can be used as the body of a "oneof".</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedules</td>
+              <td><a href="#.Schedule">Schedule</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ServerMessage">ServerMessage</h3>
+    <p>A wrapper for all server messages that contains either a response to a command or a subscription event.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>event</td>
+              <td><a href="#.Event">Event</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>response</td>
+              <td><a href="#.Response">Response</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".SubscriptionClosed">SubscriptionClosed</h3>
+    <p>Sent when the server ends a subscription.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>reason</td>
+              <td><a href="#.SubscriptionClosed.Reason">SubscriptionClosed.Reason</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>message</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".SyncItem">SyncItem</h3>
+    <p>An item sent when syncing a crawl job. One event is sent for each crawl response.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>item</td>
+              <td><a href="#.CrawlResponse">CrawlResponse</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>token</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".TagList">TagList</h3>
+    <p>A list of tags.</p><p>This seemingly pointless message is actually useful because it allows us to differentiate between an empty list and a null list.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>tags</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".TaskTree">TaskTree</h3>
+    <p>A subtree of Trio tasks.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>name</td>
+              <td><a href="#.string">string</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>subtasks</td>
+              <td><a href="#.TaskTree">TaskTree</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+
+  
+    <h3 id=".CaptchaSolverAntigateCharacters">CaptchaSolverAntigateCharacters</h3>
+    <p></p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>ALPHANUMERIC</td>
+            <td>1</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>NUMBERS_ONLY</td>
+            <td>2</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>ALPHA_ONLY</td>
+            <td>3</td>
+            <td><p></p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 id=".JobRunState">JobRunState</h3>
+    <p>The various run states a job may have.</p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>CANCELLED</td>
+            <td>1</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>COMPLETED</td>
+            <td>2</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>PAUSED</td>
+            <td>3</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>PENDING</td>
+            <td>4</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>RUNNING</td>
+            <td>5</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>DELETED</td>
+            <td>6</td>
+            <td><p>This isn't really a valid run state. It indicates that job no longer exists.</p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 id=".PatternMatch">PatternMatch</h3>
+    <p>Specifies how a regex pattern should be used.</p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>MATCHES</td>
+            <td>1</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>DOES_NOT_MATCH</td>
+            <td>2</td>
+            <td><p></p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 id=".PolicyRobotsTxt.Usage">PolicyRobotsTxt.Usage</h3>
+    <p></p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>OBEY</td>
+            <td>1</td>
+            <td><p>Obey robots.txt rules.</p></td>
+          </tr>
+        
+          <tr>
+            <td>INVERT</td>
+            <td>2</td>
+            <td><p>Do the opposite of robots.txt rules.</p></td>
+          </tr>
+        
+          <tr>
+            <td>IGNORE</td>
+            <td>3</td>
+            <td><p>Ignore robots.txt.</p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 id=".PolicyUrlRule.Action">PolicyUrlRule.Action</h3>
+    <p></p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>ADD</td>
+            <td>1</td>
+            <td><p>Add `amount` to parent cost.</p></td>
+          </tr>
+        
+          <tr>
+            <td>MULTIPLY</td>
+            <td>2</td>
+            <td><p>Multiply parent cost by `amount`.</p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 id=".ScheduleTimeUnit">ScheduleTimeUnit</h3>
+    <p>Define time units that may be used for scheduling a job.</p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>MINUTES</td>
+            <td>1</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>HOURS</td>
+            <td>2</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>DAYS</td>
+            <td>3</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>WEEKS</td>
+            <td>4</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>MONTHS</td>
+            <td>5</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>YEARS</td>
+            <td>6</td>
+            <td><p></p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 id=".ScheduleTiming">ScheduleTiming</h3>
+    <p>Define when a job should be scheduled.</p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>AFTER_PREVIOUS_JOB_FINISHED</td>
+            <td>1</td>
+            <td><p>Schedule a job X units of time after the previous job completes.</p></td>
+          </tr>
+        
+          <tr>
+            <td>REGULAR_INTERVAL</td>
+            <td>2</td>
+            <td><p>Schedule a job every X units of time; if the previous job is still running, end it.</p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 id=".SubscriptionClosed.Reason">SubscriptionClosed.Reason</h3>
+    <p></p>
+    <table class="enum-table">
+      <thead>
+        <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>COMPLETE</td>
+            <td>1</td>
+            <td><p></p></td>
+          </tr>
+        
+          <tr>
+            <td>ERROR</td>
+            <td>2</td>
+            <td><p></p></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+<h2 id="scalar-value-types">Scalar Value Types</h2>
+<table class="scalar-value-types-table">
+  <thead>
+    <tr><td>.proto Type</td><td>Notes</td><td>C++ Type</td><td>Java Type</td><td>Python Type</td></tr>
+  </thead>
+  <tbody>
+    
+      <tr id=".double">
+        <td>double</td>
+        <td></td>
+        <td>double</td>
+        <td>double</td>
+        <td>float</td>
+      </tr>
+    
+      <tr id=".float">
+        <td>float</td>
+        <td></td>
+        <td>float</td>
+        <td>float</td>
+        <td>float</td>
+      </tr>
+    
+      <tr id=".int32">
+        <td>int32</td>
+        <td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead.</td>
+        <td>int32</td>
+        <td>int</td>
+        <td>int</td>
+      </tr>
+    
+      <tr id=".int64">
+        <td>int64</td>
+        <td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead.</td>
+        <td>int64</td>
+        <td>long</td>
+        <td>int/long</td>
+      </tr>
+    
+      <tr id=".uint32">
+        <td>uint32</td>
+        <td>Uses variable-length encoding.</td>
+        <td>uint32</td>
+        <td>int</td>
+        <td>int/long</td>
+      </tr>
+    
+      <tr id=".uint64">
+        <td>uint64</td>
+        <td>Uses variable-length encoding.</td>
+        <td>uint64</td>
+        <td>long</td>
+        <td>int/long</td>
+      </tr>
+    
+      <tr id=".sint32">
+        <td>sint32</td>
+        <td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s.</td>
+        <td>int32</td>
+        <td>int</td>
+        <td>int</td>
+      </tr>
+    
+      <tr id=".sint64">
+        <td>sint64</td>
+        <td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s.</td>
+        <td>int64</td>
+        <td>long</td>
+        <td>int/long</td>
+      </tr>
+    
+      <tr id=".fixed32">
+        <td>fixed32</td>
+        <td>Always four bytes. More efficient than uint32 if values are often greater than 2^28.</td>
+        <td>uint32</td>
+        <td>int</td>
+        <td>int</td>
+      </tr>
+    
+      <tr id=".fixed64">
+        <td>fixed64</td>
+        <td>Always eight bytes. More efficient than uint64 if values are often greater than 2^56.</td>
+        <td>uint64</td>
+        <td>long</td>
+        <td>int/long</td>
+      </tr>
+    
+      <tr id=".sfixed32">
+        <td>sfixed32</td>
+        <td>Always four bytes.</td>
+        <td>int32</td>
+        <td>int</td>
+        <td>int</td>
+      </tr>
+    
+      <tr id=".sfixed64">
+        <td>sfixed64</td>
+        <td>Always eight bytes.</td>
+        <td>int64</td>
+        <td>long</td>
+        <td>int/long</td>
+      </tr>
+    
+      <tr id=".bool">
+        <td>bool</td>
+        <td></td>
+        <td>bool</td>
+        <td>boolean</td>
+        <td>boolean</td>
+      </tr>
+    
+      <tr id=".string">
+        <td>string</td>
+        <td>A string must always contain UTF-8 encoded or 7-bit ASCII text.</td>
+        <td>string</td>
+        <td>String</td>
+        <td>str/unicode</td>
+      </tr>
+    
+      <tr id=".bytes">
+        <td>bytes</td>
+        <td>May contain any arbitrary sequence of bytes.</td>
+        <td>string</td>
+        <td>ByteString</td>
+        <td>str</td>
+      </tr>
+    
+  </tbody>
+</table>

@@ -415,7 +415,12 @@ class ScheduleDb:
         self._db_pool = db_pool
 
     async def get_schedule_docs(self):
-        ''' Yield schedule database documents. '''
+        '''
+        Yield schedule database documents.
+
+        :returns: Database documents.
+        :rtype: list[dict]
+        '''
         def latest_job(sched):
             return {'latest_job':
                 r.table('job')
@@ -520,7 +525,7 @@ class ServerDb:
         :param dict doc: A database document.
         :param datetime now: The datetime to place in updated (and possibly
             created) fields.
-        :returns: ID of new CAPTCHA document, if any.
+        :returns: ID of new document, if any.
         :rtype: str
         '''
         doc['updated_at'] = now
@@ -654,7 +659,7 @@ class ServerDb:
         :param dict doc: A database document.
         :param datetime now: The datetime to place in updated (and possibly
             created) fields.
-        :returns: ID of new CAPTCHA document, if any.
+        :returns: ID of new document, if any.
         :rtype: str
         '''
         async with self._db_pool.connection() as conn:
@@ -670,5 +675,128 @@ class ServerDb:
 
         return policy_id
 
+    async def list_rate_limits(self, limit, offset):
+        '''
+        Get a list of rate limits sorted by name.
+
+        :param int limit:
+        :param int offset:
+        :returns: Total count of documents and list of current page.
+        :rtype: tuple(int, list)
+        '''
+        count_query = r.table('rate_limit').count()
+        item_query = (
+            r.table('rate_limit')
+             .order_by(index='name')
+             .skip(offset)
+             .limit(limit)
+        )
+        rate_limits = list()
+
+        async with self._db_pool.connection() as conn:
+            count = await count_query.run(conn)
+            cursor = await item_query.run(conn)
+            async with cursor:
+                async for rate_limit in cursor:
+                    rate_limits.append(rate_limit)
+
+        return count, rate_limits
+
+    async def set_rate_limit(self, name, token, delay):
+        '''
+        Set a rate limit.
+
+        :param str name: A name for the rate limit.
+        :param bytes token: The rate limit token to apply the delay to.
+        :param float delay: The delay to apply. If None, delete the rate limit
+            for the specified token.
+        :type delay: float or None
+        '''
+        base_query = r.table('rate_limit').insert({
+            'name': name,
+            'token': token,
+            'delay': delay,
+        }, conflict='update')
+        async with self._db_pool.connection() as conn:
+            await base_query.run(conn)
 
 
+    async def delete_schedule(self, schedule_id):
+        '''
+        Delete the specified job schedule.
+
+        :param str schedule_id:
+        '''
+        async with self._db_pool.connection() as conn:
+            await r.table('schedule').get(schedule_id).delete().run(conn)
+
+    async def get_schedule(self, schedule_id):
+        '''
+        Get a job schedule.
+
+        :param str schedule_id:
+        :returns: A database document.
+        :rtype: dict
+        '''
+        async with self._db_pool.connection() as conn:
+            doc = await r.table('schedule').get(schedule_id).run(conn)
+        return doc
+
+    async def list_schedules(self, limit, offset):
+        '''
+        Get a list of job schedules sorted by name.
+
+        :param int limit:
+        :param int offset:
+        :returns: Total count of documents and list of current page.
+        :rtype: tuple(int, list)
+        '''
+        table = r.table('schedule')
+        query = table.order_by(index='schedule_name').skip(offset).limit(limit)
+        schedules = list()
+
+        async with self._db_pool.connection() as conn:
+            count = await table.count().run(conn)
+            cursor = await query.run(conn)
+            async with cursor:
+                async for schedule in cursor:
+                    schedules.append(schedule)
+
+        return count, schedules
+
+    async def set_schedule(self, doc, now):
+        '''
+        Insert/update a job schedule.
+
+        :param dict doc: A database document.
+        :param datetime now: The datetime to place in updated (and possibly
+            created) fields.
+        :returns: Schedule database document, including ``latest_job`` key.
+        :rtype: dict
+        '''
+        table = r.table('schedule')
+
+        def latest_job(sched):
+            return {'latest_job':
+                r.table('job')
+                 .order_by(index='schedule')
+                 .between((sched['id'], r.minval), (sched['id'], r.maxval))
+                 .pluck(['name', 'run_state', 'started_at', 'completed_at'])
+                 .nth(-1)
+                 .default(None)
+            }
+
+        async with self._db_pool.connection() as conn:
+            if 'id' in doc:
+                policy_id = doc['id']
+                doc['updated_at'] = now
+                await table.get(policy_id).update(doc).run(conn)
+            else:
+                doc['created_at'] = now
+                doc['updated_at'] = now
+                result = await table.insert(doc).run(conn)
+                policy_id = result['generated_keys'][0]
+            policy_doc = await r.table('schedule').get(policy_id).merge(
+                latest_job).run(conn)
+
+        return policy_doc
