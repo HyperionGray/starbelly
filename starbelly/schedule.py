@@ -109,7 +109,7 @@ class Schedule:
             pb.job_name,
             pb.job_count,
             [seed for seed in pb.seeds],
-            [tag for tag in pb.tag_list.tags],
+            [tag for tag in pb.tags],
             pb.policy_id,
         )
 
@@ -156,7 +156,7 @@ class Schedule:
         for seed in self.seeds:
             pb.seeds.append(seed)
         for tag in self.tags:
-            pb.tag_list.tags.append(tag)
+            pb.tags.append(tag)
         pb.policy_id = UUID(self.policy_id).bytes
 
     def format_job_name(self, when):

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 from operator import itemgetter
 import pickle
@@ -1106,6 +1106,191 @@ class TestServerDb():
         assert result2['schedule_name'] == 'Test Schedule 2'
         assert result2['created_at'] == now
         assert result2['updated_at'] == now2
+
+    async def test_delete_job(self, db_pool, job_table, response_table):
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2018, 1, 1, 12, 10, 0, tzinfo=timezone.utc)
+        job1_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        job2_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+        job = {
+            'id': job1_id,
+            'name': 'Test Job',
+            'seeds': ['https://seed1.example', 'https://seed2.example'],
+            'tags': ['tag1', 'tag2'],
+            'run_state': RunState.COMPLETED,
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 00,
+            'item_count': 100,
+            'http_success_count': 90,
+            'http_error_count': 9,
+            'exception_count': 1,
+            'http_status_counts': {'200': 90, '404': 9},
+            'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        }
+        responses = [{
+            'sequence': 100,
+            'job_id': job1_id,
+            'url': 'http://sequence.example/1',
+            'url_can': 'http://sequence.example/1',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 5.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 404,
+            'is_success': True,
+            'body_id': None,
+        },{
+            'sequence': 101,
+            'job_id': job2_id,
+            'url': 'http://sequence.example/2',
+            'url_can': 'http://sequence.example/2',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 1.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 404,
+            'is_success': False,
+            'body_id': None,
+        }]
+        async with db_pool.connection() as conn:
+            await job_table.insert(job).run(conn)
+            await response_table.insert(responses).run(conn)
+        server_db = ServerDb(db_pool)
+        await server_db.delete_job(job1_id)
+        async with db_pool.connection() as conn:
+            job_count = await job_table.count().run(conn)
+            response_count = await response_table.count().run(conn)
+
+
+    async def test_get_job(self, db_pool, job_table):
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        async with db_pool.connection() as conn:
+            started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+            await job_table.insert({
+                'id': job_id,
+                'name': 'Test Job',
+                'seeds': ['https://seed1.example', 'https://seed2.example'],
+                'tags': ['tag1', 'tag2'],
+                'run_state': RunState.RUNNING,
+                'started_at': started_at,
+                'completed_at': None,
+                'duration': None,
+                'item_count': 100,
+                'http_success_count': 90,
+                'http_error_count': 9,
+                'exception_count': 1,
+                'http_status_counts': {'200': 90, '404': 9},
+                'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                'old_urls': b'ABCDEFGHIJK',
+            }).run(conn)
+        server_db = ServerDb(db_pool)
+        job = await server_db.get_job(job_id)
+        assert job['id'] == job_id
+        assert 'old_urls' not in job
+
+    async def test_get_job_items(self, db_pool, job_table, response_table,
+            response_body_table):
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2018, 1, 1, 12, 5, 0, tzinfo=timezone.utc)
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        job = {
+            'id': job_id,
+            'name': 'Test Job',
+            'seeds': ['https://seed1.example', 'https://seed2.example'],
+            'tags': ['tag1', 'tag2'],
+            'run_state': RunState.COMPLETED,
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 300,
+            'item_count': 100,
+            'http_success_count': 90,
+            'http_error_count': 9,
+            'exception_count': 1,
+            'http_status_counts': {'200': 90, '404': 9},
+            'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        }
+        responses = [{
+            'sequence': 100,
+            'job_id': job_id,
+            'url': 'http://sequence.example/1',
+            'url_can': 'http://sequence.example/1',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 5.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 200,
+            'is_success': True,
+            'body_id': b'\xcc' * 16,
+        },{
+            'sequence': 101,
+            'job_id': job_id,
+            'url': 'http://sequence.example/2',
+            'url_can': 'http://sequence.example/2',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 1.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 404,
+            'is_success': False,
+            'body_id': None,
+        }]
+        body = {
+            'id': b'\xcc' * 16,
+            'body': 'Hello world!'.encode('ascii'),
+            'is_compressed': False,
+        }
+        async with db_pool.connection() as conn:
+            await job_table.insert(job).run(conn)
+            await response_table.insert(responses).run(conn)
+            await response_body_table.insert(body).run(conn)
+        server_db = ServerDb(db_pool)
+        count, items = await server_db.get_job_items(job_id, 10, 0, True,
+            True, True)
+        assert count == 2
+        assert items[0]['sequence'] == 100
+        assert items[0]['join']['body'].decode('ascii') == 'Hello world!'
+        assert items[1]['sequence'] == 101
+        assert items[1]['join'] is None
+
+    async def test_list_jobs(self, db_pool, job_table):
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2018, 1, 1, 12, 5, 0, tzinfo=timezone.utc)
+        jobs = [{
+            'name': 'Test Job {}'.format(n),
+            'seeds': ['https://seed1.example', 'https://seed2.example'],
+            'tags': ['tag1', 'tag2'],
+            'run_state': RunState.COMPLETED,
+            'started_at': started_at + timedelta(hours=n),
+            'completed_at': completed_at + timedelta(hours=n),
+            'duration': 300,
+            'item_count': 100,
+            'http_success_count': 90,
+            'http_error_count': 9,
+            'exception_count': 1,
+            'http_status_counts': {'200': 90, '404': 9},
+            'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        } for n in range(7)]
+        async with db_pool.connection() as conn:
+            await job_table.insert(jobs).run(conn)
+        server_db = ServerDb(db_pool)
+        count, items = await server_db.list_jobs(limit=5, offset=0,
+            started_after=started_at, tag='tag1',
+            schedule_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+        assert count == 7
+        assert len(items) == 5
+        # Jobs are stored by start date descending:
+        assert items[0]['name'] == 'Test Job 6'
+        count, items = await server_db.list_jobs(limit=5, offset=5,
+            started_after=started_at, tag='tag1',
+            schedule_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+        assert count == 7
+        assert len(items) == 2
+        assert items[0]['name'] == 'Test Job 1'
 
 
 class TestSubscriptionDb:

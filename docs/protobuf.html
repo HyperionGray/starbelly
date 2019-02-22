@@ -521,9 +521,9 @@
             </tr>
           
             <tr>
-              <td>tag_list</td>
-              <td><a href="#.TagList">TagList</a></td>
-              <td>optional</td>
+              <td>tags</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
               <td><p> </p></td>
             </tr>
           
@@ -1827,7 +1827,7 @@
     
   
     <h3 id=".RequestSetJob">RequestSetJob</h3>
-    <p>Create a job or update state for an existing job.</p><p>Policy must be provided when creating a job and may not be changed when updating a job.</p>
+    <p>Create a job or update state for an existing job.</p><p>Name, seeds, tags, and policy may only be specified for new jobs. Once a job is created, only the run state may be changed.</p>
 
     
       <table class="field-table">
@@ -1872,9 +1872,9 @@
             </tr>
           
             <tr>
-              <td>tag_list</td>
-              <td><a href="#.TagList">TagList</a></td>
-              <td>optional</td>
+              <td>tags</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
               <td><p> </p></td>
             </tr>
           
@@ -2901,9 +2901,9 @@
             </tr>
           
             <tr>
-              <td>tag_list</td>
-              <td><a href="#.TagList">TagList</a></td>
-              <td>optional</td>
+              <td>tags</td>
+              <td><a href="#.string">string</a></td>
+              <td>repeated</td>
               <td><p> </p></td>
             </tr>
           
@@ -3016,27 +3016,6 @@
               <td>token</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>required</td>
-              <td><p> </p></td>
-            </tr>
-          
-        </tbody>
-      </table>
-    
-  
-    <h3 id=".TagList">TagList</h3>
-    <p>A list of tags.</p><p>This seemingly pointless message is actually useful because it allows us to differentiate between an empty list and a null list.</p>
-
-    
-      <table class="field-table">
-        <thead>
-          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-        </thead>
-        <tbody>
-          
-            <tr>
-              <td>tags</td>
-              <td><a href="#.string">string</a></td>
-              <td>repeated</td>
               <td><p> </p></td>
             </tr>
           

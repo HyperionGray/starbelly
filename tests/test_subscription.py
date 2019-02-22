@@ -108,8 +108,8 @@ async def test_job_state_subscription(autojump_clock, nursery):
         assert job1.job_id == job1_id.bytes
         assert job1.name == 'Job #1'
         assert job1.seeds[0] == 'https://job1.example'
-        assert job1.tag_list.tags[0] == 'tag1a'
-        assert job1.tag_list.tags[1] == 'tag1b'
+        assert job1.tags[0] == 'tag1a'
+        assert job1.tags[1] == 'tag1b'
         assert job1.item_count == 10
         assert job1.http_success_count == 7
         assert job1.http_error_count == 2
@@ -124,7 +124,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
         assert job2.job_id == job2_id.bytes
         assert job2.name == 'Job #2'
         assert job2.seeds[0] == 'https://job2.example'
-        assert job2.tag_list.tags[0] == 'tag2a'
+        assert job2.tags[0] == 'tag2a'
         assert job2.item_count == 20
         assert job2.http_success_count == 14
         assert job2.http_error_count == 4
@@ -150,8 +150,8 @@ async def test_job_state_subscription(autojump_clock, nursery):
         job1 = message2.job_list.jobs[0]
         assert job1.name == 'Job #1'
         assert job1.seeds[0] == 'https://job1.example'
-        assert job1.tag_list.tags[0] == 'tag1a'
-        assert job1.tag_list.tags[1] == 'tag1b'
+        assert job1.tags[0] == 'tag1a'
+        assert job1.tags[1] == 'tag1b'
         assert job1.item_count == 11
         assert job1.http_success_count == 8
         assert job1.http_error_count == 2
@@ -179,7 +179,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
         job2 = message3.job_list.jobs[0]
         assert job2.name == 'Job #2'
         assert job2.seeds[0] == 'https://job2.example'
-        assert job2.tag_list.tags[0] == 'tag2a'
+        assert job2.tags[0] == 'tag2a'
         assert job2.item_count == 22
         assert job2.http_success_count == 15
         assert job2.http_error_count == 5

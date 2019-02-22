@@ -2,7 +2,7 @@ import logging
 
 from rethinkdb import RethinkDB
 
-from starbelly.job import RunState
+from starbelly.job import RunState, FINISHED_STATES
 
 
 logger = logging.getLogger(__name__)
@@ -800,6 +800,148 @@ class ServerDb:
                 latest_job).run(conn)
 
         return policy_doc
+
+    async def delete_job(self, job_id):
+        '''
+        Delete the specified job and all if its responses.
+
+        :param str job_id:
+        '''
+        job_query = r.table('job').get(job_id).pluck('run_state')
+        delete_job_query = r.table('job').get(job_id).delete()
+        delete_items_query = (
+            r.table('response')
+             .between((job_id, r.minval),
+                      (job_id, r.maxval),
+                      index='job_sync')
+             .delete()
+        )
+
+        async with self._db_pool.connection() as conn:
+            job = await job_query.run(conn)
+
+            if job['run_state'] not in (RunState.CANCELLED, RunState.COMPLETED):
+                raise Exception('Can only delete cancelled or completed jobs.')
+
+            await delete_items_query.run(conn)
+            await delete_job_query.run(conn)
+
+    async def get_job(self, job_id):
+        '''
+        Get a job.
+
+        :param str job_id:
+        :returns: A database document.
+        :rtype: dict or None
+        '''
+        query = r.table('job').get(job_id).without('old_urls')
+        async with self._db_pool.connection() as conn:
+            try:
+                job = await query.run(conn)
+            except rethinkdb.errors.ReqlNonExistenceError:
+                job = None
+        return job
+
+    async def get_job_items(self, job_id, limit, offset, include_success,
+            include_error, include_exception):
+        '''
+        Get crawled items for a job.
+
+        :param str job_id:
+        :param int limit:
+        :param int offset:
+        :param bool include_success: Include success responses.
+        :param bool include_error: Include error responses.
+        :param bool include_exception: Include exception responses.
+        '''
+        filters = []
+
+        if include_success:
+            filters.append(r.row['is_success'] == True)
+
+        if include_error:
+            filters.append((r.row['is_success'] == False) &
+                           (~r.row.has_fields('exception')))
+
+        if include_exception:
+            filters.append((r.row['is_success'] == False) &
+                           (r.row.has_fields('exception')))
+
+        if len(filters) == 0:
+            raise Exception('You must set at least one include_* flag to true.')
+
+        def get_body(item):
+            return {
+                'join': r.branch(
+                    item.has_fields('body_id'),
+                    r.table('response_body').get(item['body_id']),
+                    None
+                )
+            }
+
+        base_query = (
+            r.table('response')
+             .order_by(index='job_sync')
+             .between((job_id, r.minval),
+                      (job_id, r.maxval))
+             .filter(r.or_(*filters))
+        )
+
+        query = (
+             base_query
+             .skip(offset)
+             .limit(limit)
+             .merge(get_body)
+             .without('body_id')
+        )
+
+        items = list()
+        async with self._db_pool.connection() as conn:
+            count = await base_query.count().run(conn)
+            cursor = await query.run(conn)
+            async with cursor:
+                async for item in cursor:
+                    items.append(item)
+
+        return count, items
+
+    async def list_jobs(self, limit, offset, started_after=None, tag=None,
+            schedule_id=None):
+        '''
+        Get a list of jobs sorted descending by start date.
+
+        :param int limit:
+        :param int offset:
+        :param datetime started_after: (Optional) Include jobs started after
+            this date.
+        :param tag: (Optional) Include jobs matching this tag.
+        :param schedule_id: (Optional) Include jobs matching this schedule.
+        :returns: Total count of documents and list of current page.
+        :rtype: tuple(int, list)
+        '''
+        query = r.table('job').order_by(index=r.desc('started_at'))
+
+        if started_after is not None:
+            query = query.between(started_after, r.maxval)
+
+        if tag is not None:
+            query = query.filter(r.row['tags'].contains(tag))
+
+        if schedule_id is not None:
+            query = query.filter({'schedule_id': schedule_id})
+
+        count_query = query.count()
+        job_query = query.without('old_urls').skip(offset).limit(limit)
+        jobs = list()
+
+        async with self._db_pool.connection() as conn:
+            count = await count_query.run(conn)
+            cursor = await job_query.run(conn)
+            async with cursor:
+                async for job in cursor:
+                    jobs.append(job)
+
+        return count, jobs
 
 
 class SubscriptionDb:

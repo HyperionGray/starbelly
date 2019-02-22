@@ -417,7 +417,7 @@ class JobStatusSubscription:
             for seed in job['seeds']:
                 pb_job.seeds.append(seed)
             for tag in job['tags']:
-                pb_job.tag_list.tags.append(tag)
+                pb_job.tags.append(tag)
             pb_job.started_at = job['started_at'].isoformat()
             if job['completed_at']:
                 pb_job.completed_at = job['completed_at'].isoformat()

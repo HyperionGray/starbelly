@@ -7,6 +7,7 @@ import trio
 from trio_websocket import ConnectionClosed, open_websocket
 
 from . import AsyncMock, fail_after
+from starbelly.job import RunState
 from starbelly.policy import Policy
 from starbelly.rate_limiter import GLOBAL_RATE_LIMIT_TOKEN
 from starbelly.schedule import Schedule
@@ -20,6 +21,7 @@ from starbelly.server.subscription import (
 )
 from starbelly.starbelly_pb2 import (
     CaptchaSolverAntigateCharacters,
+    JobRunState as PbRunState,
     Request,
     RequestSubscribeJobStatus,
     RequestSubscribeJobSync,
@@ -515,3 +517,165 @@ async def test_subscription():
     response5 = Response()
     await unsubscribe(command5, response5, subscription_manager)
     assert subscription_manager.cancel_subscription.called
+
+
+@fail_after(3)
+async def test_delete_job(client, server_db):
+    server_db.delete_job = AsyncMock()
+    command1 = new_request(1)
+    command1.delete_job.job_id = b'\xaa' * 16
+    response1 = await send_test_command(client, command1)
+    assert response1.is_success
+    assert server_db.delete_job.call_args[0] == \
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+
+
+@fail_after(3)
+async def test_get_job(client, server_db):
+    dt = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    job = {
+        'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'name': 'Test Job',
+        'seeds': ['https://seed1.example', 'https://seed2.example'],
+        'tags': [],
+        'run_state': RunState.RUNNING,
+        'started_at': dt,
+        'completed_at': None,
+        'duration': None,
+        'item_count': 0,
+        'http_success_count': 0,
+        'http_error_count': 0,
+        'exception_count': 0,
+        'http_status_counts': {},
+        'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'policy': {
+            'name': 'Test Policy',
+            'created_at': dt,
+            'updated_at': dt,
+            'authentication': {
+                'enabled': False,
+            },
+            'captcha_solver_id': None,
+            'limits': {
+                'max_cost': 10,
+                'max_duration': 3600,
+                'max_items': 10_000,
+            },
+            'mime_type_rules': [
+                {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+                {'save': False},
+            ],
+            'proxy_rules': [],
+            'robots_txt': {
+                'usage': 'IGNORE',
+            },
+            'url_normalization': {
+                'enabled': True,
+                'strip_parameters': [],
+            },
+            'url_rules': [
+                {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+                 'pattern': '^https?://({SEED_DOMAINS})/'},
+                {'action': 'MULTIPLY', 'amount': 0},
+            ],
+            'user_agents': [
+                {'name': 'Test User Agent'}
+            ],
+        }
+    }
+    server_db.get_job = AsyncMock(return_value=job)
+    command1 = new_request(1)
+    command1.get_job.job_id = b'\xaa' * 16
+    response1 = await send_test_command(client, command1)
+    assert response1.is_success
+    assert response1.job.job_id == b'\xaa' * 16
+    assert response1.job.name == 'Test Job'
+    assert response1.job.policy.name == 'Test Policy'
+
+
+@fail_after(3)
+async def test_list_jobs(client, server_db):
+    dt = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    job = {
+        'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'name': 'Test Job',
+        'seeds': ['https://seed1.example', 'https://seed2.example'],
+        'tags': [],
+        'run_state': RunState.RUNNING,
+        'started_at': dt,
+        'completed_at': None,
+        'duration': None,
+        'item_count': 0,
+        'http_success_count': 0,
+        'http_error_count': 0,
+        'exception_count': 0,
+        'http_status_counts': {},
+        'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    }
+    server_db.list_jobs = AsyncMock(return_value=(1,[job]))
+    command1 = new_request(1)
+    command1.list_jobs.page.limit = 10
+    command1.list_jobs.page.offset = 0
+    response1 = await send_test_command(client, command1)
+    assert response1.is_success
+    assert response1.list_jobs.total == 1
+    job = response1.list_jobs.jobs[0]
+    assert job.job_id == b'\xaa' * 16
+    assert job.name == 'Test Job'
+
+
+@fail_after(3)
+async def test_set_jobs(client, crawl_manager, server_db):
+    job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    crawl_manager.start_job = AsyncMock(return_value=job_id)
+    crawl_manager.cancel_job = AsyncMock()
+    crawl_manager.pause_job = AsyncMock()
+    crawl_manager.resume_job = AsyncMock()
+
+    # Start a new job
+    command1 = new_request(1)
+    command1.set_job.name = 'New Job'
+    command1.set_job.policy_id = b'\xbb' * 16
+    command1.set_job.seeds.append('https://seed.example')
+    command1.set_job.tags.extend(['tag1', 'tag2'])
+    response1 = await send_test_command(client, command1)
+    assert response1.is_success
+    assert crawl_manager.start_job.call_args[0] == ['https://seed.example']
+    assert crawl_manager.start_job.call_args[1] == \
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    assert crawl_manager.start_job.call_args[2] == 'New Job'
+    assert crawl_manager.start_job.call_args[3] == ['tag1', 'tag2']
+
+    # Cancel a job
+    command2 = new_request(2)
+    command2.set_job.job_id = b'\xaa' * 16
+    command2.set_job.run_state = PbRunState.Value('CANCELLED')
+    response2 = await send_test_command(client, command2)
+    assert response2.is_success
+    assert crawl_manager.cancel_job.call_args[0] == \
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+
+    # Pause a job
+    command3 = new_request(3)
+    command3.set_job.job_id = b'\xaa' * 16
+    command3.set_job.run_state = PbRunState.Value('PAUSED')
+    response3 = await send_test_command(client, command3)
+    assert response3.is_success
+    assert crawl_manager.pause_job.call_args[0] == \
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+
+    # Resume a job
+    command4 = new_request(4)
+    command4.set_job.job_id = b'\xaa' * 16
+    command4.set_job.run_state = PbRunState.Value('RUNNING')
+    response4 = await send_test_command(client, command4)
+    assert response4.is_success
+    assert crawl_manager.resume_job.call_args[0] == \
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+
+    # Invalid run state:
+    command5 = new_request(5)
+    command5.set_job.job_id = b'\xaa' * 16
+    command5.set_job.run_state = PbRunState.Value('PENDING')
+    response5 = await send_test_command(client, command5)
+    assert not response5.is_success

@@ -142,8 +142,8 @@ async def test_schedule_doc_to_pb():
     assert pb.job_name == 'Test Job #{COUNT}'
     assert pb.job_count == 1
     assert pb.seeds[0] == 'http://one.example'
-    assert pb.tag_list.tags[0] == 'tag1'
-    assert pb.tag_list.tags[1] == 'tag2'
+    assert pb.tags[0] == 'tag1'
+    assert pb.tags[1] == 'tag2'
     assert pb.policy_id == policy_id.bytes
 
 
@@ -160,8 +160,8 @@ async def test_schedule_pb_to_doc():
     pb.job_name = 'Test Job #{COUNT}'
     pb.job_count = 1
     pb.seeds.append('http://one.example')
-    pb.tag_list.tags.append('tag1')
-    pb.tag_list.tags.append('tag2')
+    pb.tags.append('tag1')
+    pb.tags.append('tag2')
     pb.policy_id = b'\x12>Eg\xe8\x9b\x12\xd3\xa4VBfUD\x00\x02'
     schedule = Schedule.from_pb(pb)
     doc = schedule.to_doc()

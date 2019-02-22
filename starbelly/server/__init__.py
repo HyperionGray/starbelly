@@ -209,6 +209,8 @@ class Connection:
             for var in argspec[0]:
                 if var == 'command':
                     args.append(command)
+                elif var == 'crawl_manager':
+                    args.append(self._crawl_manager)
                 elif var == 'nursery':
                     args.append(self._nursery)
                 elif var == 'rate_limiter':
