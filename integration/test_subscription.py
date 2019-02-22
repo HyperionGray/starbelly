@@ -1,3 +1,7 @@
+#TODO I wrote this before I started putting all of the database queries into
+# a separate module. This could be modified into a unit test and probably
+# grouped into the test_server.py module.
+
 from datetime import datetime, timezone
 import gzip
 import logging
@@ -9,6 +13,7 @@ from rethinkdb import RethinkDB
 import trio
 
 from . import fail_after
+from starbelly.db import SubscriptionDb
 from starbelly.job import JobStateEvent, RunState
 from starbelly.starbelly_pb2 import ServerMessage, SubscriptionClosed
 from starbelly.subscription import (
@@ -54,6 +59,19 @@ async def response_body_table(db_pool):
         await r.table_create('response_body').run(conn)
     yield r.table('response_body')
     await r.table_drop('response_body').run(conn)
+
+
+class MockWebsocket:
+    ''' A simple mock websocket useful for testing. '''
+    def __init__(self):
+        self._send, self._recv = trio.open_memory_channel(0)
+
+    async def get_message(self):
+        message = await self._recv.receive()
+        return message
+
+    async def send_message(self, message):
+        await self._send.send(message)
 
 
 @fail_after(3)
@@ -143,17 +161,17 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
         }).run(conn)
 
     # Instantiate subscription
-    send_stream, receive_stream = trio.testing.memory_stream_pair()
-    stream_lock = trio.Lock()
+    websocket = MockWebsocket()
     job_send, job_recv = trio.open_memory_channel(0)
-    subscription = CrawlSyncSubscription(id_=1, stream=send_stream,
-        stream_lock=stream_lock, db_pool=db_pool, job_id=str(job_id),
+    subscription_db = SubscriptionDb(db_pool)
+    subscription = CrawlSyncSubscription(id_=1, websocket=websocket,
+        job_id=str(job_id), subscription_db=subscription_db,
         compression_ok=True, job_state_recv=job_recv, sync_token=None)
     assert repr(subscription) == '<CrawlSyncSubscription id=1 job_id=aaaaaaaa>'
     nursery.start_soon(subscription.run)
 
     # Read from subscription
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message1 = ServerMessage.FromString(data).event
     assert message1.subscription_id == 1
     item1 = message1.sync_item.item
@@ -174,7 +192,7 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
     assert gzip.decompress(item1.body) == b'Test document #1'
     sync_token = message1.sync_item.token
 
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message2 = ServerMessage.FromString(data).event
     assert message2.subscription_id == 1
     item2 = message2.sync_item.item
@@ -193,24 +211,24 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
     # Act as if the subscription was interrupted in between the first and second
     # items, and then resume from there.
     subscription.cancel()
-    send_stream, receive_stream = trio.testing.memory_stream_pair()
-    stream_lock = trio.Lock()
+    websocket = MockWebsocket()
     job_send, job_recv = trio.open_memory_channel(0)
-    subscription = CrawlSyncSubscription(id_=2, stream=send_stream,
-        stream_lock=stream_lock, db_pool=db_pool, job_id=str(job_id),
+    subscription_db = SubscriptionDb(db_pool)
+    subscription = CrawlSyncSubscription(id_=2, websocket=websocket,
+        job_id=str(job_id), subscription_db=subscription_db,
         compression_ok=True, job_state_recv=job_recv, sync_token=sync_token)
     assert repr(subscription) == '<CrawlSyncSubscription id=2 job_id=aaaaaaaa>'
     nursery.start_soon(subscription.run)
 
     # The next message will be a repeat of the previous, since we "interrupted"
     # the sync before the previous item finished.
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message3 = ServerMessage.FromString(data).event
     assert message3.subscription_id == 2
     item3 = message3.sync_item.item
     assert item3.url == 'https://www.example/foo'
 
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message4 = ServerMessage.FromString(data).event
     assert message4.subscription_id == 2
     item4 = message4.sync_item.item
@@ -226,7 +244,7 @@ async def test_subscribe_to_crawl(db_pool, job_table, response_table,
     assert item4.is_compressed
     assert gzip.decompress(item4.body) == b'Test document #2'
 
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message5 = ServerMessage.FromString(data).event
     assert message5.subscription_id == 2
     assert message5.subscription_closed.reason == SubscriptionClosed.COMPLETE
@@ -270,18 +288,18 @@ async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
 
     # Instantiate subscription
     logger.info('Creating subscription…')
-    send_stream, receive_stream = trio.testing.memory_stream_pair()
-    stream_lock = trio.Lock()
+    websocket = MockWebsocket()
     job_send, job_recv = trio.open_memory_channel(0)
-    subscription = CrawlSyncSubscription(id_=1, stream=send_stream,
-        stream_lock=stream_lock, db_pool=db_pool, job_id=str(job_id),
+    subscription_db = SubscriptionDb(db_pool)
+    subscription = CrawlSyncSubscription(id_=1, websocket=websocket,
+        job_id=str(job_id), subscription_db=subscription_db,
         compression_ok=False, job_state_recv=job_recv, sync_token=None)
     assert repr(subscription) == '<CrawlSyncSubscription id=1 job_id=aaaaaaaa>'
     nursery.start_soon(subscription.run)
 
     # Read from subscription
     logger.info('Reading one event…')
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message1 = ServerMessage.FromString(data).event
     assert message1.subscription_id == 1
     item1 = message1.sync_item.item
@@ -298,7 +316,7 @@ async def test_subscribe_to_crawl_decompress(db_pool, job_table, response_table,
     assert item1.body == b'Test document #1'
 
     logger.info('Reading subscription close…')
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message2 = ServerMessage.FromString(data).event
     assert message2.subscription_id == 1
     assert message2.subscription_closed.reason == SubscriptionClosed.COMPLETE
@@ -347,18 +365,18 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
 
     # Instantiate subscription
     logger.info('Set up subscription…')
-    send_stream, receive_stream = trio.testing.memory_stream_pair()
-    stream_lock = trio.Lock()
+    websocket = MockWebsocket()
     job_send, job_recv = trio.open_memory_channel(0)
-    subscription = CrawlSyncSubscription(id_=1, stream=send_stream,
-        stream_lock=stream_lock, db_pool=db_pool, job_id=str(job_id),
+    subscription_db = SubscriptionDb(db_pool)
+    subscription = CrawlSyncSubscription(id_=1, websocket=websocket,
+        job_id=str(job_id), subscription_db=subscription_db,
         compression_ok=True, job_state_recv=job_recv, sync_token=None)
     assert repr(subscription) == '<CrawlSyncSubscription id=1 job_id=aaaaaaaa>'
     nursery.start_soon(subscription.run)
 
     # Read from subscription
     logger.info('Read first event…')
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message1 = ServerMessage.FromString(data).event
     assert message1.subscription_id == 1
     item1 = message1.sync_item.item
@@ -382,7 +400,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
     logger.info('Time out on next event…')
     with pytest.raises(trio.TooSlowError):
         with trio.fail_after(1) as cancel_scope:
-            data = await receive_stream.receive_some(4096)
+            data = await websocket.get_message()
 
     # Now add second result and mark the crawl as completed:
     logger.info('Add second result…')
@@ -414,7 +432,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
 
     # Now wait to receive the second result
     logger.info('Read second event…')
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message2 = ServerMessage.FromString(data).event
     assert message2.subscription_id == 1
     item2 = message2.sync_item.item
@@ -431,7 +449,7 @@ async def test_subscribe_to_unfinished_crawl(db_pool, job_table, response_table,
     assert gzip.decompress(item2.body) == b'Test document #2'
 
     logger.info('Read subscription close…')
-    data = await receive_stream.receive_some(4096)
+    data = await websocket.get_message()
     message3 = ServerMessage.FromString(data).event
     assert message3.subscription_id == 1
     assert message3.subscription_closed.reason == SubscriptionClosed.COMPLETE

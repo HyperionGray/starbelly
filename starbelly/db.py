@@ -800,3 +800,62 @@ class ServerDb:
                 latest_job).run(conn)
 
         return policy_doc
+
+
+class SubscriptionDb:
+    ''' Handles database queries for the subscription classes. '''
+    def __init__(self, db_pool):
+        '''
+        Constructor
+
+        :param db_pool: A RethinkDB connection pool.
+        '''
+        self._db_pool = db_pool
+
+    async def get_job_run_state(self, job_id):
+        '''
+        Get the run state of a job.
+
+        :param str job_id:
+        '''
+        query = r.table('job').get(job_id).pluck('run_state')
+        async with self._db_pool.connection() as conn:
+            result = await query.run(conn)
+        return result['run_state']
+
+    async def get_job_sync_items(self, job_id, starting_sequence):
+        '''
+        A generator that yields items remaining to sync in this job.
+
+        This query is a little funky. I want to join `response` and
+        `response_body` while preserving the `sequence` order, but
+        RethinkDB's `eq_join()` method doesn't preserve order (see GitHub issue:
+        https://github.com/rethinkdb/rethinkdb/issues/6319). Somebody on
+        RethinkDB Slack showed me that you can use merge and subquery to
+        simulate a left outer join that preserves order and in a quick test on
+        200k documents, it works well and runs fast.
+
+        :returns: a RethinkDB query object.
+        '''
+        def get_body(item):
+            return {
+                'join': r.branch(
+                    item.has_fields('body_id'),
+                    r.table('response_body').get(item['body_id']),
+                    None
+                )
+            }
+
+        query = (
+            r.table('response')
+             .order_by(index='job_sync')
+             .between([job_id, starting_sequence],
+                      [job_id, r.maxval], left_bound='open')
+             .merge(get_body)
+        )
+
+        async with self._db_pool.connection() as conn:
+            cursor = await query.run(conn)
+            async with cursor:
+                async for item in cursor:
+                    yield item

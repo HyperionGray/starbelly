@@ -6,6 +6,7 @@ from datetime import datetime
 import enum
 import functools
 import gzip
+import itertools
 import json
 import logging
 from operator import attrgetter
@@ -18,7 +19,7 @@ import trio
 import websockets.exceptions
 
 from .backoff import ExponentialBackoff
-from .job import RunState
+from .job import FINISHED_STATES, RunState
 from .starbelly_pb2 import JobRunState, ServerMessage, SubscriptionClosed
 
 
@@ -67,6 +68,96 @@ class SyncTokenInt(metaclass=ABCMeta):
         return struct.pack(cls.FORMAT, cls.TOKEN_NUM, val)
 
 
+class SubscriptionManager:
+    '''
+    Manages a group of subscriptions, e.g. all of the subscriptions on one
+    connection.
+    '''
+    def __init__(self, subscription_db, nursery, websocket):
+        '''
+        Constructor
+
+        :param subscription_db: A database layer.
+        '''
+        self._subscription_db = subscription_db
+        self._subscription_id = itertools.count()
+        self._subscriptions = dict()
+        self._nursery = nursery
+        self._websocket = websocket
+
+    def cancel_subscription(self, subscription_id):
+        '''
+        Cancel a subscription.
+        '''
+        self._subscriptions.pop(subscription_id).cancel()
+
+    def subscribe_crawl_sync(self, job_id, compression_ok, sync_token):
+        '''
+        Subscribe to crawl job sync.
+
+        :param str job_id:
+        :param bool compression_ok:
+        :param sync_token:
+        :type sync_token: bytes or None
+        :returns: A subscription ID.
+        :rtype: int
+        '''
+        sub_id = next(self._subscription_id)
+        sub = CrawlSyncSubscription(sub_id, job_id, self._subscription_db,
+            self._websocket, compression_ok, job_state_recv, sync_token)
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub)
+        return sub_id
+
+    def subscribe_job_status(self, stats_stracker, min_interval):
+        '''
+        Subscribe to job status.
+
+        :param starbelly.job.StatsTracker stats_tracker:
+        :param float min_interval:
+        :returns: A subscription ID.
+        :rtype: int
+        '''
+        sub_id = next(self._subscription_id)
+        sub = JobStatusSubscription(sub_id, self._websocket, stats_tracker,
+            min_interval)
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub)
+        return sub_id
+
+    def subscribe_resource_monitor(self, resource_monitor, history):
+        '''
+        Subscribe to resource monitor.
+
+        :param starbelly.resource_monitor.ResourceMonitor resource_monitor:
+        :param int history:
+        :returns: A subscription ID.
+        :rtype: int
+        '''
+        sub_id = next(self._subscription_id)
+        sub = ResourceMonitorSubscription(sub_id, self._websocket,
+            resource_monitor, history)
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub)
+        return sub_id
+
+    def subscribe_task_monitor(self, period, root_task):
+        '''
+        Subscribe to crawl job sync.
+
+        :param float period:
+        :param trio.hazmat.Task root_task:
+        :returns: A subscription ID.
+        :rtype: int
+        '''
+        sub_id = next(self._subscription_id)
+        sub = TaskMonitorSubscription(sub_id, self._websocket, period,
+            root_task)
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub)
+        return sub_id
+
+
 class CrawlSyncSubscription:
     '''
     A subscription stream that allows a client to sync items from a specific
@@ -78,15 +169,14 @@ class CrawlSyncSubscription:
     or restarting the sync from the beginning.
     '''
 
-    def __init__(self, id_, stream, stream_lock, db_pool, job_id,
-                 compression_ok, job_state_recv, sync_token=None):
+    def __init__(self, id_, websocket, job_id, subscription_db, compression_ok,
+            job_state_recv, sync_token=None):
         '''
         Constructor.
 
         :param int id_: An identifier for this subscription.
-        :param trio.abc.Stream: The stream to send subscription events to.
-        :param trio.Lock stream_lock: A lock that must be acquired before
-            writing to the stream.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
         :param db_pool: A RethinkDB connection pool.
         :param str job_id: The ID of the job to send events for.
         :param bool compression_ok: If true, response bodies are gzipped.
@@ -96,9 +186,8 @@ class CrawlSyncSubscription:
             restarted from the point represented by this token.
         '''
         self._id = id_
-        self._stream = stream
-        self._stream_lock = stream_lock
-        self._db_pool = db_pool
+        self._db = subscription_db
+        self._websocket = websocket
         self._job_id = job_id
         self._compression_ok = compression_ok
         self._job_state_recv = job_state_recv
@@ -156,39 +245,6 @@ class CrawlSyncSubscription:
             # If we can't send the completion message, then bail out.
             pass
 
-    def _get_query(self):
-        '''
-        Return the query used for getting items to sync.
-
-        This query is a little funky. I want to join `response` and
-        `response_body` while preserving the `sequence` order, but
-        RethinkDB's `eq_join()` method doesn't preserve order (see GitHub issue:
-        https://github.com/rethinkdb/rethinkdb/issues/6319). Somebody on
-        RethinkDB Slack showed me that you can use merge and subquery to
-        simulate a left outer join that preserves order and in a quick test on
-        200k documents, it works well and runs fast.
-
-        :returns: a RethinkDB query object.
-        '''
-        def get_body(item):
-            return {
-                'join': r.branch(
-                    item.has_fields('body_id'),
-                    r.table('response_body').get(item['body_id']),
-                    None
-                )
-            }
-
-        query = (
-            r.table('response')
-             .order_by(index='job_sync')
-             .between([self._job_id, self._current_sequence],
-                      [self._job_id, r.maxval], left_bound='open')
-             .merge(get_body)
-        )
-
-        return query
-
     async def _job_status_task(self):
         '''
         Handle job status updates.
@@ -197,9 +253,8 @@ class CrawlSyncSubscription:
             job status channel is closed, but that should never happen.
         '''
         async for job_state in self._job_state_recv:
-            logger.debug('job_state=%r', job_state)
             if job_state.job_id == self._job_id:
-                if job_state.run_state in (RunState.COMPLETED, RunState.CANCELLED):
+                if job_state.run_state in FINISHED_STATES:
                     logger.debug('%r Job status: %s', self, job_state.run_state)
                     self._job_completed = True
 
@@ -211,14 +266,12 @@ class CrawlSyncSubscription:
         '''
         backoff = ExponentialBackoff(max_=64)
         async for _ in backoff:
-            async with self._db_pool.connection() as conn:
-                item_count = 0
-                cursor = await self._get_query().run(conn)
-                async with cursor:
-                    async for item in cursor:
-                        item_count += 1
-                        await self._send_item(item)
-                        self._current_sequence = item['sequence'] + 1
+            item_count = 0
+            async for item in self._db.get_job_sync_items(self._job_id,
+                    self._current_sequence):
+                item_count += 1
+                await self._send_item(item)
+                self._current_sequence = item['sequence'] + 1
 
             if item_count == 0:
                 if self._job_completed:
@@ -233,9 +286,7 @@ class CrawlSyncSubscription:
         message = ServerMessage()
         message.event.subscription_id = self._id
         message.event.subscription_closed.reason = SubscriptionClosed.COMPLETE
-        async with self._stream_lock:
-            with trio.open_cancel_scope(shield=True) as cancel_scope:
-                await self._stream.send_all(message.SerializeToString())
+        await self._websocket.send_message(message.SerializeToString())
 
     async def _send_item(self, item_doc):
         ''' Send an item (download response) to the client. '''
@@ -276,18 +327,13 @@ class CrawlSyncSubscription:
 
         message.event.sync_item.token = SyncTokenInt.encode(
             item_doc['sequence'])
-        async with self._stream_lock:
-            with trio.open_cancel_scope(shield=True) as cancel_scope:
-                await self._stream.send_all(message.SerializeToString())
+        await self._websocket.send_message(message.SerializeToString())
 
     async def _set_initial_job_status(self):
         ''' Query database for initial job status and update internal state. '''
-        query = r.table('job').get(self._job_id).pluck('run_state')
-        async with self._db_pool.connection() as conn:
-            result = await query.run(conn)
-            logging.debug('%r Initial job state: %r', self, result)
-            self._job_completed = result['run_state'] in \
-                (RunState.COMPLETED, RunState.CANCELLED)
+        run_state = await self._db.get_job_run_state(self._job_id)
+        logging.debug('%r Initial job state: %s', self, run_state)
+        self._job_completed = run_state in FINISHED_STATES
 
 
 class JobStatusSubscription:
@@ -298,23 +344,21 @@ class JobStatusSubscription:
     It only sends events when something about a job has changed.
     '''
 
-    def __init__(self, id_, stats_tracker, stream, stream_lock, min_interval):
+    def __init__(self, id_, websocket, stats_tracker, min_interval):
         '''
         Constructor.
 
         :param int id_: Subscription ID.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
         :param starbelly.job.StatsTracker stats_tracker: An object that tracks
             crawl stats.
-        :param trio.abc.Stream stream: A stream to send events to.
-        :param trio.Lock stream_lock: A lock that must be acquired before
-            sending to the stream.
         :param float min_interval: The amount of time to wait in between
             sending events.
         '''
         self._id = id_
+        self._websocket = websocket
         self._stats_tracker = stats_tracker
-        self._stream = stream
-        self._stream_lock = stream_lock
         self._min_interval = min_interval
         self._cancel_scope = None
         self._last_send = dict()
@@ -342,7 +386,7 @@ class JobStatusSubscription:
 
             while True:
                 event = self._make_event()
-                await self._send(event)
+                await self._websocket.send_message(event.SerializeToString())
                 await trio.sleep(self._min_interval)
         logger.info('%r Cancelled', self)
 
@@ -384,35 +428,21 @@ class JobStatusSubscription:
         self._last_send = current_send
         return message
 
-    async def _send(self, event):
-        '''
-        Send event. This method handles a few difficulties with sending on a
-        shared stream, including acquiring a lock for the stream and shielding
-        the send from cancellation.
-
-        :param starbelly_pb2.ServerMessage event:
-        '''
-        async with self._stream_lock:
-            with trio.open_cancel_scope(shield=True):
-                await self._stream.send_all(event.SerializeToString())
-
 
 class ResourceMonitorSubscription:
     ''' Keep track of usage for various resources. '''
-    def __init__(self, id_, stream, stream_lock, resource_monitor, history=0):
+    def __init__(self, id_, websocket, resource_monitor, history=0):
         ''' Constructor.
 
         :param int id_: Subscription ID.
-        :param trio.abc.Stream stream: A stream to send events to.
-        :param trio.Lock stream_lock: A lock that must be acquired before
-            sending to the stream.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
         :type resource_monitor: starbelly.resource_monitor.ResourceMonitor
         :param int history: The number of historical measurements to send before
             streaming real-time measurements.
         '''
         self._id = id_
-        self._stream = stream
-        self._stream_lock = stream_lock
+        self._websocket = websocket
         self._resource_monitor = resource_monitor
         self._history = history
         self._recv_channel = None
@@ -445,11 +475,11 @@ class ResourceMonitorSubscription:
             self._recv_channel = self._resource_monitor.get_channel(10)
             for measurement in self._resource_monitor.history(self._history):
                 event = self._make_event(measurement)
-                await self._send(event)
+                await self._websocket.send_message(event.SerializeToString())
 
             async for measurement in self._recv_channel:
                 event = self._make_event(measurement)
-                await self._send(event)
+                await self._websocket.send_message(event.SerializeToString())
         logger.info('%r Cancelled', self)
 
     def _make_event(self, measurement):
@@ -493,38 +523,24 @@ class ResourceMonitorSubscription:
         frame.rate_limiter = measurement['rate_limiter']
         return message
 
-    async def _send(self, event):
-        '''
-        Send event. This method handles a few difficulties with sending on a
-        shared stream, including acquiring a lock for the stream and shielding
-        the send from cancellation.
-
-        :param starbelly_pb2.ServerMessage event:
-        '''
-        async with self._stream_lock:
-            with trio.open_cancel_scope(shield=True):
-                await self._stream.send_all(event.SerializeToString())
-
 
 class TaskMonitorSubscription:
     '''
     Sends data showing whats kinds of tasks and how many of each are running.
     '''
-    def __init__(self, id_, stream, stream_lock, period, root_task):
+    def __init__(self, id_, websocket, period, root_task):
         '''
         Constructor.
 
         :param int id_: The subscription ID.
-        :param trio.abc.Stream stream: A stream to send events to.
-        :param trio.Lock stream_lock: A lock that must be acquired before
-            sending to the stream.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
         :param float period: The amount of time to wait in between events.
         :param trio.hazmat.Task root_task: The root task to build a task tree
             from.
         '''
         self._id = id_
-        self._stream = stream
-        self._stream_lock = stream_lock
+        self._websocket = websocket
         self._period = period
         self._root_task = root_task
 
@@ -549,7 +565,7 @@ class TaskMonitorSubscription:
             self._cancel_scope = cancel_scope
             while True:
                 event = self._make_event()
-                await self._send(event)
+                await self._websocket.send_message(event.SerializeToString())
                 await trio.sleep(self._period)
 
     def _make_event(self):
@@ -574,15 +590,3 @@ class TaskMonitorSubscription:
                     nodes.append((trio_child_task, pb_child_task))
 
         return message
-
-    async def _send(self, event):
-        '''
-        Send event. This method handles a few difficulties with sending on a
-        shared stream, including acquiring a lock for the stream and shielding
-        the send from cancellation.
-
-        :param starbelly_pb2.ServerMessage event:
-        '''
-        async with self._stream_lock:
-            with trio.open_cancel_scope(shield=True):
-                await self._stream.send_all(event.SerializeToString())

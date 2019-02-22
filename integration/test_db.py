@@ -14,6 +14,7 @@ from starbelly.db import (
     LoginDb,
     ScheduleDb,
     ServerDb,
+    SubscriptionDb,
 )
 from starbelly.downloader import DownloadResponse
 from starbelly.job import RunState
@@ -337,8 +338,8 @@ class TestCrawlManagerDb:
             },{
                 'sequence': 101,
                 'job_id': job_id,
-                'url': 'http://sequence.example/1',
-                'url_can': 'http://sequence.example/1',
+                'url': 'http://sequence.example/2',
+                'url_can': 'http://sequence.example/2',
                 'started_at': started_at,
                 'completed_at': completed_at,
                 'duration': 1.0,
@@ -529,7 +530,7 @@ class TestCrawlStorageDb:
             response_body_table):
         started_at = datetime(2019, 2, 1, 12, 0, 0, tzinfo=timezone.utc)
         completed_at = datetime(2019, 2, 1, 12, 0, 3, tzinfo=timezone.utc)
-        body_id = '\x01' * 16
+        body_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
         response_doc = {
             'sequence': 1,
             'job_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -546,7 +547,7 @@ class TestCrawlStorageDb:
         }
         response_body_doc = {
             'id': body_id,
-            'body': 'Hello world!',
+            'body': b'Hello world!',
             'is_compressed': False,
         }
         crawl_storage_db = CrawlStorageDb(db_pool)
@@ -1105,3 +1106,79 @@ class TestServerDb():
         assert result2['schedule_name'] == 'Test Schedule 2'
         assert result2['created_at'] == now
         assert result2['updated_at'] == now2
+
+
+class TestSubscriptionDb:
+    async def test_get_job_run_state(self, db_pool, job_table):
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        job_doc = {
+            'name': 'Test Job',
+            'seeds': ['https://seed1.example', 'https://seed2.example'],
+            'tags': [],
+            'run_state': RunState.RUNNING,
+            'started_at': started_at,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {},
+            'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        }
+        async with db_pool.connection() as conn:
+            result = await job_table.insert(job_doc).run(conn)
+            job_id = result['generated_keys'][0]
+        subscription_db = SubscriptionDb(db_pool)
+        run_state = await subscription_db.get_job_run_state(job_id)
+        assert run_state == RunState.RUNNING
+
+    async def test_get_job_sync_items(self, db_pool, response_table,
+            response_body_table):
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2018, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+        async with db_pool.connection() as conn:
+            job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+            body_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+            await response_body_table.insert({
+                'id': body_id,
+                'body': 'Hello world!'.encode('ascii'),
+                'is_compressed': False,
+            }).run(conn)
+            await response_table.insert([{
+                'sequence': 100,
+                'job_id': job_id,
+                'url': 'http://sequence.example/1',
+                'url_can': 'http://sequence.example/1',
+                'started_at': started_at,
+                'completed_at': completed_at,
+                'duration': 5.0,
+                'cost': 1.0,
+                'content_type': 'text/plain',
+                'status_code': 200,
+                'is_success': True,
+                'body_id': body_id,
+            },{
+                'sequence': 101,
+                'job_id': job_id,
+                'url': 'http://sequence.example/2',
+                'url_can': 'http://sequence.example/2',
+                'started_at': started_at,
+                'completed_at': completed_at,
+                'duration': 1.0,
+                'cost': 1.0,
+                'content_type': 'text/plain',
+                'status_code': 404,
+                'is_success': False,
+                'body_id': None,
+            }]).run(conn)
+        items = list()
+        subscription_db = SubscriptionDb(db_pool)
+        async for item in subscription_db.get_job_sync_items(job_id,
+                starting_sequence=99):
+            items.append(item)
+        assert len(items) == 2
+        assert items[0]['sequence'] == 100
+        assert items[0]['join']['body'].decode('ascii') == 'Hello world!'
+        assert items[1]['sequence'] == 101
+        assert items[1]['join'] is None

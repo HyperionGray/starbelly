@@ -16,6 +16,7 @@ from rethinkdb.errors import ReqlNonExistenceError
 from trio_websocket import ConnectionClosed, serve_websocket
 import trio
 
+from starbelly.subscription import SubscriptionManager
 from starbelly.starbelly_pb2 import Request, Response, ServerMessage
 
 # Define API handler decorator before importing API implementations, because
@@ -36,12 +37,12 @@ class InvalidRequestException(Exception):
 
 
 from .captcha import *
-# from .job import *
+from .job import *
 from .login import *
 from .policy import *
-# from .rate_limit import *
-# from .schedule import *
-# from .subscription import *
+from .rate_limit import *
+from .schedule import *
+from .subscription import *
 from .system import *
 
 
@@ -51,27 +52,30 @@ logger = logging.getLogger(__name__)
 class Server:
     ''' Handles websocket connections from clients and command dispatching. '''
 
-    def __init__(self, host, port, db, crawl_manager, rate_limiter,
-            resource_monitor, scheduler):
+    def __init__(self, host, port, server_db, subscription_db, crawl_manager,
+            rate_limiter, resource_monitor, stats_tracker, scheduler):
         '''
         Constructor
 
         :param str host: The hostname to serve on.
         :param int port: The port to serve on, or zero to automatically pick a
             port.
-        :param starbelly.db.ServerDb db: A database layer.
-        :param starbelly.job.CrawlManager crawl_manager: A crawl manager.
-        :param starbelly.rate_limiter.RateLimiter: A rate limiter.
-        :param starbelly.resource_monitor.ResourceMonitor resource_monitor: A
-            resource monitor.
-        :param starbelly.schedule.Scheduler scheduler: A scheduler.
+        :param starbelly.db.ServerDb server_db:
+        :param starbelly.db.SubscriptionDb subscription_db:
+        :param starbelly.job.CrawlManager crawl_manager:
+        :param starbelly.rate_limiter.RateLimiter:
+        :param starbelly.resource_monitor.ResourceMonitor resource_monitor:
+        :param starbelly.job.StatsTracker stats_tracker:
+        :param starbelly.schedule.Scheduler scheduler:
         '''
         self._host = host
         self._port = port
-        self._db = db
+        self._server_db = server_db
+        self._subscription_db = subscription_db
         self._crawl_manager = crawl_manager
         self._rate_limiter = rate_limiter
         self._resource_monitor = resource_monitor
+        self._stats_tracker = stats_tracker
         self._scheduler = scheduler
 
     @property
@@ -110,15 +114,15 @@ class Server:
         websocket = await request.accept()
         logger.info('Connection opened: client=%s path=%s', client_ip,
             websocket.path)
-        connection = Connection(client_ip, websocket, self._db,
-            self._crawl_manager, self._rate_limiter, self._resource_monitor,
-            self._scheduler)
+        connection = Connection(client_ip, websocket, self._server_db,
+            self._subscription_db, self._crawl_manager, self._rate_limiter,
+            self._resource_monitor, self._stats_tracker, self._scheduler)
         await connection.run()
 
 
 class Connection:
-    def __init__(self, client_ip, ws, db, crawl_manager, rate_limiter,
-            resource_monitor, scheduler):
+    def __init__(self, client_ip, ws, server_db, subscription_db, crawl_manager,
+            rate_limiter, resource_monitor, stats_tracker, scheduler):
         '''
         Constructor.
 
@@ -126,20 +130,27 @@ class Connection:
             connection.
         :param trio_websocket.WebSocketConnection ws: A websocket connection.
         :param starbelly.db.ServerDb: A database layer.
+        :param starbelly.db.SubscriptionDb: A database layer.
         :param starbelly.job.CrawlManager crawl_manager: A crawl manager.
         :param starbelly.rate_limiter.RateLimiter: A rate limiter.
         :param starbelly.resource_monitor.ResourceMonitor resource_monitor: A
             resource monitor.
         :param starbelly.schedule.Scheduler scheduler: A scheduler.
+        :param starbelly.job.StatsTracker stats_tracker:
+        :param starbelly.subscription.SubscriptionManager: A subscription
+            manager.
         '''
         self._client_ip = client_ip
         self._ws = ws
-        self._db = db
+        self._server_db = server_db
+        self._subscription_db = subscription_db
         self._crawl_manager = crawl_manager
         self._rate_limiter = rate_limiter
         self._resource_monitor = resource_monitor
         self._scheduler = scheduler
+        self._subscription_db = subscription_db
         self._nursery = None
+        self._subscription_manager = None
 
     async def run(self):
         '''
@@ -153,6 +164,8 @@ class Connection:
         try:
             async with trio.open_nursery() as nursery:
                 self._nursery = nursery
+                self._subscription_manager = SubscriptionManager(
+                    self._subscription_db, nursery, self._ws)
                 while True:
                     request_data = await self._ws.get_message()
                     nursery.start_soon(self._handle_request, request_data)
@@ -194,17 +207,24 @@ class Connection:
             argspec = inspect.getargspec(handler)
             args = list()
             for var in argspec[0]:
-                logger.debug('var=%s', var)
                 if var == 'command':
                     args.append(command)
                 elif var == 'nursery':
                     args.append(self._nursery)
                 elif var == 'rate_limiter':
                     args.append(self._rate_limiter)
+                elif var == 'resource_monitor':
+                    args.append(self._resource_monitor)
                 elif var == 'response':
                     args.append(message.response)
                 elif var == 'scheduler':
                     args.append(self._scheduler)
+                elif var == 'server_db':
+                    args.append(self._server_db)
+                elif var == 'subscription_manager':
+                    args.append(self._subscription_manager)
+                elif var == 'stats_tracker':
+                    args.append(self._stats_tracker)
                 elif var == 'websocket':
                     args.append(self._ws)
                 else:
@@ -214,8 +234,8 @@ class Connection:
             await handler(*args)
             message.response.is_success = True
             elapsed = trio.current_time() - start
-            logger.info('Request OK %s %s %s %0.3fs', command_name,
-                self._client_ip, elapsed)
+            logger.info('Request OK %s %s %0.3fs', self._client_ip,
+                command_name, elapsed)
         except DecodeError:
             # Failure to decode a protobuf message means that the connection
             # is severely damaged; raise to the nursery so we can close the
@@ -231,5 +251,6 @@ class Connection:
                 request)
             message.response.error_message = 'A server exception occurred'
 
+        logger.debug('message=%r', message)
         message_data = message.SerializeToString()
         await self._ws.send_message(message_data)

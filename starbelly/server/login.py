@@ -4,19 +4,12 @@ from . import api_handler, InvalidRequestException
 @api_handler
 async def delete_domain_login(command, server_db):
     ''' Delete a domain login and all of its users. '''
-    if command.HasField('domain'):
-        domain = command.domain
-    else:
-        raise InvalidRequestException('domain is required.')
-    await server_db.delete_domain_login(domain)
+    await server_db.delete_domain_login(command.domain)
 
 
 @api_handler
 async def get_domain_login(command, response, server_db):
     ''' Get a domain login. '''
-    if not command.HasField('domain'):
-        raise InvalidRequestException('domain is required.')
-
     domain = command.domain
     domain_login = await server_db.get_domain_login(domain)
     if domain_login is None:

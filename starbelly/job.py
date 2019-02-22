@@ -51,6 +51,9 @@ class RunState:
     COMPLETED = 'completed'
 
 
+FINISHED_STATES = (RunState.COMPLETED, RunState.CANCELLED)
+
+
 @dataclass
 class JobStateEvent:
     '''  Contains status for a job. '''

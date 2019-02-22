@@ -9,8 +9,6 @@ from ..version import __version__
 @api_handler
 async def delete_policy(command, server_db):
     ''' Delete a policy. '''
-    if not command.HasField('policy_id'):
-        raise InvalidRequestException('policy ID is required.')
     policy_id = str(UUID(bytes=command.policy_id))
     await server_db.delete_policy(policy_id)
 
@@ -18,8 +16,6 @@ async def delete_policy(command, server_db):
 @api_handler
 async def get_policy(command, response, server_db):
     ''' Get a single policy. '''
-    if not command.HasField('policy_id'):
-        raise InvalidRequestException('policy ID is required.')
     policy_id = str(UUID(bytes=command.policy_id))
     policy_doc = await server_db.get_policy(policy_id)
     Policy.convert_doc_to_pb(policy_doc, response.policy)

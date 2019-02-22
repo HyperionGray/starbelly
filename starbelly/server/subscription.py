@@ -1,102 +1,50 @@
+from uuid import UUID
+
+import trio.hazmat
+
 from . import api_handler
-from ..subscription import (
-    CrawlSyncSubscription,
-    JobStatusSubscription,
-    ResourceMonitorSubscription,
-    TaskMonitorSubscription
-)
 
-
-# TODO move this code from subscription.py to here
-# def subscribe(self, stream, type_, *args, **kwargs):
-#     '''
-#     Create a subscription of the given type for the given socket. The caller
-#     is expected to call the subscription's ``run()`` method.
-
-#     :param trio.abc.Stream stream: The stream to send events to.
-#     :param class type_: The type of subscription to instantiate.
-#     :param args: Passed through to subscription constructor.
-#     :param kwargs: Passed through to subscription constructor.
-#     :rtype: BaseSubscription
-#     '''
-#     next_id = self._next_id[stream]
-#     self._next_id[stream] += 1
-
-#     if self._closed:
-#         raise Exception('The subscription manager is closed.')
-#     elif stream in self._closing:
-#         raise Exception(
-#             'Cannot add subscription: the stream is being closed.')
-
-#     subscription = type_(next_id, stream, *args, **kargs)
-#     self._subscriptions[stream][next_id] = task
-
-# ALSO NEED TO WRITE methods to:
-#  * close 1 subscription
-#  * close all subscriptions on socket
-#  * close all subscriptions (this is probably an implicit part of shutting down a socket?)
 
 @api_handler
-async def subscribe_crawl_sync(self, command, socket):
+async def subscribe_crawl_sync(command, response, subscription_manager):
     ''' Handle the subscribe crawl items command. '''
     job_id = str(UUID(bytes=command.job_id))
     compression_ok = command.compression_ok
-
-    if command.HasField('sync_token'):
-        sync_token = command.sync_token
-    else:
-        sync_token = None
-
-    subscription = CrawlSyncSubscription(
-        self._tracker, self._db_pool, socket, job_id, compression_ok,
-        sync_token
-    )
-
-    self._subscription_manager.add(subscription)
-    response = Response()
-    response.new_subscription.subscription_id = subscription.get_id()
-    return response
+    sync_token = command.sync_token if command.HasField('sync_token') else None
+    sub_id = subscription_manager.subscribe_crawl_sync(job_id, compression_ok,
+        sync_token)
+    response.new_subscription.subscription_id = sub_id
 
 
 @api_handler
-async def subscribe_job_status(self, command, socket):
+async def subscribe_job_status(command, response, subscription_manager,
+        stats_tracker):
     ''' Handle the subscribe crawl status command. '''
-    subscription = JobStatusSubscription(
-        self._tracker,
-        socket,
-        command.min_interval
-    )
-    self._subscription_manager.add(subscription)
-    response = Response()
-    response.new_subscription.subscription_id = subscription.get_id()
-    return response
+    sub_id = subscription_manager.subscribe_job_status(stats_tracker,
+        command.min_interval)
+    response.new_subscription.subscription_id = sub_id
 
 
 @api_handler
-async def subscribe_resource_monitor(self, command, socket):
+async def subscribe_resource_monitor(command, response, resource_monitor,
+        subscription_manager):
     ''' Handle the subscribe resource monitor command. '''
-    subscription = ResourceMonitorSubscription(socket,
-        self._resource_monitor, command.history)
-    self._subscription_manager.add(subscription)
-    response = Response()
-    response.new_subscription.subscription_id = subscription.get_id()
-    return response
+    sub_id = subscription_manager.subscribe_resource_monitor(resource_monitor,
+        command.history)
+    response.new_subscription.subscription_id = sub_id
 
 
 @api_handler
-async def subscribe_task_monitor(self, command, socket):
+async def subscribe_task_monitor(command, response, subscription_manager):
     ''' Handle the subscribe task monitor command. '''
-    subscription = TaskMonitorSubscription(socket, command.period,
-        command.top_n)
-    self._subscription_manager.add(subscription)
-    response = Response()
-    response.new_subscription.subscription_id = subscription.get_id()
-    return response
+    root_task = trio.hazmat.current_root_task()
+    sub_id = subscription_manager.subscribe_task_monitor(command.period,
+        root_task)
+    response.new_subscription.subscription_id = sub_id
 
 
 @api_handler
-async def unsubscribe(self, command, socket):
+async def unsubscribe(command, response, subscription_manager):
     ''' Handle an unsubscribe command. '''
     sub_id = command.subscription_id
-    await self._subscription_manager.unsubscribe(socket, sub_id)
-    return Response()
+    subscription_manager.cancel_subscription(sub_id)

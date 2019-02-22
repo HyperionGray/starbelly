@@ -8,8 +8,6 @@ from ..schedule import Schedule
 @api_handler
 async def delete_schedule(command, scheduler, server_db):
     ''' Delete a job schedule. '''
-    if not command.HasField('schedule_id'):
-        raise InvalidRequestException('Schedule ID is required')
     schedule_id = str(UUID(bytes=command.schedule_id))
     await server_db.delete_schedule(schedule_id)
     scheduler.remove_schedule(schedule_id)
@@ -18,8 +16,6 @@ async def delete_schedule(command, scheduler, server_db):
 @api_handler
 async def get_schedule(command, response, server_db):
     ''' Get metadata for a job schedule. '''
-    if not command.HasField('schedule_id'):
-        raise InvalidRequestException('Schedule ID is required')
     schedule_id = str(UUID(bytes=command.schedule_id))
     doc = await server_db.get_schedule(schedule_id)
     if doc is None:

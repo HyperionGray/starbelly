@@ -1,18 +1,18 @@
 from datetime import datetime, timezone
+import logging
 from uuid import UUID
 
 from . import api_handler, InvalidRequestException
 from ..captcha import captcha_doc_to_pb, captcha_pb_to_doc
 
 
+logger = logging.getLogger(__name__)
+
+
 @api_handler
 async def delete_captcha_solver(command, server_db):
     ''' Delete a a CAPTCHA solver. '''
-    if command.HasField('solver_id'):
-        solver_id = str(UUID(bytes=command.solver_id))
-    else:
-        raise InvalidRequestException('solver_id is required.')
-
+    solver_id = str(UUID(bytes=command.solver_id))
     try:
         await server_db.delete_captcha_solver(solver_id)
     except ValueError as ve:
@@ -22,9 +22,7 @@ async def delete_captcha_solver(command, server_db):
 @api_handler
 async def get_captcha_solver(command, response, server_db):
     ''' Get a CAPTCHA solver. '''
-    if not command.HasField('solver_id'):
-        raise InvalidRequestException('solver_id is required.')
-
+    logger.info('get=%r',command)
     solver_id = str(UUID(bytes=command.solver_id))
     doc = await server_db.get_captcha_solver(solver_id)
 

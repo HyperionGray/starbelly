@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
+from functools import partial
 from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
 import trio
 import trio.hazmat
+from trio_websocket import open_websocket, serve_websocket
 
 from . import assert_elapsed, assert_max_elapsed, assert_min_elapsed
 from starbelly.job import StatsTracker
@@ -17,6 +19,22 @@ from starbelly.subscription import (
     SyncTokenInt,
     TaskMonitorSubscription,
 )
+
+
+HOST = '127.0.0.1'
+
+
+class MockWebsocket:
+    ''' A simple mock websocket useful for testing. '''
+    def __init__(self):
+        self._send, self._recv = trio.open_memory_channel(0)
+
+    async def get_message(self):
+        message = await self._recv.receive()
+        return message
+
+    async def send_message(self, message):
+        await self._send.send(message)
 
 
 def test_sync_token_int():
@@ -71,9 +89,9 @@ async def test_job_state_subscription(autojump_clock, nursery):
     stats_tracker = StatsTracker()
     stats_tracker.add_job(job1_doc)
     stats_tracker.add_job(job2_doc)
-    send_stream, receive_stream = trio.testing.memory_stream_pair()
+    websocket = MockWebsocket()
     subscription = JobStatusSubscription(id_=1, stats_tracker=stats_tracker,
-        stream=send_stream, stream_lock=trio.Lock(), min_interval=2)
+        websocket=websocket, min_interval=2)
     assert repr(subscription) == '<JobStatusSubscription id=1>'
     with pytest.raises(Exception):
         # Can't cancel before it starts running:
@@ -82,7 +100,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
 
     # The first two items should be received immediately and in full.
     with assert_max_elapsed(0.1):
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         message1 = ServerMessage.FromString(data).event
         assert message1.subscription_id == 1
         assert len(message1.job_list.jobs) == 2
@@ -125,7 +143,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
             'http_success_count': 8,
             'http_status_counts': {200: 8, 404: 2},
         })
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         message2 = ServerMessage.FromString(data).event
         assert message2.subscription_id == 1
         assert len(message2.job_list.jobs) == 1
@@ -154,7 +172,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
             'http_error_count': 5,
             'http_status_counts': {200: 15, 404: 5},
         })
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         message3 = ServerMessage.FromString(data).event
         assert message3.subscription_id == 1
         assert len(message3.job_list.jobs) == 1
@@ -176,7 +194,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
     subscription.cancel()
     with pytest.raises(trio.TooSlowError):
         with trio.fail_after(2):
-            data = await receive_stream.receive_some(4096)
+            data = await websocket.get_message()
 
 
 async def test_resource_subscription(autojump_clock, nursery):
@@ -234,15 +252,15 @@ async def test_resource_subscription(autojump_clock, nursery):
 
     # Instantiate subscription. Ask for 3 historical measurements, but only 2
     # are available so it should just send those 2.
-    send_stream, receive_stream = trio.testing.memory_stream_pair()
-    subscription = ResourceMonitorSubscription(id_=1, stream=send_stream,
-        stream_lock=trio.Lock(), resource_monitor=resource_monitor, history=3)
+    websocket = MockWebsocket()
+    subscription = ResourceMonitorSubscription(id_=1, websocket=websocket,
+        resource_monitor=resource_monitor, history=3)
     assert repr(subscription) == '<ResourceMonitorSubscription id=1>'
     nursery.start_soon(subscription.run)
 
     # We should be able to read two events immediately.
     with assert_max_elapsed(0.1):
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         event1 = ServerMessage.FromString(data).event
         assert event1.subscription_id == 1
         frame1 = event1.resource_frame
@@ -273,7 +291,7 @@ async def test_resource_subscription(autojump_clock, nursery):
         assert frame1.maximum_downloads == 10
         assert frame1.rate_limiter == 150
 
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         event2 = ServerMessage.FromString(data).event
         assert event2.subscription_id == 1
         frame2 = event2.resource_frame
@@ -283,13 +301,13 @@ async def test_resource_subscription(autojump_clock, nursery):
     # The third frame does not arrive immediately.
     with pytest.raises(trio.TooSlowError):
         with trio.fail_after(2):
-            data = await receive_stream.receive_some(4096)
+            data = await websocket.get_message()
 
     # Now emulate the resource monitor sending another measurement, and we
     # should be able to receive it immediately.
     with assert_max_elapsed(0.1):
         await send_channel.send(measurement3)
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         event3 = ServerMessage.FromString(data).event
         assert event3.subscription_id == 1
         frame3 = event3.resource_frame
@@ -300,9 +318,9 @@ async def test_resource_subscription(autojump_clock, nursery):
 async def test_task_monitor(autojump_clock, nursery):
     # To simplify testing, we pick the current task as the root task:
     root_task = trio.hazmat.current_task()
-    send_stream, receive_stream = trio.testing.memory_stream_pair()
-    subscription = TaskMonitorSubscription(id_=1, stream=send_stream,
-        stream_lock=trio.Lock(), period=2.0, root_task=root_task)
+    websocket = MockWebsocket()
+    subscription = TaskMonitorSubscription(id_=1, websocket=websocket,
+        period=2.0, root_task=root_task)
 
     # We create a few dummy tasks that will show up in the task monitor.
     async def dummy_parent(task_status):
@@ -321,7 +339,7 @@ async def test_task_monitor(autojump_clock, nursery):
 
     # We should receive the first event right away.
     with assert_max_elapsed(0.1):
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         event1 = ServerMessage.FromString(data).event
         assert event1.subscription_id == 1
         task_tree = event1.task_tree
@@ -343,7 +361,7 @@ async def test_task_monitor(autojump_clock, nursery):
 
     # The second event won't arrive for two more seconds.
     with assert_min_elapsed(2.0):
-        data = await receive_stream.receive_some(4096)
+        data = await websocket.get_message()
         event2 = ServerMessage.FromString(data).event
         assert event1.subscription_id == 1
         task_tree = event1.task_tree
