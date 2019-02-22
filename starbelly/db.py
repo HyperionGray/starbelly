@@ -9,6 +9,63 @@ logger = logging.getLogger(__name__)
 r = RethinkDB()
 
 
+class BootstrapDb:
+    ''' Handles database queries for the Bootstrap class. '''
+    def __init__(self, db_pool):
+        '''
+        Constructor
+
+        :param db_pool: A RethinkDB connection pool.
+        '''
+        self._db_pool = db_pool
+
+    async def get_rate_limits(self):
+        '''
+        Get all rate limits.
+
+        :returns: A list of rate limits.
+        :rtype: list[dict]
+        '''
+        rate_limits = list()
+        async with self._db_pool.connection() as conn:
+            cursor = await r.table('rate_limit').run(conn)
+            async with cursor:
+                async for rate_limit in cursor:
+                    rate_limits.append(rate_limit)
+        return rate_limits
+
+    async def startup_check(self):
+        '''
+        Perform sanity checks at application startup.
+
+        1. If the server was previously killed, then some jobs may still be in
+           the RUNNING state even though they clearly aren't running. Mark those
+           jobs as PAUSED.
+
+        2. Any frontier items marked as "in-flight" should be set to not
+           in-flight.
+        '''
+        running_jobs_query = (
+            r.table('job')
+             .filter({'run_state': RunState.RUNNING})
+             .update({'run_state': RunState.PAUSED})
+        )
+        inflight_query = (
+            r.table('frontier')
+            .filter({'in_flight': True})
+            .update({'in_flight': False})
+        )
+
+        async with self._db_pool.connection() as conn:
+            result = await running_jobs_query.run(conn)
+            if result['replaced'] > 0:
+                logger.warning('%d jobs changed from "running" to "paused"',
+                    result['replaced'])
+            result = await inflight_query.run(conn)
+            if result['replaced'] > 0:
+                logger.info('Reverted %d in-flight frontier items',
+                    result['replaced'])
+
 
 class CrawlFrontierDb:
     ''' Handles database queries for the CrawlFrontier class. '''

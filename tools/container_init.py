@@ -305,13 +305,12 @@ async def init_db(db_config):
         await ensure_db_table(conn, 'job')
         await ensure_db_index(conn, 'job', 'started_at')
         await ensure_db_index(conn, 'job', 'schedule',
-            ['schedule_id', 'started_at'])
+            [r.row['schedule_id'], r.row['started_at']])
         await ensure_db_table(conn, 'policy')
         await ensure_db_index(conn, 'policy', 'name')
         await ensure_db_table(conn, 'rate_limit', primary_key='token')
         await ensure_db_index(conn, 'rate_limit', 'name')
         await ensure_db_table(conn, 'response', primary_key='sequence')
-        await ensure_db_index(conn, 'response', 'sequence')
         await ensure_db_index(conn, 'response', 'job_sync',
                 [r.row['job_id'], r.row['id']])
         await ensure_db_table(conn, 'response_body')

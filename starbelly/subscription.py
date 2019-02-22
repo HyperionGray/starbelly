@@ -561,7 +561,7 @@ class TaskMonitorSubscription:
 
         :returns: This function runs until ``cancel()`` is called.
         '''
-        with trio.open_cancel_scope() as cancel_scope:
+        with trio.CancelScope() as cancel_scope:
             self._cancel_scope = cancel_scope
             while True:
                 event = self._make_event()

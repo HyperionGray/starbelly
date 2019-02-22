@@ -244,7 +244,7 @@ class RateLimiter:
             if len(self._expires) == 0:
                 # If there are no pending expirations, then we wait for a new
                 # token or a reset of an existing token.
-                with trio.open_cancel_scope() as cancel_scope:
+                with trio.CancelScope() as cancel_scope:
                     self._expiry_cancel_scope = cancel_scope
                     await trio.sleep_forever()
                 continue
