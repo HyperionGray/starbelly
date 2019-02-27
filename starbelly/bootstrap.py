@@ -99,10 +99,7 @@ class Bootstrap:
             logger.info('Rate limiter is initialized.')
 
             # Create a robots.txt manager
-            to_robots, _ = trio.open_memory_channel(0)
-            _, from_robots = trio.open_memory_channel(0)
-            robots_txt_manager = RobotsTxtManager(db_pool, to_robots,
-                from_robots)
+            robots_txt_manager = RobotsTxtManager(db_pool)
 
             # Create a crawl manager
             stats_tracker = StatsTracker()

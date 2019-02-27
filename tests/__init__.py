@@ -49,22 +49,25 @@ def assert_elapsed(seconds, delta=0.1):
 
 class AsyncMock:
     ''' A mock that acts like an async def function. '''
-    def __init__(self, return_value=None, return_values=None, raises=None):
-        if raises:
-            self._raises = raises
-            self._return_value = None
-            self._index = None
-        elif return_values:
-            self._raises = None
-            self._return_value = return_values
-            self._index = 0
-        else:
-            self._raises = None
-            self._return_value = return_value
-            self._index = None
+    def __init__(self, return_value=None, return_values=None, raises=None,
+            side_effect=None):
+        self._raises = None
+        self._side_effect = None
+        self._return_value = None
+        self._index = None
         self._call_count = 0
         self._call_args = None
         self._call_kwargs = None
+
+        if raises:
+            self._raises = raises
+        elif return_values:
+            self._return_value = return_values
+            self._index = 0
+        elif side_effect:
+            self._side_effect=side_effect
+        else:
+            self._return_value = return_value
 
     @property
     def call_args(self):
@@ -88,6 +91,8 @@ class AsyncMock:
         self._call_count += 1
         if self._raises:
             raise(self._raises)
+        elif self._side_effect:
+            return await self._side_effect(*args, **kwargs)
         elif self._index is not None:
             return_index = self._index
             self._index += 1

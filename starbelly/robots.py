@@ -17,30 +17,23 @@ logger = logging.getLogger(__name__)
 
 class RobotsTxtManager:
     ''' Store and manage robots.txt files. '''
-    def __init__(self, db_pool, request_send, response_recv, max_age=24*60*60,
-            max_cache=1e3):
+    def __init__(self, db_pool, max_age=24*60*60, max_cache=1e3):
         '''
         Constructor.
 
         :param db_pool: A DB connection pool.
-        :param trio.SendChannel request_send: A channel to send requests to
-            download.
-        :param trio.ReceiveChannel response_recv: A channel that the downloader
-            will send completed downloads to.
         :param int max_age: The maximum age before a robots.txt is downloaded
             again.
         :param int max_cache: The maximum number of robots.txt files to cache
             in memory.
         '''
         self._db_pool = db_pool
-        self._request_send = request_send
-        self._response_recv = response_recv
         self._events = dict()
         self._cache = OrderedDict()
         self._max_age = max_age
         self._max_cache = max_cache
 
-    async def is_allowed(self, url, policy):
+    async def is_allowed(self, url, policy, downloader):
         '''
         Return True if ``url`` is allowed by the applicable robots.txt file.
 
@@ -50,7 +43,8 @@ class RobotsTxtManager:
 
         :param str url: Check this URL to see if the robots.txt and accompanying
             policy permit access to it.
-        :param starbelly.policy.Policy policy:
+        :param Policy policy:
+        :param Downloader downloader:
         :rtype: bool
         '''
         if policy.robots_txt.usage == 'IGNORE':
@@ -79,7 +73,7 @@ class RobotsTxtManager:
             except KeyError:
                 # Create a new task to fetch it.
                 self._events[robots_url] = trio.Event()
-                robots = await self._get_robots(robots_url, policy)
+                robots = await self._get_robots(robots_url, policy, downloader)
 
         # Note: we only check the first user agent.
         user_agent = policy.user_agents.get_first_user_agent()
@@ -89,7 +83,7 @@ class RobotsTxtManager:
         else:
             return not robots_decision
 
-    async def _get_robots(self, robots_url, policy):
+    async def _get_robots(self, robots_url, policy, downloader):
         '''
         Locate and return a robots.txt file.
 
@@ -105,6 +99,7 @@ class RobotsTxtManager:
 
         :param str url: Fetch the file at this URL.
         :param starbelly.policy.Policy policy:
+        :param Downloader downloader:
         :rtype: RobotsTxt
         '''
         # Check DB. If not there (or expired), check network.
@@ -113,7 +108,8 @@ class RobotsTxtManager:
 
         if robots_doc is None or \
                 (now - robots_doc['updated_at']).seconds > self._max_age:
-            robots_file = await self._get_robots_from_net(robots_url, policy)
+            robots_file = await self._get_robots_from_net(robots_url, policy,
+                downloader)
         else:
             robots_file = None
 
@@ -187,7 +183,7 @@ class RobotsTxtManager:
 
         return db_robots
 
-    async def _get_robots_from_net(self, robots_url, policy):
+    async def _get_robots_from_net(self, robots_url, policy, downloader):
         '''
         Get robots.txt file from the network.
 
@@ -195,7 +191,8 @@ class RobotsTxtManager:
 
         :param str robots_url: Fetch the robots.txt file at this URL.
         :param starbelly.policy.Policy policy:
-        :returns: Contents of robotx.txt file or None if it couldn't be
+        :param Downloader downloader:
+        :returns: Contents of robots.txt file or None if it couldn't be
             downloaded.
         :rtype: str
         '''
@@ -205,14 +202,13 @@ class RobotsTxtManager:
             {'match': 'MATCHES', 'pattern': '^text/plain$', 'save': True},
             {'save': False},
         ])
-        download_request = DownloadRequest(frontier_id=None, job_id=None,
-            method='GET', url=robots_url, form_data=None, cost=0)
-        await self._request_send.send(download_request)
-        response = await self._response_recv.receive()
+        request = DownloadRequest(frontier_id=None, job_id=None, method='GET',
+            url=robots_url, form_data=None, cost=0)
+        response = await downloader.download(request)
 
         if response.status_code == 200 and response.body is not None:
             # There are no invalid byte sequences in latin1 encoding, so this
-            # should always succed.
+            # should always succeed.
             robots_file = response.body.decode('latin1')
         else:
             robots_file = None

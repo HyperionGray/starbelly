@@ -15,7 +15,7 @@ protobuf = "*"
 psutil = "*"
 python-dateutil = "*"
 python-mimeparse = "*"
-rethinkdb = {file = "https://s3-us-west-2.amazonaws.com/hyperiongray/rethinkdb-2.4.0-mark1.tar.gz"}
+rethinkdb = {file = "https://s3-us-west-2.amazonaws.com/hyperiongray/rethinkdb-2.4.0-mark2.tar.gz"}
 robotexclusionrulesparser = "*"
 trio = "*"
 trio-websocket = "*"
