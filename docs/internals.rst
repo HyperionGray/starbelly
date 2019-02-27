@@ -170,6 +170,9 @@ low-level details for each component.
 :ref:`storage`
     The crawl storage saves downloaded items into the database.
 
+:ref:`subscription`
+    Handles API subscriptions such as syncing crawl data.
+
 .. _api_server:
 
 API Server
@@ -177,32 +180,31 @@ API Server
 
 The main interaction point for Starbelly is through its WebSocket API.
 
-TODO
-
-.. currentmodule:: starbelly.subscription
-
-The API supports multiple types of subscriptions. Unlike the rest of the API,
-which consists of a simple request → response model, subscriptions push data to
-the client. Some subscriptions can be paused and resumed using a "sync token".
-
-.. autoclass:: SyncTokenError
+.. automodule:: starbelly.server
     :members:
 
-.. autoclass:: SyncTokenInt
+.. automodule:: starbelly.server.captcha
     :members:
 
-The following classes implement subscription behavior.
-
-.. autoclass:: CrawlSyncSubscription
+.. automodule:: starbelly.server.job
     :members:
 
-.. autoclass:: JobStatusSubscription
+.. automodule:: starbelly.server.login
     :members:
 
-.. autoclass:: ResourceMonitorSubscription
+.. automodule:: starbelly.server.policy
     :members:
 
-.. autoclass:: TaskMonitorSubscription
+.. automodule:: starbelly.server.rate_limit
+    :members:
+
+.. automodule:: starbelly.server.schedule
+    :members:
+
+.. automodule:: starbelly.server.subscription
+    :members:
+
+.. automodule:: starbelly.server.system
     :members:
 
 .. _captcha:
@@ -433,11 +435,42 @@ The following model classes are used by the Scheduler.
 .. _storage:
 
 Storage
----------
+-------
 
 .. currentmodule:: starbelly.storage
 
 The storage component saves downloaded items into the database.
 
 .. autoclass:: CrawlStorage
+    :members:
+
+.. _subscription:
+
+Subscription
+------------
+
+.. currentmodule:: starbelly.subscription
+
+The API supports multiple types of subscriptions. Unlike the rest of the API,
+which consists of a simple request → response model, subscriptions push data to
+the client. Some subscriptions can be paused and resumed using a "sync token".
+
+.. autoclass:: SyncTokenError
+    :members:
+
+.. autoclass:: SyncTokenInt
+    :members:
+
+The following classes implement subscription behavior.
+
+.. autoclass:: CrawlSyncSubscription
+    :members:
+
+.. autoclass:: JobStatusSubscription
+    :members:
+
+.. autoclass:: ResourceMonitorSubscription
+    :members:
+
+.. autoclass:: TaskMonitorSubscription
     :members:
