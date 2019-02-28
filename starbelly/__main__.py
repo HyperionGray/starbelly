@@ -110,6 +110,7 @@ def configure_logging(log_level, error_log):
     logger = logging.getLogger()
     logger.addHandler(log_handler)
     logger.setLevel(log_level)
+    logging.getLogger('watchdog').setLevel(logging.INFO)
 
     if error_log is not None:
         exc_handler = logging.FileHandler(error_log)
