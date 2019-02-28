@@ -1,8 +1,7 @@
 from collections import OrderedDict
 from datetime import datetime, timezone
-
-import aiohttp
 import logging
+
 from robotexclusionrulesparser import RobotExclusionRulesParser
 from rethinkdb import RethinkDB
 from yarl import URL
@@ -51,7 +50,9 @@ class RobotsTxtManager:
             # No need to fetch robots.txt.
             return True
 
-        robots_url = self._get_robots_url(url)
+        robots_url = str(URL(url).with_path('robots.txt')
+                                 .with_query(None)
+                                 .with_fragment(None))
 
         # Check if cache has a current copy of robots.txt.
         try:
@@ -73,17 +74,16 @@ class RobotsTxtManager:
             except KeyError:
                 # Create a new task to fetch it.
                 self._events[robots_url] = trio.Event()
-                robots = await self._get_robots(robots_url, policy, downloader)
+                robots = await self._get_robots(robots_url, downloader)
 
         # Note: we only check the first user agent.
         user_agent = policy.user_agents.get_first_user_agent()
         robots_decision = robots.is_allowed(user_agent, url)
         if policy.robots_txt.usage == 'OBEY':
             return robots_decision
-        else:
-            return not robots_decision
+        return not robots_decision
 
-    async def _get_robots(self, robots_url, policy, downloader):
+    async def _get_robots(self, robots_url, downloader):
         '''
         Locate and return a robots.txt file.
 
@@ -98,7 +98,6 @@ class RobotsTxtManager:
         permissive robots.txt and use that instead.
 
         :param str url: Fetch the file at this URL.
-        :param starbelly.policy.Policy policy:
         :param Downloader downloader:
         :rtype: RobotsTxt
         '''
@@ -108,7 +107,7 @@ class RobotsTxtManager:
 
         if robots_doc is None or \
                 (now - robots_doc['updated_at']).seconds > self._max_age:
-            robots_file = await self._get_robots_from_net(robots_url, policy,
+            robots_file = await self._get_robots_from_net(robots_url,
                 downloader)
         else:
             robots_file = None
@@ -148,21 +147,6 @@ class RobotsTxtManager:
         event.set()
         return robots
 
-    def _get_robots_url(self, url):
-        '''
-        Construct a robots.txt URL that is applicable for ``url``.
-
-        This preserves scheme, hostname, and port. It changes the path to
-        'robots.txt' and removes the query string and fragment.
-
-        :param str url: An arbitrary URL.
-        :returns: The corresponding robots.txt URL.
-        :rtype: str
-        '''
-        return str(URL(url).with_path('robots.txt')
-                           .with_query(None)
-                           .with_fragment(None))
-
     async def _get_robots_from_db(self, robots_url):
         '''
         Get robots document from the database.
@@ -183,14 +167,13 @@ class RobotsTxtManager:
 
         return db_robots
 
-    async def _get_robots_from_net(self, robots_url, policy, downloader):
+    async def _get_robots_from_net(self, robots_url, downloader):
         '''
         Get robots.txt file from the network.
 
         Returns None if the file cannot be fetched (e.g. 404 error).
 
         :param str robots_url: Fetch the robots.txt file at this URL.
-        :param starbelly.policy.Policy policy:
         :param Downloader downloader:
         :returns: Contents of robots.txt file or None if it couldn't be
             downloaded.
@@ -198,13 +181,9 @@ class RobotsTxtManager:
         '''
 
         logger.info('Fetching robots.txt: %s', robots_url)
-        robots_policy = policy.replace_mime_type_rules([
-            {'match': 'MATCHES', 'pattern': '^text/plain$', 'save': True},
-            {'save': False},
-        ])
         request = DownloadRequest(frontier_id=None, job_id=None, method='GET',
             url=robots_url, form_data=None, cost=0)
-        response = await downloader.download(request)
+        response = await downloader.download(request, skip_mime=True)
 
         if response.status_code == 200 and response.body is not None:
             # There are no invalid byte sequences in latin1 encoding, so this

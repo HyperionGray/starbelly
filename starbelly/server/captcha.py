@@ -22,7 +22,6 @@ async def delete_captcha_solver(command, server_db):
 @api_handler
 async def get_captcha_solver(command, response, server_db):
     ''' Get a CAPTCHA solver. '''
-    logger.info('get=%r',command)
     solver_id = str(UUID(bytes=command.solver_id))
     doc = await server_db.get_captcha_solver(solver_id)
 
@@ -51,6 +50,6 @@ async def set_captcha_solver(command, response, server_db):
     ''' Create or update CAPTCHA solver. '''
     now = datetime.now(timezone.utc)
     doc = captcha_pb_to_doc(command.solver)
-    new_id = await server_db.set_captcha_solver(doc)
+    new_id = await server_db.set_captcha_solver(doc, now)
     if new_id:
         response.new_solver.solver_id = UUID(new_id).bytes

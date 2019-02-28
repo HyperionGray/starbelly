@@ -1,27 +1,15 @@
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
-from enum import Enum
-import functools
-import gzip
 import hashlib
 import itertools
 import logging
 import pickle
-import random
-import time
-from yarl import URL
 
-from aiohttp.cookiejar import CookieJar
-import mimeparse
-from operator import itemgetter
 from rethinkdb import RethinkDB
-from rethinkdb.errors import ReqlNonExistenceError
 import trio
-from yarl import URL
 
 from .login import LoginManager
-from .downloader import CrawlItemLimitExceeded, Downloader, DownloadRequest
+from .downloader import CrawlItemLimitExceeded, Downloader
 from .extractor import CrawlExtractor
 from .frontier import CrawlFrontier, FrontierExhaustionError
 from .policy import Policy
@@ -223,7 +211,6 @@ class CrawlManager:
             'maximum_downloads': max_,
             'jobs': jobs,
         }
-        return stats
 
     async def pause_job(self, job_id):
         '''
@@ -251,7 +238,6 @@ class CrawlManager:
         '''
         logger.info('%r Resuming job_id=%s…', self, job_id[:8])
         job_doc = await self._db.resume_job(job_id)
-        policy = Policy(job_doc['policy'], __version__, job_doc['seeds'])
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job)
         logger.info('%r Resumed job_id=%s', self, job_id[:8])
@@ -310,7 +296,6 @@ class CrawlManager:
         job_doc['policy'] = policy_doc
         job_id = await self._db.create_job(job_doc, policy_id)
         job_doc['id'] = job_id
-        policy = Policy(policy_doc, __version__, seeds)
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job)
         return job_id
@@ -519,8 +504,7 @@ class CrawlJob:
             ''' Filter out Cancelled exceptions raised by the nursery. '''
             if isinstance(exc, trio.Cancelled):
                 return None
-            else:
-                return exc
+            return exc
 
         with trio.MultiError.catch(exc_filter):
             async with trio.open_nursery() as nursery:
@@ -537,8 +521,7 @@ class CrawlJob:
                 if self._policy.limits.max_duration:
                     await trio.sleep(self._policy.limits.max_duration)
                     raise CrawlDurationExceeded()
-                else:
-                    await trio.sleep_forever()
+                await trio.sleep_forever()
 
         self._stopped.set()
 

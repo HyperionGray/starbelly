@@ -36,6 +36,7 @@ class InvalidRequestException(Exception):
     ''' Indicates a request is invalid. '''
 
 
+# pylint: disable=cyclic-import, wrong-import-position
 from .captcha import *
 from .job import *
 from .login import *
@@ -150,6 +151,7 @@ class Connection:
         self._scheduler = scheduler
         self._subscription_db = subscription_db
         self._nursery = None
+        self._stats_tracker = stats_tracker
         self._subscription_manager = None
 
     async def run(self):
@@ -171,7 +173,7 @@ class Connection:
                     nursery.start_soon(self._handle_request, request_data)
         except ConnectionClosed:
             logger.info('Connection closed for %s', self._client_ip)
-        except Exception as e:
+        except:
             logger.exception('Connection exception')
         finally:
             await self._ws.aclose()
@@ -204,7 +206,7 @@ class Connection:
                     .format(command_name)) from None
 
             # Inject dependencies into argument list, then call the handler.
-            argspec = inspect.getargspec(handler)
+            argspec = inspect.getfullargspec(handler)
             args = list()
             for var in argspec[0]:
                 if var == 'command':
@@ -248,7 +250,7 @@ class Connection:
             logger.error('Request ERROR %s %s (%s)', command_name,
                 self._client_ip, error_message)
             message.response.error_message = error_message
-        except Exception as exc:
+        except:
             logger.exception('Exception while handling request:\n%r',
                 request)
             message.response.error_message = 'A server exception occurred'

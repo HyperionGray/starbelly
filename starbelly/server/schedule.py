@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from . import api_handler, InvalidRequestException
+from . import api_handler
 from ..schedule import Schedule
 
 

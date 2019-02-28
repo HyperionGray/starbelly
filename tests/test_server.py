@@ -485,7 +485,9 @@ async def test_subscription():
     command1 = RequestSubscribeJobSync()
     command1.job_id = b'\xaa' * 16
     response1 = Response()
-    await subscribe_crawl_sync(command1, response1, subscription_manager)
+    crawl_manager = Mock()
+    await subscribe_crawl_sync(command1, crawl_manager, response1,
+        subscription_manager)
     assert response1.new_subscription.subscription_id == 1
 
     # Subscribe to job status
@@ -514,8 +516,7 @@ async def test_subscription():
     # Unsubscrive to task monitor
     command5 = RequestUnsubscribe()
     command5.subscription_id = 5
-    response5 = Response()
-    await unsubscribe(command5, response5, subscription_manager)
+    await unsubscribe(command5, subscription_manager)
     assert subscription_manager.cancel_subscription.called
 
 

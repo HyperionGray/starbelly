@@ -1,4 +1,3 @@
-from binascii import hexlify
 import gzip
 import hashlib
 import logging
@@ -9,6 +8,24 @@ import trio
 
 
 logger = logging.getLogger(__name__)
+
+
+def should_compress_body(response):
+    '''
+    Returns true if the response body should be compressed.
+
+    This logic can be amended over time to add additional MIME types that
+    should be compressed.
+
+    :param starbelly.downloader.DownloadResponse response:
+    '''
+    should_compress = False
+    type_, subtype, _ = mimeparse.parse_mime_type(response.content_type)
+    if type_ == 'text':
+        should_compress = True
+    elif type_ == 'application' and subtype in ('json', 'pdf'):
+        should_compress = True
+    return should_compress
 
 
 class CrawlStorage:
@@ -68,7 +85,7 @@ class CrawlStorage:
             response_doc['content_type'] = response.content_type
             response_doc['is_success'] = response.status_code // 100 == 2
             response_doc['status_code'] = response.status_code
-            compress_body = self._should_compress_body(response)
+            compress_body = should_compress_body(response)
 
             headers = list()
             for key, value in response.headers.items():
@@ -96,21 +113,3 @@ class CrawlStorage:
 
         response_doc['sequence'] = next(self._sequence)
         await self._db.save_response(response_doc, response_body_doc)
-
-    def _should_compress_body(self, response):
-        '''
-        Returns true if the response body should be compressed.
-
-        This logic can be amended over time to add additional MIME types that
-        should be compressed.
-
-        :param starbelly.downloader.DownloadResponse response:
-        '''
-        should_compress = False
-        type_, subtype, parameters = mimeparse.parse_mime_type(
-            response.content_type)
-        if type_ == 'text':
-            should_compress = True
-        elif type_ == 'application' and subtype in ('json', 'pdf'):
-            should_compress = True
-        return should_compress

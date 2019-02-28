@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from dataclasses import dataclass, field
 import logging
 import traceback
-from typing import Any
 
 import aiohttp
 import aiohttp_socks
@@ -12,8 +11,6 @@ import trio
 import trio_asyncio
 import w3lib.url
 from yarl import URL
-
-from .policy import Policy
 
 
 logger = logging.getLogger(__name__)
@@ -176,13 +173,13 @@ class Downloader:
         :returns: Runs until cancelled.
         '''
         async with trio.open_nursery() as nursery, \
-                   trio_asyncio.open_loop() as loop:
+                   trio_asyncio.open_loop() as _:
             async for request in self._recv_channel:
                 await self._semaphore.acquire()
                 self._count += 1
                 nursery.start_soon(self._download, request)
 
-    async def download(self, request):
+    async def download(self, request, skip_mime=False):
         '''
         Download a requested resource and return it.
 
@@ -195,11 +192,14 @@ class Downloader:
         in the database. The caller should apply their own timeout here.
 
         :param DownloadRequest request:
+        :param bool skip_mime: If True, the MIME type will not be checked
+            against the policy.
         :rtype DownloadResponse:
         '''
         async with self._semaphore:
-            with trio.fail_after(20): # TODO make this part of policy
-                response = await self._download_asyncio(request)
+            with trio.fail_after(20):
+                response = await self._download_asyncio(request,
+                    skip_mime=skip_mime)
         return response
 
     async def _download(self, request):
@@ -209,11 +209,10 @@ class Downloader:
         :param DownloadRequest request:
         '''
         try:
-            #TODO make this part of policy
             with trio.move_on_after(20) as cancel_scope:
                 response = await self._download_asyncio(request)
             if cancel_scope.cancelled_caught:
-                logger.warn('%r Timed out downloading %s', self, request.url)
+                logger.warning('%r Timed out downloading %s', self, request.url)
                 response.set_exception('Timed out')
 
             # Update stats before forwarding response.
@@ -239,7 +238,7 @@ class Downloader:
                 raise CrawlItemLimitExceeded()
 
     @trio_asyncio.aio_as_trio
-    async def _download_asyncio(self, request):
+    async def _download_asyncio(self, request, skip_mime=False):
         '''
         A helper for ``_download()`` that runs on the asyncio event loop. There
         is not a mature Trio library for HTTP that supports SOCKS proxies, so
@@ -284,7 +283,8 @@ class Downloader:
             async with http_request as http_response:
                 mime = http_response.headers.get('content-type',
                     'application/octet-stream')
-                if not self._policy.mime_type_rules.should_save(mime):
+                if not skip_mime and \
+                   not self._policy.mime_type_rules.should_save(mime):
                     raise MimeNotAllowedError()
                 body = await http_response.read()
                 dl_response.set_response(http_response, body)
@@ -295,13 +295,13 @@ class Downloader:
         except (aiohttp.ClientError, aiohttp_socks.errors.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
             msg = '{}: {}'.format(err.__class__.__name__, err)
-            logger.warn('%r Failed downloading %s: %s', self, request.url, msg)
+            logger.warning('%r Failed downloading %s: %s', self, request.url, msg)
             dl_response.set_exception(msg)
         except MimeNotAllowedError:
             # If MIME is not allowed, then don't even download the body,
             # the response is not forwarded to the next component, etc.
             raise
-        except Exception as exc:
+        except:
             logger.exception('%r Failed downloading %s', self, request.url)
             dl_response.set_exception(traceback.format_exc())
 

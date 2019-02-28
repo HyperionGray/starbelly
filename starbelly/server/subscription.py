@@ -6,13 +6,15 @@ from . import api_handler
 
 
 @api_handler
-async def subscribe_crawl_sync(command, response, subscription_manager):
+async def subscribe_crawl_sync(command, crawl_manager, response,
+        subscription_manager):
     ''' Handle the subscribe crawl items command. '''
     job_id = str(UUID(bytes=command.job_id))
     compression_ok = command.compression_ok
+    job_state_recv = crawl_manager.get_job_state_channel()
     sync_token = command.sync_token if command.HasField('sync_token') else None
     sub_id = subscription_manager.subscribe_crawl_sync(job_id, compression_ok,
-        sync_token)
+        job_state_recv, sync_token)
     response.new_subscription.subscription_id = sub_id
 
 
@@ -44,7 +46,7 @@ async def subscribe_task_monitor(command, response, subscription_manager):
 
 
 @api_handler
-async def unsubscribe(command, response, subscription_manager):
+async def unsubscribe(command, subscription_manager):
     ''' Handle an unsubscribe command. '''
     sub_id = command.subscription_id
     subscription_manager.cancel_subscription(sub_id)

@@ -50,7 +50,7 @@ def make_policy(usage, user_agent):
     return Policy(doc, '1.0.0', ['https://seeds.example'])
 
 
-async def download(request):
+async def download(request, **kwargs):
     ''' A mock download function that returns a fixed response. '''
     response = DownloadResponse.from_request(request)
     response.content_type = 'text/plain'
@@ -139,7 +139,7 @@ async def test_fetch_robots_ignore(asyncio_loop, nursery):
 async def test_fetch_missing_robots(asyncio_loop, nursery):
     ''' If robots file has a 404 error, then it is treated as a permissive
     robots . '''
-    async def download404(request):
+    async def download404(request, **kwargs):
         ''' A mock download function that returns a fixed response. '''
         assert str(request.url) == 'https://www.example/robots.txt'
         response = DownloadResponse.from_request(request)

@@ -1,17 +1,17 @@
 import calendar
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-import dateutil
 import functools
 import heapq
 import logging
 from uuid import UUID
 
+import dateutil
 from rethinkdb import RethinkDB
 import trio
 
-from .job import JobStateEvent, RunState
-from starbelly.starbelly_pb2 import (
+from .job import RunState
+from .starbelly_pb2 import (
     ScheduleTiming as PbScheduleTiming,
     ScheduleTimeUnit as PbScheduleTimeUnit,
 )
@@ -25,7 +25,35 @@ class ScheduleValidationError(Exception):
     ''' Custom error for job schedule validation. '''
 
 
-#TODO remove me or move me somewhere more appropriate?
+def compute_next_event(base, num_units, time_unit):
+    '''
+    Add an offset to a base time.
+
+    :param datetime base: The base timestamp.
+    :param int num_units: The number of units to add to the base timestamp.
+    :param str time_unit: The type of units to add to the base timestamp.
+    :returns: The future timestamp.
+    :rtype: float
+    '''
+    if time_unit == 'MINUTES':
+        next_ = base + timedelta(minutes=num_units)
+    elif time_unit == 'HOURS':
+        next_ = base + timedelta(hours=num_units)
+    elif time_unit == 'DAYS':
+        next_ = base + timedelta(days=num_units)
+    elif time_unit == 'WEEKS':
+        next_ = base + timedelta(weeks=num_units)
+    elif time_unit == 'MONTHS':
+        month = base.month + num_units - 1
+        year = int(base.year + month / 12)
+        month = month % 12 + 1
+        day = min(base.day, calendar.monthrange(year, month)[1])
+        next_ = base.replace(year=year, month=month, day=day)
+    elif time_unit == 'YEARS':
+        next_ = base.replace(base.year + num_units)
+    return next_
+
+
 def pb_date(pb, date_attr):
     if pb.HasField(date_attr):
         dt = dateutil.parser.parse(getattr(pb, date_attr))
@@ -200,11 +228,11 @@ class ScheduleEvent:
 
     def __eq__(self, other):
         ''' Implement == '''
-        return self._due == other._due
+        return self._due == other.due
 
     def __gt__(self, other):
         ''' Implement > '''
-        return self._due > other._due
+        return self._due > other.due
 
     def __repr__(self):
         ''' Make string representation. '''
@@ -292,13 +320,13 @@ class Scheduler:
             running = not finished
             timing_after = schedule.timing == 'AFTER_PREVIOUS_JOB_FINISHED'
             if running and timing_regular:
-                due = self._compute_next_event(
+                due = compute_next_event(
                     latest_job['started_at'],
                     schedule.num_units,
                     schedule.time_unit
                 )
             elif finished and timing_after:
-                due = self._compute_next_event(
+                due = compute_next_event(
                     latest_job['completed_at'],
                     schedule.num_units,
                     schedule.time_unit
@@ -308,7 +336,7 @@ class Scheduler:
             due = datetime.fromtimestamp(trio.current_time() + 15, timezone.utc)
 
         if due:
-            logger.info('Scheduling "{}" at {}'.format(schedule.name, due))
+            logger.info('Scheduling "%s" at %s', schedule.name, due)
             self._add_event(ScheduleEvent(schedule, due.timestamp()))
 
     def remove_schedule(self, schedule_id):
@@ -349,34 +377,6 @@ class Scheduler:
         self._event_added.set()
         self._event_added = trio.Event()
 
-    def _compute_next_event(self, base, num_units, time_unit):
-        '''
-        Add an offset to a base time.
-
-        :param datetime base: The base timestamp.
-        :param int num_units: The number of units to add to the base timestamp.
-        :param str time_unit: The type of units to add to the base timestamp.
-        :returns: The future timestamp.
-        :rtype: float
-        '''
-        if time_unit == 'MINUTES':
-            next_ = base + timedelta(minutes=num_units)
-        elif time_unit == 'HOURS':
-            next_ = base + timedelta(hours=num_units)
-        elif time_unit == 'DAYS':
-            next_ = base + timedelta(days=num_units)
-        elif time_unit == 'WEEKS':
-            next_ = base + timedelta(weeks=num_units)
-        elif time_unit == 'MONTHS':
-            month = base.month + num_units - 1
-            year = int(base.year + month / 12 )
-            month = month % 12 + 1
-            day = min(base.day, calendar.monthrange(year,month)[1])
-            next_ = base.replace(year=year, month=month, day=day)
-        elif time_unit == 'YEARS':
-            next_ = base.replace(base.year + num_units)
-        return next_
-
     async def _listen_task(self):
         '''
         Listen for ``JobStateEvent`` and check if a job needs to be
@@ -399,14 +399,13 @@ class Scheduler:
                 running = not finished
                 timing_after = schedule.timing == 'AFTER_PREVIOUS_JOB_FINISHED'
                 if (running and timing_regular) or (finished and timing_after):
-                    due = self._compute_next_event(
+                    due = compute_next_event(
                         job_state.event_time,
                         schedule.num_units,
                         schedule.time_unit
                     )
-                    logger.info('Rescheduling "{}" at {}'.format(
-                        schedule.name, due.isoformat()
-                    ))
+                    logger.info('Rescheduling "%s" at %s', schedule.name,
+                        due.isoformat())
                     self._add_event(ScheduleEvent(schedule, due.timestamp()))
 
                 if running:
@@ -421,7 +420,7 @@ class Scheduler:
         :returns: This method runs until cancelled.
         '''
         while True:
-            if len(self._events) == 0:
+            if not self._events:
                 await self._event_added.wait()
                 continue
 
@@ -458,6 +457,7 @@ class Scheduler:
         job_name = schedule.format_job_name(event.due)
         job_id = await self._crawl_manager.start_job(job_name, schedule.seeds,
             schedule.tags, schedule.policy_id, schedule.id)
+        self._running_jobs[schedule.id] = job_id
 
         # Update schedule metadata
         await self._db.update_job_count(schedule.id, schedule.job_count)

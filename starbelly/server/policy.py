@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from . import api_handler, InvalidRequestException
+from . import api_handler
 from ..policy import Policy
 from ..version import __version__
 
@@ -26,7 +26,6 @@ async def list_policies(command, response, server_db):
     ''' Get a list of policies. '''
     limit = command.page.limit
     offset = command.page.offset
-    policies = list()
     count, docs = await server_db.list_policies(limit, offset)
     response.list_policies.total = count
 

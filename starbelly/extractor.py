@@ -63,7 +63,7 @@ class CrawlExtractor:
         async for response in self._receive_channel:
             try:
                 await self._extract(response)
-            except Exception as e:
+            except Exception:
                 logger.exception('%r Extractor exception on %r', self, response)
             finally:
                 await self._db.delete_frontier_item(response.frontier_id)
@@ -136,8 +136,7 @@ def extract_urls(response):
     '''
     extracted_urls = list()
     base_url = response.url
-    type_, subtype, parameters = mimeparse.parse_mime_type(
-        response.content_type)
+    type_, subtype, _ = mimeparse.parse_mime_type(response.content_type)
 
     if type_ == 'text' and subtype == 'html' or \
        type_ == 'application' and subtype == 'xhtml+xml':
@@ -174,7 +173,7 @@ def _extract_html(response):
     :returns: A list of URLs.
     :rtype: list[str]
     '''
-    encoding, html = w3lib.encoding.html_to_unicode(
+    _, html = w3lib.encoding.html_to_unicode(
         response.content_type,
         response.body,
         auto_detect_fun=chardet

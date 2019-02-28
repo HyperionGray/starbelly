@@ -1,14 +1,9 @@
 from collections import deque
 from datetime import datetime, timezone
 import logging
-import math
-import os
-from time import time
 
 import psutil
 import trio
-
-from .starbelly_pb2 import ServerMessage
 
 
 logger = logging.getLogger(__name__)

@@ -1,14 +1,12 @@
 from binascii import hexlify
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import functools
 import hashlib
 from heapq import heappop, heappush
 import logging
-import urllib.parse
 
 import trio
-from yarl import URL
 
 
 logger = logging.getLogger(__name__)
@@ -241,7 +239,7 @@ class RateLimiter:
         :rtype: Expiry
         '''
         while True:
-            if len(self._expires) == 0:
+            if not self._expires:
                 # If there are no pending expirations, then we wait for a new
                 # token or a reset of an existing token.
                 with trio.CancelScope() as cancel_scope:
@@ -258,11 +256,10 @@ class RateLimiter:
             if expires <= now:
                 expiry = heappop(self._expires)
                 return expiry
-            else:
-                with trio.move_on_after(expires - now) as cancel_scope:
-                    self._expiry_cancel_scope = cancel_scope
-                    await trio.sleep_forever()
-                continue
+            with trio.move_on_after(expires - now) as cancel_scope:
+                self._expiry_cancel_scope = cancel_scope
+                await trio.sleep_forever()
+            continue
 
     async def _read_requests_task(self):
         '''
@@ -307,7 +304,7 @@ class RateLimiter:
             token = expiry.token
             queue = self._queues[token]
 
-            if len(queue) == 0:
+            if not queue:
                 # If nothing left in this queue, delete it and get another
                 # token instead.
                 del self._queues[token]

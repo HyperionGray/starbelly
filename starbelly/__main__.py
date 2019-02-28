@@ -1,14 +1,11 @@
 import argparse
 import logging
-import itertools
 import os
 import signal
 import subprocess
 import sys
 import time
-import traceback
 
-import rethinkdb as r
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -91,7 +88,7 @@ class Reloader:
         while True:
             time.sleep(1)
 
-    def shutdown(self, signum, frame):
+    def shutdown(self, signum, _):
         ''' Exit the reloader. '''
         signame = signal.Signals(signum).name
         self._logger.info('Caught %s (shutting down)', signame)

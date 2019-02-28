@@ -1,25 +1,94 @@
 import asyncio
-from copy import deepcopy
 from functools import partial
-from operator import itemgetter
+import logging
 import random
 
 import aiohttp
-from bs4 import BeautifulSoup
 import cchardet
 import formasaurus
-import logging
 import trio
 import trio_asyncio
 import w3lib.encoding
 from yarl import URL
 
 from .downloader import DownloadRequest
-from .policy import PolicyMimeTypeRules
 
 
 logger = logging.getLogger(__name__)
 chardet = lambda s: cchardet.detect(s).get('encoding')
+
+
+def get_captcha_image_element(form):
+    '''
+    Return the <img> element in an lxml form that contains the CAPTCHA.
+
+    NOTE: This assumes the first image in the form is the CAPTCHA image. If
+    a form has multiple images, maybe use the etree .sourceline attribute to
+    figure out which image is closer to the CAPTCHA input? Or crawl through
+    the element tree to find the image?
+
+    :param form: An lxml form element.
+    :returns: An lxml image element.
+    '''
+    img_el = form.find('img')
+    if img_el is None:
+        raise Exception('Cannot locate CAPTCHA image')
+    return img_el
+
+
+def select_login_fields(fields):
+    '''
+    Select field having highest probability for class ``field``.
+
+    :param dict fields: Nested dictionary containing label probabilities
+        for each form element.
+    :returns: (username field, password field, captcha field)
+    :rtype: tuple
+    '''
+    username_field = None
+    username_prob = 0
+    password_field = None
+    password_prob = 0
+    captcha_field = None
+    captcha_prob = 0
+
+    for field_name, labels in fields.items():
+        for label, prob in labels.items():
+            if label in ('username', 'username or email') \
+                and prob > username_prob:
+                username_field = field_name
+                username_prob = prob
+            elif label == 'password' and prob > password_prob:
+                password_field = field_name
+                password_prob = prob
+            elif label == 'captcha' and prob > captcha_prob:
+                captcha_field = field_name
+                captcha_prob = prob
+
+    return username_field, password_field, captcha_field
+
+
+def select_login_form(forms):
+    '''
+    Select form having highest probability for login class.
+
+    :param dict forms: Nested dict containing label probabilities for each
+        form.
+    :returns: (login form, login meta)
+    :rtype: tuple
+    '''
+    login_form = None
+    login_meta = None
+    login_prob = 0
+
+    for form, meta in forms:
+        for type_, prob in meta['form'].items():
+            if type_ == 'login' and prob > login_prob:
+                login_form = form
+                login_meta = meta
+                login_prob = prob
+
+    return login_form, login_meta
 
 
 class LoginManager:
@@ -83,27 +152,10 @@ class LoginManager:
         if response.status_code == 200 and response.body is not None:
             img_data = response.body
         else:
-            raise Exception('Failed to download CAPTCHA image src=%s', img_src)
+            raise Exception('Failed to download CAPTCHA image src={}'.format(
+                img_src))
 
         return img_data
-
-    def _get_captcha_image_element(self, form):
-        '''
-        Return the <img> element in an lxml form that contains the CAPTCHA.
-
-        NOTE: This assumes the first image in the form is the CAPTCHA image. If
-        a form has multiple images, maybe use the etree .sourceline attribute to
-        figure out which image is closer to the CAPTCHA input? Or crawl through
-        the element tree to find the image?
-
-        :param form: An lxml form element.
-        :returns: An lxml image element.
-        '''
-        img_el = form.find('img')
-        if img_el is None:
-            raise Exception('Cannot locate CAPTCHA image')
-        return img_el
-
 
     async def _get_login_form(self, response, username, password):
         '''
@@ -117,7 +169,7 @@ class LoginManager:
         :returns: (action, method, fields)
         :rtype: tuple
         '''
-        encoding, html = w3lib.encoding.html_to_unicode(
+        _, html = w3lib.encoding.html_to_unicode(
             response.content_type,
             response.body,
             auto_detect_fun=chardet
@@ -125,12 +177,12 @@ class LoginManager:
 
         forms = await trio.run_sync_in_worker_thread(partial(
             formasaurus.extract_forms, html, proba=True))
-        form, meta = self._select_login_form(forms)
+        form, meta = select_login_form(forms)
 
         if form is None:
             raise Exception("Can't find login form")
 
-        login_field, password_field, captcha_field = self._select_login_fields(
+        login_field, password_field, captcha_field = select_login_fields(
             meta['fields'])
         if login_field is None or password_field is None:
             raise Exception("Can't find username/password fields")
@@ -143,7 +195,7 @@ class LoginManager:
                 raise Exception('CAPTCHA required for login url={} but there is'
                     ' no CAPTCHA solver available'.format(response.url))
 
-            img_el = self._get_captcha_image_element(form)
+            img_el = get_captcha_image_element(form)
             img_src = str(URL(response.url).join(URL(img_el.get('src'))))
             img_data = await self._download_captcha_image(img_src)
             captcha_text = await self._solve_captcha_asyncio(img_data)
@@ -151,60 +203,6 @@ class LoginManager:
 
         form_action = URL(response.url).join(URL(form.action))
         return form_action, form.method, dict(form.fields)
-
-    def _select_login_fields(self, fields):
-        '''
-        Select field having highest probability for class ``field``.
-
-        :param dict fields: Nested dictionary containing label probabilities
-            for each form element.
-        :returns: (username field, password field, captcha field)
-        :rtype: tuple
-        '''
-        username_field = None
-        username_prob = 0
-        password_field = None
-        password_prob = 0
-        captcha_field = None
-        captcha_prob = 0
-
-        for field_name, labels in fields.items():
-            for label, prob in labels.items():
-                if (label == 'username' or label == 'username or email') \
-                    and prob > username_prob:
-                    username_field = field_name
-                    username_prob = prob
-                elif label == 'password' and prob > password_prob:
-                    password_field = field_name
-                    password_prob = prob
-                elif label == 'captcha' and prob > captcha_prob:
-                    captcha_field = field_name
-                    captcha_prob = prob
-
-        return username_field, password_field, captcha_field
-
-
-    def _select_login_form(self, forms):
-        '''
-        Select form having highest probability for login class.
-
-        :param dict forms: Nested dict containing label probabilities for each
-            form.
-        :returns: (login form, login meta)
-        :rtype: tuple
-        '''
-        login_form = None
-        login_meta = None
-        login_prob = 0
-
-        for form, meta in forms:
-            for type_, prob in meta['form'].items():
-                if type_ == 'login' and prob > login_prob:
-                    login_form = form
-                    login_meta = meta
-                    login_prob = prob
-
-        return login_form, login_meta
 
     @trio_asyncio.aio_as_trio
     async def _solve_captcha_asyncio(self, img_data):
@@ -248,9 +246,8 @@ class LoginManager:
                     if result['errorId'] != 0:
                         raise Exception('CAPTCHA API error {}'
                             .format(result['errorId']))
-                    elif result['status'] == 'ready':
-                        solution = result['solution']['text']
-                        break
+                    solution = result['solution']['text']
+                    break
 
         if solution is None:
             raise Exception('CAPTCHA API never completed task')

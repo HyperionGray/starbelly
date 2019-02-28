@@ -1,4 +1,3 @@
-import base64
 import logging
 import random
 import re
@@ -9,13 +8,17 @@ import dateutil.parser
 import w3lib.url
 
 from .captcha import CaptchaSolver
-import starbelly.starbelly_pb2
+from .starbelly_pb2 import (
+    PatternMatch as PbPatternMatch,
+    PolicyRobotsTxt as PbPolicyRobotsTxt,
+    PolicyUrlRule as PbPolicyUrlRule
+)
 
 
 logger = logging.getLogger(__name__)
-ACTION_ENUM = starbelly.starbelly_pb2.PolicyUrlRule.Action
-MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
-USAGE_ENUM = starbelly.starbelly_pb2.PolicyRobotsTxt.Usage
+ACTION_ENUM = PbPolicyUrlRule.Action
+MATCH_ENUM = PbPatternMatch
+USAGE_ENUM = PbPolicyRobotsTxt.Usage
 
 
 class PolicyValidationError(Exception):
@@ -26,8 +29,7 @@ def _invalid(message, location=None):
     ''' A helper for validating policies. '''
     if location is None:
         raise PolicyValidationError(f'{message}.')
-    else:
-        raise PolicyValidationError(f'{message} in {location}.')
+    raise PolicyValidationError(f'{message} in {location}.')
 
 
 class Policy:
@@ -315,11 +317,11 @@ class PolicyMimeTypeRules:
         for pb_mime in pb:
             doc_mime = dict()
             if pb_mime.HasField('pattern'):
-               doc_mime['pattern'] = pb_mime.pattern
+                doc_mime['pattern'] = pb_mime.pattern
             if pb_mime.HasField('match'):
-               doc_mime['match'] = MATCH_ENUM.Name(pb_mime.match)
+                doc_mime['match'] = MATCH_ENUM.Name(pb_mime.match)
             if pb_mime.HasField('save'):
-               doc_mime['save'] = pb_mime.save
+                doc_mime['save'] = pb_mime.save
             doc.append(doc_mime)
 
     def __init__(self, docs):
@@ -329,13 +331,12 @@ class PolicyMimeTypeRules:
         :param docs: Database document.
         :type docs: list[dict]
         '''
-        if len(docs) == 0:
+        if not docs:
             _invalid('At least one MIME type rule is required')
 
         # Rules are stored as list of tuples: (pattern, match, save)
         self._rules = list()
         max_index = len(docs) - 1
-        MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
 
         for index, mime_type_rule in enumerate(docs):
             if index < max_index:
@@ -376,15 +377,18 @@ class PolicyMimeTypeRules:
         :param str mime_type:
         :rtype: bool
         '''
+        should_save = False
         for pattern, match, save in self._rules:
             if pattern is None:
-                return save
-            else:
-                result = pattern.search(mime_type) is not None
-                if match == 'DOES_NOT_MATCH':
-                    result = not result
-                if result:
-                    return save
+                should_save = save
+                break
+            mimecheck = pattern.search(mime_type) is not None
+            if match == 'DOES_NOT_MATCH':
+                mimecheck = not mimecheck
+            if mimecheck:
+                should_save = save
+                break
+        return should_save
 
 
 class PolicyProxyRules:
@@ -423,11 +427,11 @@ class PolicyProxyRules:
         for pb_proxy in pb:
             doc_proxy = dict()
             if pb_proxy.HasField('pattern'):
-               doc_proxy['pattern'] = pb_proxy.pattern
+                doc_proxy['pattern'] = pb_proxy.pattern
             if pb_proxy.HasField('match'):
-               doc_proxy['match'] = MATCH_ENUM.Name(pb_proxy.match)
+                doc_proxy['match'] = MATCH_ENUM.Name(pb_proxy.match)
             if pb_proxy.HasField('proxy_url'):
-               doc_proxy['proxy_url'] = pb_proxy.proxy_url
+                doc_proxy['proxy_url'] = pb_proxy.proxy_url
             doc.append(doc_proxy)
 
     def __init__(self, docs):
@@ -441,7 +445,6 @@ class PolicyProxyRules:
         # proxy_url)
         self._rules = list()
         max_index = len(docs) - 1
-        MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
 
         for index, proxy_rule in enumerate(docs):
             if index < max_index:
@@ -580,6 +583,7 @@ class PolicyUrlNormalization:
         if 'strip_parameters' in doc:
             pb.strip_parameters.extend(doc['strip_parameters'])
 
+    @staticmethod
     def convert_pb_to_doc(pb, doc):
         '''
         Convert protobuf to database document.
@@ -611,7 +615,7 @@ class PolicyUrlNormalization:
         :rtype str:
         '''
         if self._enabled:
-            if len(self._strip_parameters) > 0:
+            if self._strip_parameters:
                 url = w3lib.url.url_query_cleaner(url, remove=True,
                     unique=False, parameterlist=self._strip_parameters)
 
@@ -656,13 +660,13 @@ class PolicyUrlRules:
         for pb_url in pb:
             doc_url = dict()
             if pb_url.HasField('pattern'):
-               doc_url['pattern'] = pb_url.pattern
+                doc_url['pattern'] = pb_url.pattern
             if pb_url.HasField('match'):
-               doc_url['match'] = MATCH_ENUM.Name(pb_url.match)
+                doc_url['match'] = MATCH_ENUM.Name(pb_url.match)
             if pb_url.HasField('action'):
-               doc_url['action'] = ACTION_ENUM.Name(pb_url.action)
+                doc_url['action'] = ACTION_ENUM.Name(pb_url.action)
             if pb_url.HasField('amount'):
-               doc_url['amount'] = pb_url.amount
+                doc_url['amount'] = pb_url.amount
             doc.append(doc_url)
 
     def __init__(self, docs, seeds):
@@ -674,15 +678,13 @@ class PolicyUrlRules:
         :param seeds: Seed URLs, used for computing the costs for crawled links.
         :type seeds: list[str]
         '''
-        if len(docs) == 0:
+        if not docs:
             _invalid('At least one URL rule is required')
 
         # Rules are stored as tuples: (pattern, match, action, amount)
         self._rules = list()
         max_index = len(docs) - 1
         seed_domains = {urlparse(seed).hostname for seed in seeds}
-        ACTION_ENUM = starbelly.starbelly_pb2.PolicyUrlRule.Action
-        MATCH_ENUM = starbelly.starbelly_pb2.PatternMatch
 
         for index, url_rule in enumerate(docs):
             if index < max_index:
@@ -735,6 +737,7 @@ class PolicyUrlRules:
         :returns: Cost of ``url``.
         :rtype: float
         '''
+        # pylint: disable=undefined-loop-variable
         for pattern, match, action, amount in self._rules:
             if pattern is None:
                 break
@@ -747,8 +750,7 @@ class PolicyUrlRules:
 
         if action == 'ADD':
             return parent_cost + amount
-        elif action == 'MULTIPLY':
-            return parent_cost * amount
+        return parent_cost * amount
 
 class PolicyUserAgents:
     ''' Specify user agent string to send in HTTP requests. '''
@@ -789,7 +791,7 @@ class PolicyUserAgents:
         :type docs: list[dict]
         :param str version: The version number interpolated into ``{VERSION}``.
         '''
-        if len(docs) == 0:
+        if not docs:
             _invalid('At least one user agent is required')
         self._user_agents = list()
         for index, user_agent in enumerate(docs):

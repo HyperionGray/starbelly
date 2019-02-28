@@ -1,25 +1,16 @@
-from abc import ABCMeta, abstractmethod
-import base64
-from binascii import hexlify, unhexlify
-from collections import Counter, defaultdict
-from datetime import datetime
-import enum
-import functools
+from abc import ABCMeta
 import gzip
 import itertools
-import json
 import logging
 from operator import attrgetter
-import math
 import struct
 from uuid import UUID
 
 from rethinkdb import RethinkDB
 import trio
-import websockets.exceptions
 
 from .backoff import ExponentialBackoff
-from .job import FINISHED_STATES, RunState
+from .job import FINISHED_STATES
 from .starbelly_pb2 import JobRunState, ServerMessage, SubscriptionClosed
 
 
@@ -51,7 +42,8 @@ class SyncTokenInt(metaclass=ABCMeta):
         try:
             type_, val = struct.unpack(cls.FORMAT, token)
         except:
-            raise SyncTokenError('Cannot decocde SyncTokenInt: %s', token)
+            raise SyncTokenError('Cannot decocde SyncTokenInt: {}'.format(
+                token))
         if type_ != cls.TOKEN_NUM:
             raise SyncTokenError('Invalid SyncTokenInt: type={}'
                 .format(type_))
@@ -91,7 +83,8 @@ class SubscriptionManager:
         '''
         self._subscriptions.pop(subscription_id).cancel()
 
-    def subscribe_crawl_sync(self, job_id, compression_ok, sync_token):
+    def subscribe_crawl_sync(self, job_id, compression_ok, job_state_recv,
+            sync_token):
         '''
         Subscribe to crawl job sync.
 
@@ -99,9 +92,11 @@ class SubscriptionManager:
         :param bool compression_ok:
         :param sync_token:
         :type sync_token: bytes or None
+        :param trio.ReceiveChannel job_state_recv:
         :returns: A subscription ID.
         :rtype: int
         '''
+        logger.debug('job_state_recv=%r', job_state_recv)
         sub_id = next(self._subscription_id)
         sub = CrawlSyncSubscription(sub_id, job_id, self._subscription_db,
             self._websocket, compression_ok, job_state_recv, sync_token)
@@ -109,7 +104,7 @@ class SubscriptionManager:
         self._nursery.start_soon(sub)
         return sub_id
 
-    def subscribe_job_status(self, stats_stracker, min_interval):
+    def subscribe_job_status(self, stats_tracker, min_interval):
         '''
         Subscribe to job status.
 
@@ -399,9 +394,8 @@ class JobStatusSubscription:
         message = ServerMessage()
         message.event.subscription_id = self._id
         current_send = dict()
-        import logging
+
         for job in self._stats_tracker.snapshot():
-            logging.debug('job %r',job)
             job_id = job['id']
             current_send[job_id] = job
             if job == self._last_send.get(job_id):
@@ -543,6 +537,7 @@ class TaskMonitorSubscription:
         self._websocket = websocket
         self._period = period
         self._root_task = root_task
+        self._cancel_scope = None
 
     def __repr__(self):
         ''' For debugging purposes, put the subscription ID in a string. '''

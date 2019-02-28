@@ -9,6 +9,7 @@ import trio
 from . import AsyncMock, async_iter, fail_after
 from starbelly.job import JobStateEvent, RunState
 from starbelly.schedule import (
+    compute_next_event,
     Schedule,
     Scheduler,
     ScheduleEvent,
@@ -273,22 +274,22 @@ def test_schedule_time_units(autojump_clock):
     scheduler = Scheduler(db_pool, crawl_manager)
     base = datetime(1982, 11, 21, 3, 14, 0)
 
-    due1 = scheduler._compute_next_event(base, 2, 'MINUTES')
+    due1 = compute_next_event(base, 2, 'MINUTES')
     assert due1 == datetime(1982, 11, 21, 3, 16, 0)
 
-    due2 = scheduler._compute_next_event(base, 2, 'HOURS')
+    due2 = compute_next_event(base, 2, 'HOURS')
     assert due2 == datetime(1982, 11, 21, 5, 14, 0)
 
-    due3 = scheduler._compute_next_event(base, 2, 'DAYS')
+    due3 = compute_next_event(base, 2, 'DAYS')
     assert due3 == datetime(1982, 11, 23, 3, 14, 0)
 
-    due4 = scheduler._compute_next_event(base, 2, 'WEEKS')
+    due4 = compute_next_event(base, 2, 'WEEKS')
     assert due4 == datetime(1982, 12, 5, 3, 14, 0)
 
-    due5 = scheduler._compute_next_event(base, 2, 'MONTHS')
+    due5 = compute_next_event(base, 2, 'MONTHS')
     assert due5 == datetime(1983, 1, 21, 3, 14, 0)
 
-    due6 = scheduler._compute_next_event(base, 2, 'YEARS')
+    due6 = compute_next_event(base, 2, 'YEARS')
     assert due6 == datetime(1984, 11, 21, 3, 14, 0)
 
 

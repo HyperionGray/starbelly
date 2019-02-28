@@ -1,10 +1,11 @@
-import dateutil.parser
+import gzip
 import logging
 from uuid import UUID
 from yarl import URL
 
+import dateutil.parser
+
 from . import api_handler, InvalidRequestException
-from ..job import RunState
 from ..policy import Policy
 from ..starbelly_pb2 import JobRunState as PbRunState
 
@@ -134,9 +135,6 @@ async def list_jobs(command, response, server_db):
 @api_handler
 async def set_job(command, crawl_manager, response):
     ''' Create or update job metadata. '''
-    #TODO
-    # Maybe should have separate commands like start, pause, resume, cancel?
-    # A littler clearer than just "set", because most job metadata is immutable.
     if command.HasField('job_id'):
         # Update run state of existing job.
         job_id = str(UUID(bytes=command.job_id))

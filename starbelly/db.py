@@ -1,8 +1,9 @@
 import logging
 
 from rethinkdb import RethinkDB
+from rethinkdb.errors import ReqlNonExistenceError
 
-from starbelly.job import RunState, FINISHED_STATES
+from starbelly.job import RunState
 
 
 logger = logging.getLogger(__name__)
@@ -145,7 +146,7 @@ class CrawlFrontierDb:
         :param str job_id: The ID of the job to check the frontier for.
         :rtype int:
         '''
-        size_query =  r.table('frontier').between(
+        size_query = r.table('frontier').between(
             (job_id, r.minval, r.minval),
             (job_id, r.maxval, r.maxval),
             index='cost_index'
@@ -340,7 +341,7 @@ class CrawlManagerDb:
         '''
         job_query = r.table('job').get(job_id).update(
             {'run_state': RunState.RUNNING}, return_changes=True)
-        import logging
+
         async with self._db_pool.connection() as conn:
             result = await job_query.run(conn)
             job_doc = result['changes'][0]['new_val']
@@ -621,7 +622,6 @@ class ServerDb:
         :rtype: dict
         '''
         async with self._db_pool.connection() as conn:
-            count = await r.table('domain_login').count().run(conn)
             domain_login = await (
                 r.table('domain_login')
                  .get(domain)
@@ -895,7 +895,7 @@ class ServerDb:
         async with self._db_pool.connection() as conn:
             try:
                 job = await query.run(conn)
-            except rethinkdb.errors.ReqlNonExistenceError:
+            except ReqlNonExistenceError:
                 job = None
         return job
 
@@ -914,17 +914,17 @@ class ServerDb:
         filters = []
 
         if include_success:
-            filters.append(r.row['is_success'] == True)
+            filters.append(r.row['is_success'])
 
         if include_error:
-            filters.append((r.row['is_success'] == False) &
-                           (~r.row.has_fields('exception')))
+            filters.append(~(r.row['is_success'] &
+                             r.row.has_fields('exception')))
 
         if include_exception:
-            filters.append((r.row['is_success'] == False) &
-                           (r.row.has_fields('exception')))
+            filters.append(~r.row['is_success'] &
+                           r.row.has_fields('exception'))
 
-        if len(filters) == 0:
+        if not filters:
             raise Exception('You must set at least one include_* flag to true.')
 
         def get_body(item):
