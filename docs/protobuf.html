@@ -1214,6 +1214,13 @@
             </tr>
           
             <tr>
+              <td>list_schedule_jobs</td>
+              <td><a href="#.RequestListScheduleJobs">RequestListScheduleJobs</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
               <td>set_schedule</td>
               <td><a href="#.RequestSetSchedule">RequestSetSchedule</a></td>
               <td>optional</td>
@@ -1716,6 +1723,34 @@
           <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
         </thead>
         <tbody>
+          
+            <tr>
+              <td>page</td>
+              <td><a href="#.Page">Page</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".RequestListScheduleJobs">RequestListScheduleJobs</h3>
+    <p>Get a list of jobs for a given schedules.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>schedule_id</td>
+              <td><a href="#.bytes">bytes</a></td>
+              <td>required</td>
+              <td><p> </p></td>
+            </tr>
           
             <tr>
               <td>page</td>
@@ -2432,6 +2467,13 @@
             </tr>
           
             <tr>
+              <td>list_schedule_jobs</td>
+              <td><a href="#.ResponseListScheduleJobs">ResponseListScheduleJobs</a></td>
+              <td>optional</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
               <td>policy</td>
               <td><a href="#.Policy">Policy</a></td>
               <td>optional</td>
@@ -2639,6 +2681,35 @@
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
               <td><p>The total number of rate limits (not the count of rate limits included in this response). </p></td>
+            </tr>
+          
+        </tbody>
+      </table>
+    
+  
+    <h3 id=".ResponseListScheduleJobs">ResponseListScheduleJobs</h3>
+    <p>Return a list of jobs for a given schedules.</p>
+
+    
+      <table class="field-table">
+        <thead>
+          <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>jobs</td>
+              <td><a href="#.Job">Job</a></td>
+              <td>repeated</td>
+              <td><p> </p></td>
+            </tr>
+          
+            <tr>
+              <td>total</td>
+              <td><a href="#.int32">int32</a></td>
+              <td>optional</td>
+              <td><p>The total number of jobs associated with this schedule (not just the
+ones included in this response). </p></td>
             </tr>
           
         </tbody>

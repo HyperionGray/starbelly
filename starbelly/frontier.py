@@ -108,7 +108,7 @@ class CrawlFrontier:
                 self._stats['frontier_size'] -= len(docs)
                 break
             else:
-                if await self._db.any_in_flight():
+                if await self._db.any_in_flight(self._job_id):
                     backoff.increase()
                 else:
                     raise FrontierExhaustionError()

@@ -1,11 +1,11 @@
 import logging
 import random
 import re
-from urllib.parse import urlparse
 from uuid import UUID
 
 import dateutil.parser
 import w3lib.url
+from yarl import URL
 
 from .captcha import CaptchaSolver
 from .starbelly_pb2 import (
@@ -481,9 +481,8 @@ class PolicyProxyRules:
             if proxy_url is None:
                 proxy_type = None
             else:
-                proxy_url = proxy_url.strip()
                 try:
-                    parsed = urlparse(proxy_url)
+                    parsed = URL(proxy_url)
                     proxy_type = parsed.scheme
                     if proxy_type not in self.PROXY_SCHEMES:
                         raise ValueError()
@@ -491,7 +490,6 @@ class PolicyProxyRules:
                     schemes = ', '.join(self.PROXY_SCHEMES)
                     _invalid('Must have a valid URL with one of the '
                              f'following schemes: {schemes}', location)
-
 
             self._rules.append((
                 pattern_re,
@@ -684,7 +682,7 @@ class PolicyUrlRules:
         # Rules are stored as tuples: (pattern, match, action, amount)
         self._rules = list()
         max_index = len(docs) - 1
-        seed_domains = {urlparse(seed).hostname for seed in seeds}
+        seed_domains = {URL(seed).host for seed in seeds}
 
         for index, url_rule in enumerate(docs):
             if index < max_index:
@@ -751,6 +749,7 @@ class PolicyUrlRules:
         if action == 'ADD':
             return parent_cost + amount
         return parent_cost * amount
+
 
 class PolicyUserAgents:
     ''' Specify user agent string to send in HTTP requests. '''

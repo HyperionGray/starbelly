@@ -76,7 +76,7 @@ class CrawlStorage:
             'duration': response.duration,
             'job_id': self._job_id,
             'started_at': response.started_at,
-            'url': response.url,
+            'url': response.url.human_repr(),
             'canonical_url': response.canonical_url,
         }
 

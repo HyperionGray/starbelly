@@ -101,7 +101,7 @@ class SubscriptionManager:
         sub = CrawlSyncSubscription(sub_id, job_id, self._subscription_db,
             self._websocket, compression_ok, job_state_recv, sync_token)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub)
+        self._nursery.start_soon(sub.run)
         return sub_id
 
     def subscribe_job_status(self, stats_tracker, min_interval):
@@ -117,7 +117,7 @@ class SubscriptionManager:
         sub = JobStatusSubscription(sub_id, self._websocket, stats_tracker,
             min_interval)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub)
+        self._nursery.start_soon(sub.run)
         return sub_id
 
     def subscribe_resource_monitor(self, resource_monitor, history):
@@ -133,7 +133,7 @@ class SubscriptionManager:
         sub = ResourceMonitorSubscription(sub_id, self._websocket,
             resource_monitor, history)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub)
+        self._nursery.start_soon(sub.run)
         return sub_id
 
     def subscribe_task_monitor(self, period, root_task):
@@ -149,7 +149,7 @@ class SubscriptionManager:
         sub = TaskMonitorSubscription(sub_id, self._websocket, period,
             root_task)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub)
+        self._nursery.start_soon(sub.run)
         return sub_id
 
 
@@ -376,12 +376,16 @@ class JobStatusSubscription:
         :returns: This function runs until ``cancel()`` is called.
         '''
         logger.info('%r Starting', self)
+        initial = True
         async with trio.open_nursery() as nursery:
             self._cancel_scope = nursery.cancel_scope
 
             while True:
-                event = self._make_event()
-                await self._websocket.send_message(event.SerializeToString())
+                message = self._make_event()
+                if initial or message.event.job_list.jobs:
+                    await self._websocket.send_message(
+                        message.SerializeToString())
+                initial = False
                 await trio.sleep(self._min_interval)
         logger.info('%r Cancelled', self)
 

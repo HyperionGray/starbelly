@@ -226,8 +226,8 @@ class CrawlManagerDb:
         async with self._db_pool.connection() as conn:
             result = await r.table('job').insert(job_doc).run(conn)
             job_id = result['generated_keys'][0]
-            frontier = [{'cost': 0, 'job_id': job_id, 'url': s}
-                for s in job_doc['seeds']]
+            frontier = [{'cost': 0, 'job_id': job_id, 'url': s,
+                'in_flight': False} for s in job_doc['seeds']]
             await r.table('frontier').insert(frontier).run(conn)
 
         return job_id
@@ -777,7 +777,6 @@ class ServerDb:
         async with self._db_pool.connection() as conn:
             await base_query.run(conn)
 
-
     async def delete_schedule(self, schedule_id):
         '''
         Delete the specified job schedule.
@@ -798,6 +797,36 @@ class ServerDb:
         async with self._db_pool.connection() as conn:
             doc = await r.table('schedule').get(schedule_id).run(conn)
         return doc
+
+    async def list_schedule_jobs(self, schedule_id, limit, offset):
+        '''
+        Get info about jobs associated with this schedule, in reverse
+        chronological order.
+
+        :param str schedule_id:
+        :param int limit:
+        :param int offset:
+        :returns: Total count of documents and list of current page.
+        :rtype: tuple(int, list)
+        '''
+        base_query = (
+            r.table('job')
+             .order_by(index='schedule')
+             .between((schedule_id, r.minval), (schedule_id, r.maxval))
+        )
+        query = (
+            base_query
+            .skip(offset)
+            .limit(limit)
+        )
+        job_docs = list()
+        async with self._db_pool.connection() as conn:
+            count = await base_query.count().run(conn)
+            cursor = await query.run(conn)
+            async with cursor:
+                async for job_doc in cursor:
+                    job_docs.append(job_doc)
+        return count, job_docs
 
     async def list_schedules(self, limit, offset):
         '''
@@ -828,35 +857,27 @@ class ServerDb:
         :param dict doc: A database document.
         :param datetime now: The datetime to place in updated (and possibly
             created) fields.
-        :returns: Schedule database document, including ``latest_job`` key.
-        :rtype: dict
+        :returns: If a new schedule is created, its ID is returned. Otherwise
+            returns None.
+        :rtype: str
         '''
         table = r.table('schedule')
 
-        def latest_job(sched):
-            return {'latest_job':
-                r.table('job')
-                 .order_by(index='schedule')
-                 .between((sched['id'], r.minval), (sched['id'], r.maxval))
-                 .pluck(['name', 'run_state', 'started_at', 'completed_at'])
-                 .nth(-1)
-                 .default(None)
-            }
-
         async with self._db_pool.connection() as conn:
-            if 'id' in doc:
-                policy_id = doc['id']
+            if doc.get('id'):
+                schedule_id = doc['id']
+                doc.pop('created_at', None)
                 doc['updated_at'] = now
-                await table.get(policy_id).update(doc).run(conn)
+                await table.get(schedule_id).update(doc).run(conn)
+                schedule_id = None
             else:
+                doc.pop('id')
                 doc['created_at'] = now
                 doc['updated_at'] = now
                 result = await table.insert(doc).run(conn)
-                policy_id = result['generated_keys'][0]
-            policy_doc = await r.table('schedule').get(policy_id).merge(
-                latest_job).run(conn)
+                schedule_id = result['generated_keys'][0]
 
-        return policy_doc
+        return schedule_id
 
     async def delete_job(self, job_id):
         '''

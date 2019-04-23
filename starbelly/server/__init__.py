@@ -255,6 +255,5 @@ class Connection:
                 request)
             message.response.error_message = 'A server exception occurred'
 
-        logger.debug('message=%r', message)
         message_data = message.SerializeToString()
         await self._ws.send_message(message_data)

@@ -162,5 +162,5 @@ async def set_job(command, crawl_manager, response):
             if len(seeds) > 1:
                 name += '& {} more'.format(len(seeds) - 1)
 
-        job_id = await crawl_manager.start_job(seeds, policy_id, name, tags)
+        job_id = await crawl_manager.start_job(name, seeds, tags, policy_id)
         response.new_job.job_id = UUID(job_id).bytes

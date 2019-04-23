@@ -149,7 +149,7 @@ class Downloader:
         self._semaphore = semaphore
         self._rate_limiter_reset = rate_limiter_reset
         self._stats = stats
-        self._cookie_jar = aiohttp.CookieJar()
+        self._cookie_jar = None
         self._count = 0
 
     def __repr__(self):
@@ -173,7 +173,7 @@ class Downloader:
         :returns: Runs until cancelled.
         '''
         async with trio.open_nursery() as nursery, \
-                   trio_asyncio.open_loop() as _:
+                   trio_asyncio.open_loop():
             async for request in self._recv_channel:
                 await self._semaphore.acquire()
                 self._count += 1
@@ -196,7 +196,7 @@ class Downloader:
             against the policy.
         :rtype DownloadResponse:
         '''
-        async with self._semaphore:
+        async with self._semaphore, trio_asyncio.open_loop():
             with trio.fail_after(20):
                 response = await self._download_asyncio(request,
                     skip_mime=skip_mime)
@@ -208,6 +208,7 @@ class Downloader:
 
         :param DownloadRequest request:
         '''
+        stats = self._stats
         try:
             with trio.move_on_after(20) as cancel_scope:
                 response = await self._download_asyncio(request)
@@ -216,8 +217,6 @@ class Downloader:
                 response.set_exception('Timed out')
 
             # Update stats before forwarding response.
-            logger.info('doing stats now?')
-            stats = self._stats
             stats['item_count'] += 1
             if response.exception:
                 stats['exception_count'] += 1
@@ -225,9 +224,10 @@ class Downloader:
                 stats['http_success_count'] += 1
             else:
                 stats['http_error_count'] += 1
-            http_status_counts = stats['http_status_counts']
-            http_status_counts[response.status_code] = \
-                http_status_counts.get(response.status_code, 0) + 1
+            if response.status_code is not None:
+                http_status_counts = stats['http_status_counts']
+                http_status_counts[response.status_code] = \
+                    http_status_counts.get(response.status_code, 0) + 1
 
             await self._send_channel.send(response)
         finally:
@@ -246,6 +246,8 @@ class Downloader:
 
         :param DownloadRequest request:
         '''
+        if self._cookie_jar is None:
+            self._cookie_jar = aiohttp.CookieJar()
         # Timeout is handled by the caller:
         session_args = {
             'timeout': aiohttp.ClientTimeout(total=None),
@@ -297,12 +299,10 @@ class Downloader:
             msg = '{}: {}'.format(err.__class__.__name__, err)
             logger.warning('%r Failed downloading %s: %s', self, request.url, msg)
             dl_response.set_exception(msg)
-        except MimeNotAllowedError:
-            # If MIME is not allowed, then don't even download the body,
-            # the response is not forwarded to the next component, etc.
-            raise
-        except:
+        except Exception:
             logger.exception('%r Failed downloading %s', self, request.url)
             dl_response.set_exception(traceback.format_exc())
+        finally:
+            await session.close()
 
         return dl_response

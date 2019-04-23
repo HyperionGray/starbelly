@@ -75,6 +75,8 @@ class RobotsTxtManager:
                 # Create a new task to fetch it.
                 self._events[robots_url] = trio.Event()
                 robots = await self._get_robots(robots_url, downloader)
+                event = self._events.pop(robots_url)
+                event.set()
 
         # Note: we only check the first user agent.
         user_agent = policy.user_agents.get_first_user_agent()
@@ -143,8 +145,6 @@ class RobotsTxtManager:
         self._cache.move_to_end(robots_url)
         if len(self._cache) > self._max_cache:
             self._cache.popitem(last=False)
-        event = self._events.pop(robots_url)
-        event.set()
         return robots
 
     async def _get_robots_from_db(self, robots_url):

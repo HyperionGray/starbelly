@@ -294,7 +294,7 @@ class CrawlManager:
 
         policy_doc = await self._db.get_policy(policy_id)
         job_doc['policy'] = policy_doc
-        job_id = await self._db.create_job(job_doc, policy_id)
+        job_id = await self._db.create_job(job_doc)
         job_doc['id'] = job_id
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job)
@@ -354,8 +354,8 @@ class CrawlManager:
         storage = CrawlStorage(job_id, self._storage_db, storage_send,
             storage_recv, policy, self._sequence)
         extractor = CrawlExtractor(job_id, self._extractor_db, extractor_send,
-            extractor_recv, policy, self._robots_txt_manager, old_urls,
-            stats_dict)
+            extractor_recv, policy, downloader, self._robots_txt_manager,
+            old_urls, stats_dict)
         terminator = PipelineTerminator(pipeline_end)
 
         # Now we can create a job instance.
@@ -388,7 +388,7 @@ class CrawlManager:
 
         # When job finishes, update database and cleanup local state:
         del self._jobs[job.id]
-        self._rate_limiter.remove_job(job.id)
+        await self._rate_limiter.remove_job(job.id)
         if job_completed:
             completed_at = datetime.now(timezone.utc)
             run_state = RunState.COMPLETED

@@ -1,28 +1,20 @@
 version: '3'
 
-networks:
-  default:
-    driver: bridge
-
 volumes:
   db_data: {}
 
 services:
   db:
+    network_mode: host
     image: rethinkdb:2.3
     container_name: starbelly-dev-db
-    ports:
-      - "127.0.0.1:8081:8080"
-      - "127.0.0.1:28015:28015"
     volumes:
       - db_data:/data
 
   web:
+    network_mode: host
     image: nginx:1.15
     container_name: starbelly-dev-web
-    ports:
-      - "127.0.0.1:80:80"
-      - "127.0.0.1:443:443"
     volumes:
       - "${PWD}/nginx.conf:/etc/nginx/conf.d/default.conf"
       - "${PWD}/server.crt:/etc/nginx/server.crt"

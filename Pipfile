@@ -33,6 +33,7 @@ aiohttp-socks = "*"
 async-timeout = "*"
 pytest-mock = "*"
 formasaurus = {extras = ["with-deps"],version = "*"}
+docker-compose = "*"
 
 [dev-packages]
 nose = "*"

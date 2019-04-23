@@ -17,7 +17,7 @@ chardet = lambda s: cchardet.detect(s).get('encoding')
 class CrawlExtractor:
     ''' Extract URLs from crawled items and add them to the frontier table. '''
     def __init__(self, job_id, db, send_channel, receive_channel, policy,
-            robots_txt_manager, old_urls, stats, batch_size=100):
+            downloader, robots_txt_manager, old_urls, stats, batch_size=100):
         '''
         Constructor.
 
@@ -28,6 +28,7 @@ class CrawlExtractor:
         :param trio.ReceiveChannel receive_channel: A channel that receives
             DownloadResponse instances.
         :param starbelly.policy.Policy: A policy for computing costs.
+        :param starbelly.downloader.Downloader: A downloader used for this job.
         :param starbelly.robots.RobotsTxtManager: A robots.txt manager.
         :param set old_urls: A set of hashed URLs that this crawl has seen before.
             These URLs will not be added to the crawl frontier a second time.
@@ -41,6 +42,7 @@ class CrawlExtractor:
         self._send_channel = send_channel
         self._receive_channel = receive_channel
         self._policy = policy
+        self._downloader = downloader
         self._robots_txt_manager = robots_txt_manager
         self._old_urls = old_urls
         self._stats = stats
@@ -86,7 +88,8 @@ class CrawlExtractor:
             exceeds_max_cost = self._policy.limits.exceeds_max_cost(new_cost)
             if new_cost <= 0 or exceeds_max_cost:
                 continue
-            robots_ok = await self._robots_txt_manager.is_allowed(url)
+            robots_ok = await self._robots_txt_manager.is_allowed(url,
+                self._policy, self._downloader)
             if not robots_ok:
                 continue
 
@@ -112,7 +115,6 @@ class CrawlExtractor:
             if counter % self._batch_size == self._batch_size - 1:
                 await trio.sleep(0)
 
-
         # Insert items in batches
         start = 0
         while start < len(insert_items):
@@ -135,18 +137,20 @@ def extract_urls(response):
     :rtype: list[str]
     '''
     extracted_urls = list()
-    base_url = response.url
-    type_, subtype, _ = mimeparse.parse_mime_type(response.content_type)
 
-    if type_ == 'text' and subtype == 'html' or \
-       type_ == 'application' and subtype == 'xhtml+xml':
-        extracted_urls = _extract_html(response)
-    elif type_ == 'application' and subtype == 'atom+xml' or \
-         type_ == 'application' and subtype == 'rss+xml':
-        extracted_urls = _extract_feed(response)
-    else:
-        raise ValueError('Unsupported MIME in extract_urls(): {} (url={})'
-            .format(response.content_type, base_url))
+    if response.is_success:
+        base_url = response.url
+        type_, subtype, _ = mimeparse.parse_mime_type(response.content_type)
+
+        if type_ == 'text' and subtype == 'html' or \
+           type_ == 'application' and subtype == 'xhtml+xml':
+            extracted_urls = _extract_html(response)
+        elif type_ == 'application' and subtype == 'atom+xml' or \
+             type_ == 'application' and subtype == 'rss+xml':
+            extracted_urls = _extract_feed(response)
+        else:
+            raise ValueError('Unsupported MIME in extract_urls(): {} (url={})'
+                .format(response.content_type, base_url))
 
     return extracted_urls
 

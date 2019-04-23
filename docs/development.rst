@@ -42,47 +42,77 @@ Setting Up Dev Environment
 
 In a typical dev environment, you will need to run the following components:
 
-- Starbelly Web Client (on your localhost)
 - Starbelly Server (on your localhost)
+- Starbelly Web Client (on your localhost)
 - RethinkDB Database Server (in Docker)
 - Nginx Web Server (in Docker)
 
-The first two items (the client and server) should be run on your local machine.
-The third party components (database server and web server) should be run
-inside of Docker containers. In the Starbelly repository there is a ``/dev/``
-directory that contains tools to help set up your environment.
+To set up this environment, you will need the following items installed:
 
-1. Make sure you have Docker and ``pipenv`` installed.
-2. Clone the `main starbelly repository
-   <https://github.com/hyperiongray/starbelly>`__.
-3. Clone the `starbelly-web-client repository
-   <https://github.com/hyperiongray/starbelly-web-client>`__.
-4. Go to the ``starbelly/`` directory and install the server's dependencies:
+* `Docker <https://www.docker.com/>`__
+* `Pipenv <https://pipenv.readthedocs.io/en/latest/>`__
+* `Chromium <https://www.chromium.org/>`__ (optional, but it is the only
+  officially supported browser for Dart development)
+
+Clone the following repositories:
+
+1. `Starbelly server <https://github.com/hyperiongray/starbelly>`__: ``git clone
+   https://github.com/hyperiongray/starbelly``
+2. `Starbelly client <https://github.com/hyperiongray/starbelly-web-client>`__:
+   ``https://github.com/hyperiongray/starbelly-web-client``
+
+Now run the Docker containers:
+
+1. Go into the ``starbelly/`` directory and install the server's dependencies:
    ``pipenv install --dev``.
-5. Open a pipenv shell: ``pipenv shell``.
-6. Go into the ``starbelly/dev/`` directory and run ``python gencert.py
-   <hostname>`` to create a self-signed certificate. You can pick any hostname
-   you like. (We recommend putting that hostname in your ``/etc/hosts``.)
-7. Go back to the ``starbelly/`` directory and start the application server:
-   ``python -m starbelly 172.19.0.1``. The server will launch and [hopefully]
-   stay open.
-8. In a new window, go to the ``starbelly-web-client/`` directory and run the
-   Pub server: ``pub serve --hostname 172.19.0.1``. The server will launch and
-   [hopefully] stay open.
-9. In a new window, go to the ``starbelly/dev/`` directory and run
-   ``docker-compose up`` to start the Docker containers.
-10. In your browser, try navigating to the chosen hostname on port 80 or 443.
-    You'll see a warning because the SSL certificate is self-signed. You can
-    configure your browser to trust this certificate or you can import the CA
-    from ``/dev/ca.crt``.
+2. Open a pipenv shell: ``pipenv shell``.
+3. Go into the ``starbelly/dev/`` directory and run ``python gencert.py
+   localhost`` to create a development web certificate.
+4. Go to the ``starbelly/dev/`` directory and run ``docker-compose up`` to start
+   the Docker containers.
 
-If all of these steps worked, then your terminal should look like this:
+In a second terminal, run the Starbelly server:
+
+1. Go to the ``starbelly/`` directory and start a new shell: ``pipenv shell``.
+2. Run the container initialization script: ``python tools/container_init.py``.
+3. Start the application server: ``python -m starbelly --log-level debug --reload``.
+
+In a third terminal run the web client's build server:
+
+1. Go into to the ``starbelly-web-client/`` directory and run `pub get`.
+2. Run: ``webdev serve web:8001``. (This step takes 15-20 seconds.)
+
+If all has gone well, your terminal should look something like this:
+
+.. image:: terminal.png
+   :alt: screenshot of terminal
+
+Now you can navigate to ``https://localhost`` to view the application in your
+browser.
 
 TODO ADD SCREENSHOT HERE
 
-And you should see the application in your browser window:
+You should also set up client-side logging by going into the web inspector,
+clicking "Application" → "Local Storage" → "https://localhost" and adding a new
+key named ``starbelly-debug`` with the value ``true``. Refresh the page and you
+should see some log messages in the browser console.
 
-TODO ADD SCREENSHOT HERE
+.. image:: client-side-logging.png
+   :alt: screenshot of terminal
+
+You now have the following services running:
+
+================  ===========================
+Service           Ports
+================  ===========================
+Nginx             80 (redirect), 443
+RethinkDB         8080 (GUI), 28015 (API)
+Starbelly Server  8000
+Dart Server       8001
+================  ===========================
+
+The only ports you will typically need to use are the Nginx on 443 and RethinkDB
+on 8080.
 
 Common Tasks
 ------------
@@ -116,7 +146,7 @@ and stored in the main ``starbelly`` repo under ``/docs``.
 
 .. code::
 
-    starbelly-dev-app:/starbelly/docs# make html
+    starbelly-dev-app:/starbelly/docs# make docs
     Running Sphinx v1.7.1
     loading pickled environment... done
     building [mo]: targets for 0 po files that are out of date
@@ -126,7 +156,7 @@ and stored in the main ``starbelly`` repo under ``/docs``.
     no targets are out of date.
     build succeeded.
 
-To view the documentation, use your web browser to navigate to the host's
+To view the documentation, use your web browser to navigate to
 ``starbelly/docs/_build/html/index.html``.
 
 Clear Database
@@ -163,7 +193,7 @@ for things like inspecting config files or running ad hoc database queries.
 .. code::
 
     $ python tools/shell.py
-    IPython Shell: Starbelly v2.0.0-dev
+    IPython Shell: Starbelly v2.0.0
     In [1]:
 
 The shell initializes some global variables and then presents you with an

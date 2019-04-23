@@ -88,7 +88,7 @@ class Schedule:
         if self.num_units <= 0:
             raise ScheduleValidationError('Time units must be positive')
         try:
-            self.format_job_name(datetime(1982, 11, 21, 3, 14, 0).timestamp())
+            self.format_job_name(datetime(1982, 11, 21, 3, 14, 0))
         except KeyError:
             raise ScheduleValidationError('Invalid variable in job name:'
                 ' COUNT, DATE, & TIME are allowed.')
@@ -103,7 +103,7 @@ class Schedule:
         :param dict doc:
         '''
         return cls(
-            doc.get('id'),
+            doc['id'],
             doc['schedule_name'],
             doc['enabled'],
             doc['created_at'],
@@ -115,7 +115,7 @@ class Schedule:
             doc['job_count'],
             doc['seeds'],
             doc['tags'],
-            doc['policy_id'],
+            doc['policy_id']
         )
 
     @classmethod
@@ -126,7 +126,7 @@ class Schedule:
         :param pb:
         '''
         return cls(
-            pb.schedule_id if pb.HasField('schedule_id') else None,
+            str(UUID(bytes=pb.schedule_id)) if pb.HasField('schedule_id') else None,
             pb.schedule_name,
             pb.enabled,
             pb_date(pb, 'created_at'),
@@ -138,7 +138,7 @@ class Schedule:
             pb.job_count,
             [seed for seed in pb.seeds],
             [tag for tag in pb.tags],
-            pb.policy_id,
+            str(UUID(bytes=pb.policy_id)),
         )
 
     def to_doc(self):
@@ -149,7 +149,7 @@ class Schedule:
         :rtype: dict
         '''
         return {
-            'id': self.id,
+            'id': self.id if self.id else None,
             'schedule_name': self.name,
             'enabled': self.enabled,
             'created_at': self.created_at,
@@ -195,11 +195,11 @@ class Schedule:
         :returns: A formatted job name.
         :rtype: str
         '''
+        ts = when.timestamp()
         return self.job_name.format(
             COUNT=self.job_count,
-            TIME=int(when),
-            DATE=datetime.fromtimestamp(when, timezone.utc)
-                         .strftime('%Y-%m-%dT%H:%M:%S')
+            TIME=int(ts),
+            DATE=when.strftime('%Y-%m-%dT%H:%M:%S')
         )
 
 
@@ -221,7 +221,7 @@ class ScheduleEvent:
         Construct a schedule event from a database document..
 
         :param dict schedule: A database document.
-        :param float due: The timestamp when this event is due.
+        :param datetime due: When this event is due.
         '''
         self._schedule = schedule
         self._due = due
@@ -243,7 +243,7 @@ class ScheduleEvent:
     def due(self):
         '''
         :returns: The timestamp when this event is due.
-        :rtype float:
+        :rtype datetime:
         '''
         return self._due
 
@@ -253,7 +253,7 @@ class ScheduleEvent:
         :returns: Indicates if this event is due.
         :rtype: bool
         '''
-        return self.seconds_until_due <= 0
+        return self._due <= datetime.now(timezone.utc)
 
     @property
     def schedule(self):
@@ -269,7 +269,7 @@ class ScheduleEvent:
         :returns: The number of seconds until this event is due.
         :rtype: float
         '''
-        return self._due - trio.current_time()
+        return (self._due - datetime.now(timezone.utc)).total_seconds()
 
 
 class Scheduler:
@@ -292,15 +292,12 @@ class Scheduler:
         self._nursery = None
         self._running_jobs = dict()
 
-    def add_schedule(self, schedule_doc):
+    def add_schedule(self, schedule_doc, latest_job_doc=None):
         '''
         Add a new schedule.
 
-        The database document ``schedule_doc`` must include a ``latest_job``
-        key which can be ``None`` (if no jobs have run) or contain run state
-        and started/completed at for the most recent job.
-
         :param dict schedule_doc:
+        :param dict latest_job_doc:
         '''
         schedule = Schedule.from_doc(schedule_doc)
 
@@ -308,36 +305,36 @@ class Scheduler:
             raise Exception('Schedule ID {} has already been added.'.format(
                 schedule.id))
 
-        latest_job = schedule_doc['latest_job']
         self._schedules[schedule.id] = schedule
 
         # Schedule the next job for this schedule.
         due = None
-        if latest_job:
+
+        if latest_job_doc:
             timing_regular = schedule.timing == 'REGULAR_INTERVAL'
-            finished = latest_job['run_state'] in (RunState.CANCELLED,
+            finished = latest_job_doc['run_state'] in (RunState.CANCELLED,
                 RunState.COMPLETED)
             running = not finished
             timing_after = schedule.timing == 'AFTER_PREVIOUS_JOB_FINISHED'
-            if running and timing_regular:
+            if timing_regular:
                 due = compute_next_event(
-                    latest_job['started_at'],
+                    latest_job_doc['started_at'],
                     schedule.num_units,
                     schedule.time_unit
                 )
             elif finished and timing_after:
                 due = compute_next_event(
-                    latest_job['completed_at'],
+                    latest_job_doc['completed_at'],
                     schedule.num_units,
                     schedule.time_unit
                 )
         else:
-            # When a schedule is first created, it runs 15 seconds later.
-            due = datetime.fromtimestamp(trio.current_time() + 15, timezone.utc)
+            # When a schedule is first created, it runs 60 seconds later.
+            due = datetime.now(timezone.utc) + timedelta(seconds=60)
 
         if due:
             logger.info('Scheduling "%s" at %s', schedule.name, due)
-            self._add_event(ScheduleEvent(schedule, due.timestamp()))
+            self._add_event(ScheduleEvent(schedule, due))
 
     def remove_schedule(self, schedule_id):
         '''
@@ -351,7 +348,7 @@ class Scheduler:
         '''
         self._events = [e for e in self._events if e.schedule.id !=
             schedule_id]
-        self._schedules.pop(schedule_id)
+        self._schedules.pop(schedule_id, None)
 
     async def run(self):
         '''
@@ -361,7 +358,9 @@ class Scheduler:
         :returns: This method runs until cancelled.
         '''
         async for schedule_doc in self._db.get_schedule_docs():
-            self.add_schedule(schedule_doc)
+            latest_job_doc = schedule_doc.pop('latest_job')
+            if schedule_doc['enabled']:
+                self.add_schedule(schedule_doc, latest_job_doc)
 
         async with trio.open_nursery() as nursery:
             nursery.start_soon(self._listen_task, name='Schedule Job Listener')
@@ -406,7 +405,7 @@ class Scheduler:
                     )
                     logger.info('Rescheduling "%s" at %s', schedule.name,
                         due.isoformat())
-                    self._add_event(ScheduleEvent(schedule, due.timestamp()))
+                    self._add_event(ScheduleEvent(schedule, due))
 
                 if running:
                     self._running_jobs[job_state.schedule_id] = job_state.job_id

@@ -3,12 +3,11 @@ Changelog
 *********
 
 
-v1.1.0 (2018-XX-XX)
+v2.0.0 (2019-XX-XX)
 ===================
 
-- Upgrade Docker base image to Ubuntu:17.10.
-- Upgrade Dart SDK to 1.24.0.
-- Upgrade web client to Angular 4.0.0.
+- Massive rewrite of Starbelly's I/O to use Trio instead of asyncio.
+- Upgrade web client to Dart 2 and Angular 5.
 
 
 v1.0.0 (2017-11-03)
