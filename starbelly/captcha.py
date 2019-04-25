@@ -143,5 +143,5 @@ def _antigate_pb_to_doc(pb):
     if antigate.HasField('min_length'):
         doc['min_length'] = antigate.min_length
     if antigate.HasField('max_length'):
-        doc['max_length'] = antigate.min_length
+        doc['max_length'] = antigate.max_length
     return doc

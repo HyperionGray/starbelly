@@ -1,5 +1,5 @@
 from . import api_handler, InvalidRequestException
-from ..rate_limiter import GLOBAL_RATE_LIMIT_TOKEN
+from ..rate_limiter import get_domain_token, GLOBAL_RATE_LIMIT_TOKEN
 
 
 @api_handler
@@ -27,7 +27,7 @@ async def set_rate_limit(command, rate_limiter, server_db):
     if command.HasField('domain'):
         # Set a specific rate limit.
         domain = command.domain
-        token = rate_limiter.get_domain_token(domain)
+        token = get_domain_token(domain)
         name = 'domain:{}'.format(domain)
     else:
         # Set global rate limit.

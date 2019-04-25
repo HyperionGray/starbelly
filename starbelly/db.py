@@ -769,11 +769,14 @@ class ServerDb:
             for the specified token.
         :type delay: float or None
         '''
-        base_query = r.table('rate_limit').insert({
-            'name': name,
-            'token': token,
-            'delay': delay,
-        }, conflict='update')
+        if delay:
+            base_query = r.table('rate_limit').insert({
+                'name': name,
+                'token': token,
+                'delay': delay,
+            }, conflict='update')
+        else:
+            base_query = r.table('rate_limit').filter({'token': token}).delete()
         async with self._db_pool.connection() as conn:
             await base_query.run(conn)
 

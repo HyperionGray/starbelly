@@ -85,8 +85,11 @@ class ResourceMonitor:
             for channel in to_remove:
                 logger.debug('Removing closed channel')
                 self._channels.remove(channel)
+            sleep_time = next_run - trio.current_time()
+            while sleep_time < 0:
+                sleep_time += self._interval
+            await trio.sleep(sleep_time)
             next_run += self._interval
-            await trio.sleep(next_run - trio.current_time())
 
     def _measure(self):
         '''
