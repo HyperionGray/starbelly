@@ -97,7 +97,7 @@ class Server:
             serve_fn = partial(serve_websocket, self._handle_connection,
                 self._host, self._port, ssl_context=None,
                 handler_nursery=nursery)
-            server = await nursery.start(serve_fn)
+            server = await nursery.start(serve_fn, name='Connection Listener')
             self._port = server.port
             task_status.started()
         logger.info('Server stopped')
@@ -170,7 +170,8 @@ class Connection:
                     self._subscription_db, nursery, self._ws)
                 while True:
                     request_data = await self._ws.get_message()
-                    nursery.start_soon(self._handle_request, request_data)
+                    nursery.start_soon(self._handle_request, request_data,
+                        name='Request Handler')
         except ConnectionClosed:
             logger.info('Connection closed for %s', self._client_ip)
         except:

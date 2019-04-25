@@ -2,6 +2,7 @@ import logging
 
 from rethinkdb import RethinkDB
 import trio
+import trio.hazmat
 
 from .db import (
     BootstrapDb,
@@ -121,8 +122,8 @@ class Bootstrap:
                 stats_tracker, scheduler)
 
             # Run all the components
-            await nursery.start(crawl_manager.run)
-            nursery.start_soon(rate_limiter.run)
-            nursery.start_soon(resource_monitor.run)
-            nursery.start_soon(scheduler.run)
-            await nursery.start(server.run)
+            await nursery.start(crawl_manager.run, name='Crawl Manager')
+            nursery.start_soon(rate_limiter.run, name='Rate Limiter')
+            nursery.start_soon(resource_monitor.run, name='Resource Monitor')
+            nursery.start_soon(scheduler.run, name='Scheduler')
+            await nursery.start(server.run, name='Server')

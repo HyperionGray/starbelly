@@ -186,9 +186,9 @@ class RateLimiter:
     async def run(self):
         ''' Run the rate limiter. '''
         async with trio.open_nursery() as nursery:
-            nursery.start_soon(self._read_requests_task)
-            nursery.start_soon(self._write_requests_task)
-            nursery.start_soon(self._read_resets_task)
+            nursery.start_soon(self._read_requests_task, name='Request Reader')
+            nursery.start_soon(self._write_requests_task, name='Request Writer')
+            nursery.start_soon(self._read_resets_task, name='Reset Reader')
 
     def delete_rate_limit(self, token):
         '''

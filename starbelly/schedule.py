@@ -363,8 +363,8 @@ class Scheduler:
                 self.add_schedule(schedule_doc, latest_job_doc)
 
         async with trio.open_nursery() as nursery:
-            nursery.start_soon(self._listen_task, name='Schedule Job Listener')
-            nursery.start_soon(self._schedule_task, name='Schedule Main')
+            nursery.start_soon(self._listen_task, name='Job Listener')
+            nursery.start_soon(self._schedule_task, name='Main')
 
     def _add_event(self, event):
         '''

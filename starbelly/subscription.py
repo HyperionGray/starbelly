@@ -101,7 +101,7 @@ class SubscriptionManager:
         sub = CrawlSyncSubscription(sub_id, job_id, self._subscription_db,
             self._websocket, compression_ok, job_state_recv, sync_token)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub.run)
+        self._nursery.start_soon(sub.run, name='Crawl Sync Subscription')
         return sub_id
 
     def subscribe_job_status(self, stats_tracker, min_interval):
@@ -117,7 +117,7 @@ class SubscriptionManager:
         sub = JobStatusSubscription(sub_id, self._websocket, stats_tracker,
             min_interval)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub.run)
+        self._nursery.start_soon(sub.run, name='Jop Status Subscription')
         return sub_id
 
     def subscribe_resource_monitor(self, resource_monitor, history):
@@ -133,7 +133,7 @@ class SubscriptionManager:
         sub = ResourceMonitorSubscription(sub_id, self._websocket,
             resource_monitor, history)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub.run)
+        self._nursery.start_soon(sub.run, name='Resource Monitor Subscription')
         return sub_id
 
     def subscribe_task_monitor(self, period, root_task):
@@ -149,7 +149,7 @@ class SubscriptionManager:
         sub = TaskMonitorSubscription(sub_id, self._websocket, period,
             root_task)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub.run)
+        self._nursery.start_soon(sub.run, name='Task Monitor Subscription')
         return sub_id
 
 
