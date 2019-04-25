@@ -30,7 +30,7 @@ def get_captcha_image_element(form):
     :param form: An lxml form element.
     :returns: An lxml image element.
     '''
-    img_el = form.find('img')
+    img_el = form.find('.//img')
     if img_el is None:
         raise Exception('Cannot locate CAPTCHA image')
     return img_el
