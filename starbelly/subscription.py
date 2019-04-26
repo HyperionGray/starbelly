@@ -117,7 +117,7 @@ class SubscriptionManager:
         sub = JobStatusSubscription(sub_id, self._websocket, stats_tracker,
             min_interval)
         self._subscriptions[sub_id] = sub
-        self._nursery.start_soon(sub.run, name='Jop Status Subscription')
+        self._nursery.start_soon(sub.run, name='Job Status Subscription')
         return sub_id
 
     def subscribe_resource_monitor(self, resource_monitor, history):

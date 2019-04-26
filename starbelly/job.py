@@ -239,7 +239,8 @@ class CrawlManager:
         logger.info('%r Resuming job_id=%s…', self, job_id[:8])
         job_doc = await self._db.resume_job(job_id)
         job = self._make_job(job_doc)
-        self._nursery.start_soon(self._run_job, job)
+        self._nursery.start_soon(self._run_job, job,
+            name='Job {}'.format(job_id[:8]))
         logger.info('%r Resumed job_id=%s', self, job_id[:8])
 
     async def run(self, *, task_status=trio.TASK_STATUS_IGNORED):
@@ -297,7 +298,8 @@ class CrawlManager:
         job_id = await self._db.create_job(job_doc)
         job_doc['id'] = job_id
         job = self._make_job(job_doc)
-        self._nursery.start_soon(self._run_job, job)
+        self._nursery.start_soon(self._run_job, job,
+            name='Job {}'.format(job_id[:8]))
         return job_id
 
     def _make_job(self, job_doc):
@@ -510,11 +512,11 @@ class CrawlJob:
             async with trio.open_nursery() as nursery:
                 self._cancel_scope = nursery.cancel_scope
                 logger.info('%r Running...', self)
-                nursery.start_soon(self._frontier.run)
-                nursery.start_soon(self._downloader.run)
-                nursery.start_soon(self._extractor.run)
-                nursery.start_soon(self._storage.run)
-                nursery.start_soon(self._terminator.run)
+                nursery.start_soon(self._frontier.run, name='Frontier')
+                nursery.start_soon(self._downloader.run, name='Downloader')
+                nursery.start_soon(self._extractor.run, name='Extractor')
+                nursery.start_soon(self._storage.run, name='Storage')
+                nursery.start_soon(self._terminator.run, name='Terminator')
 
                 # After starting background tasks, this task enforces the
                 # maximum crawl duration.
