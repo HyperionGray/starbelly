@@ -240,7 +240,7 @@ class CrawlManager:
         job_doc = await self._db.resume_job(job_id)
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job,
-            name='Job {}'.format(job_id[:8]))
+            name='Job id={}'.format(job_id[:8]))
         logger.info('%r Resumed job_id=%s', self, job_id[:8])
 
     async def run(self, *, task_status=trio.TASK_STATUS_IGNORED):
@@ -299,7 +299,7 @@ class CrawlManager:
         job_doc['id'] = job_id
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job,
-            name='Job {}'.format(job_id[:8]))
+            name='Job id={}'.format(job_id[:8]))
         return job_id
 
     def _make_job(self, job_doc):

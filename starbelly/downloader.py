@@ -24,6 +24,8 @@ class CrawlItemLimitExceeded(Exception):
 
 class MimeNotAllowedError(Exception):
     ''' Indicates that the MIME type of a response is not allowed by policy. '''
+    def __init__(self, mime):
+        self.mime = mime
 
 
 @dataclass
@@ -84,22 +86,8 @@ class DownloadResponse:
             request.canonical_url)
 
     @property
-    def duration(self):
-        ''' The time elapsed while downloading this resource. '''
-        try:
-            return self.completed_at.timestamp() - self.started_at.timestamp()
-        except AttributeError:
-            # One or both datetimes is None.
-            return None
-
-    @property
     def is_success(self):
         return self.status_code == 200
-
-    def start(self):
-        ''' Called when the request has been sent and the response is being
-        waited for. '''
-        self.started_at = datetime.now(timezone.utc)
 
     def set_exception(self, exception):
         '''
@@ -113,6 +101,7 @@ class DownloadResponse:
     def set_response(self, http_response, body):
         ''' Update state from HTTP response. '''
         self.completed_at = datetime.now(timezone.utc)
+        self.duration = (self.completed_at - self.started_at).total_seconds()
         self.status_code = http_response.status
         self.headers = http_response.headers
         self.content_type = http_response.content_type
@@ -266,6 +255,7 @@ class Downloader:
         session_args['headers'] = {'User-Agent': user_agent}
         session = aiohttp.ClientSession(**session_args)
         dl_response = DownloadResponse.from_request(request)
+        dl_response.started_at = datetime.now(timezone.utc)
 
         try:
             kwargs = dict()
@@ -287,13 +277,19 @@ class Downloader:
                     'application/octet-stream')
                 if not skip_mime and \
                    not self._policy.mime_type_rules.should_save(mime):
-                    raise MimeNotAllowedError()
+                    raise MimeNotAllowedError(mime)
                 body = await http_response.read()
                 dl_response.set_response(http_response, body)
             logger.info('%r %d %s (cost=%0.2f)', self, dl_response.status_code,
                 dl_response.url, dl_response.cost)
         except asyncio.CancelledError:
             raise
+        except MimeNotAllowedError as mimeError:
+            # This exception re-raises so that instead of being recorded as a
+            # failed download, the download is removed from the crawl results
+            # altogether.
+            logger.error('Cancelled download because of disallowed MIME: %s',
+                mimeError.mime)
         except (aiohttp.ClientError, aiohttp_socks.errors.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
             msg = '{}: {}'.format(err.__class__.__name__, err)

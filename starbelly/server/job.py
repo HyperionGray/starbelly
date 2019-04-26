@@ -56,9 +56,9 @@ async def get_job_items(command, response, server_db):
     job_id = str(UUID(bytes=command.job_id))
     limit = command.page.limit
     offset = command.page.offset
-    count, items = await server_db.get_job_items(job_id, limit, offset.
+    count, items = await server_db.get_job_items(job_id, limit, offset,
         command.include_success, command.include_error,
-        command.include_exceptions)
+        command.include_exception)
     response.list_items.total = count
     compression_ok = command.compression_ok
     for item_doc in items:
@@ -90,7 +90,7 @@ async def get_job_items(command, response, server_db):
         item.started_at = item_doc['started_at'].isoformat()
         item.duration = item_doc['duration']
         item.url = item_doc['url']
-        item.url_can = item_doc['url_can']
+        item.url_can = item_doc['canonical_url']
         item.is_success = item_doc['is_success']
 
 

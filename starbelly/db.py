@@ -936,12 +936,13 @@ class ServerDb:
         :param bool include_exception: Include exception responses.
         '''
         filters = []
-
+        logger.debug('get_job_items suc=%s err=%s exc=%s', include_success,
+            include_error, include_exception)
         if include_success:
             filters.append(r.row['is_success'])
 
         if include_error:
-            filters.append(~(r.row['is_success'] &
+            filters.append(~(r.row['is_success'] |
                              r.row.has_fields('exception')))
 
         if include_exception:

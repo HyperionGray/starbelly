@@ -312,7 +312,7 @@ async def init_db(db_config):
         await ensure_db_index(conn, 'rate_limit', 'name')
         await ensure_db_table(conn, 'response', primary_key='sequence')
         await ensure_db_index(conn, 'response', 'job_sync',
-                [r.row['job_id'], r.row['id']])
+                [r.row['job_id'], r.row['sequence']])
         await ensure_db_table(conn, 'response_body')
         await ensure_db_table(conn, 'robots_txt')
         await ensure_db_index(conn, 'robots_txt', 'url')
