@@ -96,6 +96,7 @@ class DownloadResponse:
         :param str exception: Traceback of the exception.
         '''
         self.completed_at = datetime.now(timezone.utc)
+        self.duration = (self.completed_at - self.started_at).total_seconds()
         self.exception = exception
 
     def set_response(self, http_response, body):
@@ -219,6 +220,10 @@ class Downloader:
                     http_status_counts.get(response.status_code, 0) + 1
 
             await self._send_channel.send(response)
+        except MimeNotAllowedError:
+            # Mime errors are raised to this level in order to abort the
+            # download, and from here they can be ignored.
+            pass
         finally:
             await self._rate_limiter_reset.send(request.url)
             self._semaphore.release()
@@ -284,12 +289,12 @@ class Downloader:
                 dl_response.url, dl_response.cost)
         except asyncio.CancelledError:
             raise
-        except MimeNotAllowedError as mimeError:
+        except MimeNotAllowedError as exc:
             # This exception re-raises so that instead of being recorded as a
             # failed download, the download is removed from the crawl results
             # altogether.
-            logger.error('Cancelled download because of disallowed MIME: %s',
-                mimeError.mime)
+            logger.error('%r Disallowed MIME "%s": %s', self, exc.mime, url)
+            raise
         except (aiohttp.ClientError, aiohttp_socks.errors.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
             msg = '{}: {}'.format(err.__class__.__name__, err)

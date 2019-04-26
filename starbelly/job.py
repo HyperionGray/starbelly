@@ -39,7 +39,7 @@ class RunState:
     COMPLETED = 'completed'
 
 
-FINISHED_STATES = (RunState.COMPLETED, RunState.CANCELLED)
+FINISHED_STATES = RunState.COMPLETED, RunState.CANCELLED
 
 
 @dataclass
@@ -54,8 +54,16 @@ class JobStateEvent:
 @dataclass
 class StatsTracker:
     ''' Statistics about job progress like number of items downloaded. '''
-    def __init__(self):
+    def __init__(self, recent):
+        '''
+        Constructor
+
+        :param timedelta recent: The period of time during which a job is
+            considered "recent" and will not be removed from the tracker even if
+            completed.
+        '''
         self._jobs = dict()
+        self._recent = recent
 
     def add_job(self, stats_doc):
         self._jobs[stats_doc['id']] = stats_doc
@@ -78,8 +86,8 @@ class StatsTracker:
         to_remove = list()
         for job_id, job in self._jobs.items():
             completed_at = job.get('completed_at')
-            now = datetime.now(timezone.utc)
-            if completed_at and now - timedelta(hours=1) > completed_at:
+            recent = datetime.now(timezone.utc) - self._recent
+            if completed_at and completed_at < recent:
                 to_remove.append(job_id)
                 continue
             jobs.append({

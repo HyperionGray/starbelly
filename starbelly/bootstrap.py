@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 import logging
 
 from rethinkdb import RethinkDB
@@ -99,8 +100,30 @@ class Bootstrap:
             # Create a robots.txt manager
             robots_txt_manager = RobotsTxtManager(db_pool)
 
+            # Create a tracker for job stats and initialize with jobs that are
+            # unfinished or recently finishe.d
+            recent_period = timedelta(hours=24)
+            recent_dt = datetime.now(tz=timezone.utc) - recent_period
+            stats_tracker = StatsTracker(recent_period)
+            dashboard_jobs = await crawl_db.get_dashboard_jobs(recent_dt)
+            for job_doc in dashboard_jobs:
+                stats_dict = {
+                    'id': job_doc['id'],
+                    'run_state': job_doc['run_state'],
+                    'name': job_doc['name'],
+                    'seeds': job_doc['seeds'],
+                    'tags': job_doc['tags'],
+                    'started_at': job_doc['started_at'],
+                    'completed_at': job_doc['completed_at'],
+                    'item_count': job_doc['item_count'],
+                    'http_success_count': job_doc['http_success_count'],
+                    'http_error_count': job_doc['http_error_count'],
+                    'exception_count': job_doc['exception_count'],
+                    'http_status_counts': job_doc['http_status_counts'],
+                }
+                stats_tracker.add_job(stats_dict)
+
             # Create a crawl manager
-            stats_tracker = StatsTracker()
             crawl_manager = CrawlManager(rate_limiter, stats_tracker,
                 robots_txt_manager, crawl_db, frontier_db, extractor_db,
                 storage_db, login_db)

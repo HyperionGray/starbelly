@@ -253,6 +253,31 @@ class CrawlManagerDb:
         async with self._db_pool.connection() as conn:
             await job_query.run(conn)
 
+    async def get_dashboard_jobs(self, recent):
+        '''
+        Return jobs that should appear on the initial dashboard.
+
+        This includes all unfinished jobs as well as recently finished jobs.
+
+        :param datetime recent: Returns jobs that were completed since the
+            given timestamp.
+        :returns: A list of database documents.
+        :rtype: list
+        '''
+        job_query = r.table('job').filter(r.or_(
+            (r.row['completed_at'].eq(None)),
+            (r.row['completed_at'].gt(recent))
+        ))
+
+        jobs = list()
+        async with self._db_pool.connection() as conn:
+            cursor = await job_query.run(conn)
+            async with cursor:
+                async for job_doc in cursor:
+                    jobs.append(job_doc)
+
+        return jobs
+
     async def get_job_schedule_id(self, job_id):
         '''
         Get the schedule ID from a given job.
@@ -936,8 +961,7 @@ class ServerDb:
         :param bool include_exception: Include exception responses.
         '''
         filters = []
-        logger.debug('get_job_items suc=%s err=%s exc=%s', include_success,
-            include_error, include_exception)
+
         if include_success:
             filters.append(r.row['is_success'])
 
