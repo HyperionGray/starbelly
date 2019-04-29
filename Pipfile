@@ -34,6 +34,7 @@ async-timeout = "*"
 pytest-mock = "*"
 formasaurus = {extras = ["with-deps"],version = "*"}
 docker-compose = "*"
+pyyaml = ">=4.2b1"
 
 [dev-packages]
 nose = "*"
@@ -49,3 +50,6 @@ ipykernel = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
