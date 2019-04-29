@@ -14,10 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 @api_handler
-async def delete_job(command, server_db):
+async def delete_job(command, server_db, stats_tracker):
     ''' Delete a job. '''
     job_id = str(UUID(bytes=command.job_id))
     await server_db.delete_job(job_id)
+    stats_tracker.delete_job(job_id)
 
 
 @api_handler

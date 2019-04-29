@@ -423,6 +423,14 @@ class JobStatusSubscription:
             for status_code, count in job['http_status_counts'].items():
                 pb_job.http_status_counts[int(status_code)] = count
 
+        # If there are jobs in the last send that are not in the current send,
+        # then those are jobs which have been deleted. Send a delete event.
+        for job_id in self._last_send:
+            if job_id not in current_send:
+                pb_job = message.event.job_list.jobs.add()
+                pb_job.job_id = UUID(job_id).bytes
+                pb_job.run_state = JobRunState.Value('DELETED')
+
         self._last_send = current_send
         return message
 

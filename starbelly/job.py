@@ -68,6 +68,9 @@ class StatsTracker:
     def add_job(self, stats_doc):
         self._jobs[stats_doc['id']] = stats_doc
 
+    def delete_job(self, job_id):
+        del self._jobs[job_id]
+
     def complete_job(self, job_id, completed_at):
         self._jobs[job_id]['completed_at'] = completed_at
 
@@ -78,7 +81,7 @@ class StatsTracker:
         '''
         Return a copy of stats for all running and recent crawls.
 
-        Remove any crawls that are over an hour old.
+        Remove any crawls that are too old.
 
         :rtype list:
         '''
@@ -180,6 +183,7 @@ class CrawlManager:
         await self._db.finish_job(job_id, run_state, completed_at)
         schedule_id = await self._db.clear_frontier(job_id)
         self._stats_tracker.set_run_state(job_id, run_state)
+        self._stats_tracker.complete_job(job.id, completed_at)
         event = JobStateEvent(job_id, schedule_id, run_state, completed_at)
         self._send_job_state_event(event)
         logger.info('%r Cancelled job_id=%s', self, job_id[:8])
