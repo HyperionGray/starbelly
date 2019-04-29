@@ -191,7 +191,7 @@ class Schedule:
         '''
         Format a name for a new job.
 
-        :param float when: The timestamp when the job is starting.
+        :param datetime when: The datetime when the job is starting.
         :returns: A formatted job name.
         :rtype: str
         '''

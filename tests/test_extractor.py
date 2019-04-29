@@ -321,12 +321,14 @@ async def test_crawl_extractor(nursery):
         ]
     }
     policy = Policy(policy_doc, '1.0.0', ['https://extractor.example'])
+    downloader = Mock()
     robots_txt_manager = Mock()
     robots_txt_manager.is_allowed = AsyncMock(return_value=True)
     old_urls = {b'\xd2\x1b\x9b(p-\xed\xb2\x10\xdf\xf0\xa8\xe1\xa2*<'}
     stats_dict = {'frontier_size': 0}
     extractor = CrawlExtractor(job_id, db, extractor_send, extractor_recv,
-        policy, robots_txt_manager, old_urls, stats_dict, batch_size=3)
+        policy, downloader, robots_txt_manager, old_urls, stats_dict,
+        batch_size=3)
     assert repr(extractor) == '<CrawlExtractor job_id=aaaaaaaa>'
     nursery.start_soon(extractor.run)
 

@@ -374,8 +374,7 @@ async def test_list_rate_limits(client, server_db):
 @fail_after(3)
 async def test_set_rate_limit(client, rate_limiter, server_db):
     server_db.set_rate_limit = AsyncMock()
-    token = b'\xaa' * 16
-    rate_limiter.get_domain_token.return_value = token
+    token = b'\xc5\xd3\xc5\xda\xdby\xab\xf4\x19~\x8f\xde\xc3\xcd\xfer'
 
     # Set a rate limit on a domain
     command1 = new_request(1)
@@ -412,6 +411,8 @@ async def test_set_rate_limit(client, rate_limiter, server_db):
 @fail_after(3)
 async def test_schedule(client, scheduler, server_db):
     schedule_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    schedule_id_bytes = b'\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa' \
+                        b'\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa'
     dt = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     schedule_doc = {
         'id': schedule_id,
@@ -431,7 +432,8 @@ async def test_schedule(client, scheduler, server_db):
     server_db.delete_schedule = AsyncMock()
     server_db.get_schedule = AsyncMock(return_value=schedule_doc)
     server_db.list_schedules = AsyncMock(return_value=(1, [schedule_doc]))
-    server_db.set_schedule = AsyncMock(return_value=schedule_doc)
+    server_db.list_schedule_jobs = AsyncMock(return_value=list())
+    server_db.set_schedule = AsyncMock(return_value=schedule_id)
 
     # Get a schedule
     command1 = new_request(1)
@@ -451,11 +453,11 @@ async def test_schedule(client, scheduler, server_db):
 
     # Set schedule
     command3 = new_request(3)
-    schedule2_doc = schedule_doc.copy()
-    del schedule2_doc['id']
-    Schedule.from_doc(schedule2_doc).to_pb(command3.set_schedule.schedule)
+    schedule3_doc = schedule_doc.copy()
+    schedule3_doc['id'] = None
+    Schedule.from_doc(schedule3_doc).to_pb(command3.set_schedule.schedule)
     response3 = await send_test_command(client, command3)
-    assert response3.new_schedule.schedule_id == b'\xaa' * 16
+    assert response3.new_schedule.schedule_id == schedule_id_bytes
     assert server_db.set_schedule.called
     assert scheduler.add_schedule.called
 
@@ -641,11 +643,11 @@ async def test_set_jobs(client, crawl_manager, server_db):
     command1.set_job.tags.extend(['tag1', 'tag2'])
     response1 = await send_test_command(client, command1)
     assert response1.is_success
-    assert crawl_manager.start_job.call_args[0] == ['https://seed.example']
-    assert crawl_manager.start_job.call_args[1] == \
+    assert crawl_manager.start_job.call_args[0] == 'New Job'
+    assert crawl_manager.start_job.call_args[1] == ['https://seed.example']
+    assert crawl_manager.start_job.call_args[2] == ['tag1', 'tag2']
+    assert crawl_manager.start_job.call_args[3] == \
         'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
-    assert crawl_manager.start_job.call_args[2] == 'New Job'
-    assert crawl_manager.start_job.call_args[3] == ['tag1', 'tag2']
 
     # Cancel a job
     command2 = new_request(2)

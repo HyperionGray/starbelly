@@ -79,6 +79,7 @@ async def test_storage(nursery):
         status_code=200,
         headers={'Server': 'FooServe 1.0'}
     )
+    response.duration = 3.0
     await test_send.send(response)
     response2 = await test_receive.receive()
     assert response is response2
@@ -88,7 +89,7 @@ async def test_storage(nursery):
         'sequence': 100,
         'job_id': job_id,
         'body_id': b'\x9b\xbb\xb7A\x0f\xa6FJ\x1aj!i\x19\x17\x94U',
-        'url': URL('https://storage.example/'),
+        'url': 'https://storage.example/',
         'canonical_url': 'https://storage.example/',
         'content_type': 'text/plain',
         'cost': 1.0,

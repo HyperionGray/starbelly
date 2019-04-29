@@ -73,6 +73,7 @@ class DownloadResponse:
         ''' Initialize URL. '''
         self.url = URL(self.url)
         self.canonical_url = w3lib.url.canonicalize_url(str(self.url))
+        self.duration = None
 
     @classmethod
     def from_request(cls, request):
@@ -88,6 +89,11 @@ class DownloadResponse:
     @property
     def is_success(self):
         return self.status_code == 200
+
+    def start(self):
+        ''' Called when the request has been sent and the response is being
+        waited for. '''
+        self.started_at = datetime.now(timezone.utc)
 
     def set_exception(self, exception):
         '''
@@ -260,7 +266,7 @@ class Downloader:
         session_args['headers'] = {'User-Agent': user_agent}
         session = aiohttp.ClientSession(**session_args)
         dl_response = DownloadResponse.from_request(request)
-        dl_response.started_at = datetime.now(timezone.utc)
+        dl_response.start()
 
         try:
             kwargs = dict()

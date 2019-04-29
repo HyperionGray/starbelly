@@ -18,7 +18,7 @@ def rate_limiter():
 async def test_history(autojump_clock, nursery, rate_limiter):
     '''
     Set interval to 2 seconds and run for 11 seconds. This should produce
-    5 measurements.
+    6 measurements.
 
     Note: this test doesn't mock out psutil, so it also ensures that we are
     consuming the psutil API correctly.
@@ -38,7 +38,7 @@ async def test_history(autojump_clock, nursery, rate_limiter):
     nursery.start_soon(rm.run)
     await trio.sleep(11)
     history1 = list(rm.history())
-    assert len(history1) == 5
+    assert len(history1) == 6
     # We should also be able to get a subset of history
     history2 = list(rm.history(3))
     assert len(history2) == 3
@@ -141,7 +141,7 @@ async def test_slow_channel(autojump_clock, nursery, rate_limiter):
     # The fast reader gets one measurement per second even though the slow
     # reader is blocked.
     with assert_min_elapsed(3), assert_max_elapsed(4):
-        for _ in range(3):
+        for _ in range(4):
             await fast_recv.receive()
     # Now we close the slow reader and make sure the fast reader still gets
     # measurements.

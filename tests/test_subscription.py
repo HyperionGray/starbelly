@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from unittest.mock import Mock
 from uuid import UUID
@@ -86,7 +86,7 @@ async def test_job_state_subscription(autojump_clock, nursery):
         'completed_at': None,
         'run_state': 'RUNNING',
     }
-    stats_tracker = StatsTracker()
+    stats_tracker = StatsTracker(timedelta(seconds=60))
     stats_tracker.add_job(job1_doc)
     stats_tracker.add_job(job2_doc)
     websocket = MockWebsocket()

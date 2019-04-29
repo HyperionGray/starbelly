@@ -6,6 +6,7 @@ import pickle
 import pytest
 from rethinkdb import RethinkDB
 
+from . import db_pool
 from starbelly.db import (
     CrawlFrontierDb,
     CrawlExtractorDb,
@@ -22,14 +23,6 @@ from starbelly.job import RunState
 
 logger = logging.getLogger(__name__)
 r = RethinkDB()
-r.set_loop_type('trio')
-
-
-@pytest.fixture
-async def db_pool(nursery):
-    db_pool = r.ConnectionPool(db='test', nursery=nursery)
-    yield db_pool
-    await db_pool.close()
 
 
 @pytest.fixture
@@ -1092,20 +1085,17 @@ class TestServerDb():
         server_db = ServerDb(db_pool)
         now = datetime(2019, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         result = await server_db.set_schedule(schedule_doc, now)
-        assert 'latest_job' in result
-        assert result['schedule_name'] == 'Test Schedule'
-        assert result['created_at'] == now
-        assert result['updated_at'] == now
+        # Should return a random UUID:
+        assert len(result) == 36
 
         # Update policy:
-        schedule2_doc = result.copy()
+        schedule2_doc = schedule_doc.copy()
+        schedule2_doc['id'] = result
         schedule2_doc['schedule_name'] = 'Test Schedule 2'
         now2 = datetime(2019, 1, 1, 13, 0, 0, tzinfo=timezone.utc)
         result2 = await server_db.set_schedule(schedule2_doc, now2)
-        assert 'latest_job' in result2
-        assert result2['schedule_name'] == 'Test Schedule 2'
-        assert result2['created_at'] == now
-        assert result2['updated_at'] == now2
+        # Should return None when updating an existing doc:
+        assert result2 is None
 
     async def test_delete_job(self, db_pool, job_table, response_table):
         started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)

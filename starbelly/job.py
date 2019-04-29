@@ -183,7 +183,7 @@ class CrawlManager:
         await self._db.finish_job(job_id, run_state, completed_at)
         schedule_id = await self._db.clear_frontier(job_id)
         self._stats_tracker.set_run_state(job_id, run_state)
-        self._stats_tracker.complete_job(job.id, completed_at)
+        self._stats_tracker.complete_job(job_id, completed_at)
         event = JobStateEvent(job_id, schedule_id, run_state, completed_at)
         self._send_job_state_event(event)
         logger.info('%r Cancelled job_id=%s', self, job_id[:8])

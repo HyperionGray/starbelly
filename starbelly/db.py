@@ -899,7 +899,7 @@ class ServerDb:
                 await table.get(schedule_id).update(doc).run(conn)
                 schedule_id = None
             else:
-                doc.pop('id')
+                doc.pop('id', None)
                 doc['created_at'] = now
                 doc['updated_at'] = now
                 result = await table.insert(doc).run(conn)

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 import pickle
 from unittest.mock import Mock
@@ -61,7 +61,8 @@ async def test_start_job(asyncio_loop, nursery):
     job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     policy_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     rate_limiter = Mock()
-    stats_tracker = StatsTracker()
+    rate_limiter.remove_job = AsyncMock()
+    stats_tracker = StatsTracker(timedelta(seconds=60))
     robots_txt_manager = Mock()
     manager_db = Mock()
     manager_db.clear_frontier = AsyncMock()
@@ -181,7 +182,8 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     }
 
     rate_limiter = Mock()
-    stats_tracker = StatsTracker()
+    rate_limiter.remove_job = AsyncMock()
+    stats_tracker = StatsTracker(timedelta(seconds=60))
     robots_txt_manager = Mock()
     manager_db = Mock()
     manager_db.clear_frontier = AsyncMock()

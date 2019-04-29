@@ -12,7 +12,7 @@ import pytest
 from rethinkdb import RethinkDB
 import trio
 
-from . import fail_after
+from . import db_pool, fail_after
 from starbelly.db import SubscriptionDb
 from starbelly.job import JobStateEvent, RunState
 from starbelly.starbelly_pb2 import ServerMessage, SubscriptionClosed
@@ -24,14 +24,6 @@ from starbelly.subscription import (
 r = RethinkDB()
 r.set_loop_type('trio')
 logger = logging.getLogger(__name__)
-
-
-@pytest.fixture
-async def db_pool(nursery):
-    r = RethinkDB()
-    db_pool = r.ConnectionPool(db='test', nursery=nursery)
-    yield db_pool
-    await db_pool.close()
 
 
 @pytest.fixture
