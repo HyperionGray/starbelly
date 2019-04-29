@@ -5,7 +5,7 @@ Learn more at
 [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
 
 ![MIT License](https://img.shields.io/github/license/HyperionGray/starbelly.svg?style=flat-square)
-[![Build Status](https://img.shields.io/travis/HyperionGray/starbelly.svg?style=flat-square)](https://travis-ci.org/HyperionGray/starbelly)
+[![Build Status](https://img.shields.io/travis/com/HyperionGray/starbelly.svg?style=flat-square)](https://travis-ci.org/HyperionGray/starbelly)
 [![Coverage](https://img.shields.io/coveralls/github/HyperionGray/starbelly.svg?style=flat-square)](https://coveralls.io/github/HyperionGray/starbelly)
 [![Read the Docs](https://img.shields.io/readthedocs/starbelly.svg)](https://starbelly.readthedocs.io)
 
