@@ -109,26 +109,23 @@ class Server:
         :param request: A WebSocket connection request.
         '''
         headers = dict(request.headers)
-        #TODO get client ip/port/path from websocket? should it be part of request?
-        # websocket.remote_address[0]
-        client_ip = headers.get('X-CLIENT-IP') or '?.?.?.?'
-        websocket = await request.accept()
-        logger.info('Connection opened: client=%s path=%s', client_ip,
-            websocket.path)
-        connection = Connection(client_ip, websocket, self._server_db,
+        ws = await request.accept()
+        client = '{}:{}'.format(ws.remote.address, ws.remote.port)
+        logger.info('Connection opened: client=%s path=%s', client, ws.path)
+        connection = Connection(client, ws, self._server_db,
             self._subscription_db, self._crawl_manager, self._rate_limiter,
             self._resource_monitor, self._stats_tracker, self._scheduler)
         await connection.run()
 
 
 class Connection:
-    def __init__(self, client_ip, ws, server_db, subscription_db, crawl_manager,
+    def __init__(self, client, ws, server_db, subscription_db, crawl_manager,
             rate_limiter, resource_monitor, stats_tracker, scheduler):
         '''
         Constructor.
 
-        :param str client_ip: The IP address of the client that opened this
-            connection.
+        :param str client: Description the client (IP address and port) that
+            opened this connection.
         :param trio_websocket.WebSocketConnection ws: A websocket connection.
         :param starbelly.db.ServerDb: A database layer.
         :param starbelly.db.SubscriptionDb: A database layer.
@@ -141,7 +138,7 @@ class Connection:
         :param starbelly.subscription.SubscriptionManager: A subscription
             manager.
         '''
-        self._client_ip = client_ip
+        self._client = client
         self._ws = ws
         self._server_db = server_db
         self._subscription_db = subscription_db
@@ -173,7 +170,7 @@ class Connection:
                     nursery.start_soon(self._handle_request, request_data,
                         name='Request Handler')
         except ConnectionClosed:
-            logger.info('Connection closed for %s', self._client_ip)
+            logger.info('Connection closed for %s', self._client)
         except:
             logger.exception('Connection exception')
         finally:
@@ -239,7 +236,7 @@ class Connection:
             await handler(*args)
             message.response.is_success = True
             elapsed = trio.current_time() - start
-            logger.info('Request OK %s %s %0.3fs', self._client_ip,
+            logger.info('Request OK %s %s %0.3fs', self._client,
                 command_name, elapsed)
         except DecodeError:
             # Failure to decode a protobuf message means that the connection
@@ -249,7 +246,7 @@ class Connection:
         except InvalidRequestException as ire:
             error_message = str(ire)
             logger.error('Request ERROR %s %s (%s)', command_name,
-                self._client_ip, error_message)
+                self._client, error_message)
             message.response.error_message = error_message
         except:
             logger.exception('Exception while handling request:\n%r',
