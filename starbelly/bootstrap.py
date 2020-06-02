@@ -3,7 +3,6 @@ import logging
 
 from rethinkdb import RethinkDB
 import trio
-import trio.hazmat
 
 from .db import (
     BootstrapDb,

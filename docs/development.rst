@@ -8,17 +8,14 @@ If you are thinking about helping out with Starbelly development, it will be
 useful to familiarize yourself with the different components and technologies
 being used:
 
-- `Starbelly Docker <https://github.com/hyperiongray/starbelly-docker>`__
-
+`Starbelly Docker <https://github.com/hyperiongray/starbelly-docker>`__
   * `Docker <https://docs.docker.com/>`__
   * `Docker Compose <https://docs.docker.com/compose/>`__
 
-- `Starbelly Protobuf <https://github.com/hyperiongray/starbelly-protobuf>`__
-
+`Starbelly Protobuf <https://github.com/hyperiongray/starbelly-protobuf>`__
   * `Protobuf <https://developers.google.com/protocol-buffers/>`__
 
-- `Starbelly Server <https://github.com/hyperiongray/starbelly>`__
-
+`Starbelly Server <https://github.com/hyperiongray/starbelly>`__
   * `Pipenv <https://pipenv.readthedocs.io/en/latest/>`__
   * `Python 3 <https://docs.python.org/3/>`__
   * `Restructed Text <http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html>`__
@@ -26,13 +23,11 @@ being used:
   * `Trio <https://trio.readthedocs.io>`__
   * `WebSockets <https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API>`__
 
-- `Starbelly Python Client <https://github.com/hyperiongray/starbelly-python-client>`__
-
+`Starbelly Python Client <https://github.com/hyperiongray/starbelly-python-client>`__
   * `Python 3 <https://docs.python.org/3/>`__
   * `Trio <https://trio.readthedocs.io>`__
 
-- `Starbelly Web Client <https://github.com/hyperiongray/starbelly-web-client>`__
-
+`Starbelly Web Client <https://github.com/hyperiongray/starbelly-web-client>`__
   * `Angular <https://webdev.dartlang.org/angular>`__
   * `Dart <https://www.dartlang.org/>`__
 
@@ -47,19 +42,28 @@ In a typical dev environment, you will need to run the following components:
 - RethinkDB Database Server (in Docker)
 - Nginx Web Server (in Docker)
 
-To set up this environment, you will need the following items installed:
+To set up this environment, you will need the following prerequisites:
 
 * `Docker <https://www.docker.com/>`__
 * `Pipenv <https://pipenv.readthedocs.io/en/latest/>`__
-* `Chromium <https://www.chromium.org/>`__ (optional, but it is the only
-  officially supported browser for Dart development)
+* `Chromium <https://www.chromium.org/>`__ or Chrome (optional, but they are the only
+  officially supported browsers for Dart development)
+* `Dart SDK 2.7.1 <https://dart.dev/get-dart>`__
+
+After installing the Dart SDK, install ``webdev``:
+
+.. code::
+
+    $ pub global activate webdev 2.5.4
+
+This specific version of ``webdev`` works best with our dev environment.
 
 Clone the following repositories:
 
 1. `Starbelly server <https://github.com/hyperiongray/starbelly>`__: ``git clone
    https://github.com/hyperiongray/starbelly``
 2. `Starbelly client <https://github.com/hyperiongray/starbelly-web-client>`__:
-   ``https://github.com/hyperiongray/starbelly-web-client``
+   ``git clone https://github.com/hyperiongray/starbelly-web-client``
 
 Now run the Docker containers:
 
@@ -80,7 +84,7 @@ In a second terminal, run the Starbelly server:
 In a third terminal run the web client's build server:
 
 1. Go into to the ``starbelly-web-client/`` directory and run `pub get`.
-2. Run: ``webdev serve web:8001``. (This step takes 15-20 seconds.)
+2. Run: ``webdev serve web:8081 --auto=restart``. (This step takes 15-20 seconds.)
 
 If all has gone well, your terminal should look something like this:
 
@@ -88,9 +92,15 @@ If all has gone well, your terminal should look something like this:
    :alt: screenshot of terminal
 
 Now you can navigate to ``https://localhost`` to view the application in your
-browser.
+browser (Chromium, as mentioned above).
 
-TODO ADD SCREENSHOT HERE
+.. image:: gui.png
+   :alt: screenshot of default dashboard GUI
+
+To improve debugging, you should make one small configuration change in Chromium. In the
+web inspector, click the gear icon in the top right corner, and then tick the box labeled
+"Enable custom formatters". This will allow you to view native Dart objects in the web
+inspector.
 
 You should also set up client-side logging by going into the web inspector,
 clicking "Application" → "Local Storage" → "https://localhost" and adding a new
@@ -98,7 +108,7 @@ key named ``starbelly-debug`` with the value ``true``. Refresh the page and you
 should see some log messages in the browser console.
 
 .. image:: client-side-logging.png
-   :alt: screenshot of terminal
+   :alt: screenshot of client-side logging
 
 You now have the following services running:
 

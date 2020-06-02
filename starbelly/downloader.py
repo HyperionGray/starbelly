@@ -6,7 +6,6 @@ import traceback
 
 import aiohttp
 import aiohttp_socks
-import aiohttp_socks.errors
 import trio
 import trio_asyncio
 import w3lib.url
@@ -301,7 +300,7 @@ class Downloader:
             # altogether.
             logger.error('%r Disallowed MIME "%s": %s', self, exc.mime, url)
             raise
-        except (aiohttp.ClientError, aiohttp_socks.errors.SocksError) as err:
+        except (aiohttp.ClientError, aiohttp_socks.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
             msg = '{}: {}'.format(err.__class__.__name__, err)
             logger.warning('%r Failed downloading %s: %s', self, request.url, msg)

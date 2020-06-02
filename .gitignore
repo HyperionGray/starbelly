@@ -1,5 +1,8 @@
 *.egg-info
 .coverage
 .coverage.*
+.ipynb_checkpoints
+.pytest_cache
+.vscode
 __pycache__
 README.html
