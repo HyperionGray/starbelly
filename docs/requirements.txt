@@ -1,4 +1,5 @@
-# RTD does not support Pipenv natively, so this is a workaround.
+# RTD does not support Poetry natively, so this is a temporary workaround. See:
+# https://github.com/readthedocs/readthedocs.org/issues/4912
 sphinx
 sphinx-rtd-theme
 sphinxcontrib_trio

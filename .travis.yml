@@ -9,11 +9,14 @@ matrix:
       dist: xenial
       sudo: yes
 
+before_install:
+  - pip install poetry
+
 install:
-  - make init
+  - poetry install
 
 script:
-  - make test
+  - poetry run make test
 
 after_success:
-  - coveralls
+  - poetry run make coverage

@@ -1,15 +1,10 @@
+# The targets in this makefile should be executed inside Poetry, i.e. `poetry run make
+# docs`.
+
 .PHONY: docs
 
 docs:
-	cd docs && pipenv run make html
-
-init:
-	pip install codecov pipenv
-	pipenv install --dev
-
-lint:
-	pipenv run pylint
+	$(MAKE) -C docs html
 
 test:
-	pipenv run pytest --cov=starbelly tests
-	codecov
+	pytest tests/ --cov=starbelly --cov-report=term-missing

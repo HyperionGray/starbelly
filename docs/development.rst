@@ -16,7 +16,7 @@ being used:
   * `Protobuf <https://developers.google.com/protocol-buffers/>`__
 
 `Starbelly Server <https://github.com/hyperiongray/starbelly>`__
-  * `Pipenv <https://pipenv.readthedocs.io/en/latest/>`__
+  * `Poetry <https://python-poetry.org/>`__
   * `Python 3 <https://docs.python.org/3/>`__
   * `Restructed Text <http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html>`__
   * `RethinkDB <https://www.rethinkdb.com/>`__
@@ -45,7 +45,7 @@ In a typical dev environment, you will need to run the following components:
 To set up this environment, you will need the following prerequisites:
 
 * `Docker <https://www.docker.com/>`__
-* `Pipenv <https://pipenv.readthedocs.io/en/latest/>`__
+* `Poetry <https://python-poetry.org/>`__
 * `Chromium <https://www.chromium.org/>`__ or Chrome (optional, but they are the only
   officially supported browsers for Dart development)
 * `Dart SDK 2.7.1 <https://dart.dev/get-dart>`__
@@ -65,19 +65,21 @@ Clone the following repositories:
 2. `Starbelly client <https://github.com/hyperiongray/starbelly-web-client>`__:
    ``git clone https://github.com/hyperiongray/starbelly-web-client``
 
-Now run the Docker containers:
+Before the first run, create a self-signed certificate:
 
 1. Go into the ``starbelly/`` directory and install the server's dependencies:
-   ``pipenv install --dev``.
-2. Open a pipenv shell: ``pipenv shell``.
-3. Go into the ``starbelly/dev/`` directory and run ``python gencert.py
-   localhost`` to create a development web certificate.
-4. Go to the ``starbelly/dev/`` directory and run ``docker-compose up`` to start
+   ``poetry install``.
+2. Go into the ``starbelly/dev/`` directory and run ``poetry run python gencert.py
+   localhost`` to create a self-signed certificate.
+
+Run the Docker containers:
+
+1. Go to the ``starbelly/dev/`` directory and run ``docker-compose up`` to start
    the Docker containers.
 
 In a second terminal, run the Starbelly server:
 
-1. Go to the ``starbelly/`` directory and start a new shell: ``pipenv shell``.
+1. Go to the ``starbelly/`` directory and start a new shell: ``poetry shell``.
 2. Run the container initialization script: ``python tools/container_init.py``.
 3. Start the application server: ``python -m starbelly --log-level debug --reload``.
 
