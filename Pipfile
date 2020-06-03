@@ -50,6 +50,7 @@ sphinx-rtd-theme = "*"
 coveralls = "*"
 ipython = "*"
 ipykernel = "*"
+sphinxcontrib-trio = "*"
 
 [requires]
 python_version = "3.7"

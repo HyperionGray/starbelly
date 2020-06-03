@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "6133151f95fa54f6127896ecbfbdd370a0469f4953a383bc069e2247173cd333"
+            "sha256": "6f0bc23d8ec9c6168e55653d8fe6bb523d4fd00ac6e0f469b756a98fb667203b"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -941,10 +941,10 @@
         },
         "tqdm": {
             "hashes": [
-                "sha256:4733c4a10d0f2a4d098d801464bdaf5240c7dadd2a7fde4ee93b0a0efd9fb25e",
-                "sha256:acdafb20f51637ca3954150d0405ff1a7edde0ff19e38fb99a80a66210d2a28f"
+                "sha256:07c06493f1403c1380b630ae3dcbe5ae62abcf369a93bbc052502279f189ab8c",
+                "sha256:cd140979c2bebd2311dfb14781d8f19bd5a9debb92dcab9f6ef899c987fcf71f"
             ],
-            "version": "==4.46.0"
+            "version": "==4.46.1"
         },
         "trio": {
             "hashes": [
@@ -1624,6 +1624,14 @@
                 "sha256:f242a81d423f59617a8e5cf16f5d4d74e28ee9a66f9e5b637a18082991db5a9a"
             ],
             "version": "==1.1.4"
+        },
+        "sphinxcontrib-trio": {
+            "hashes": [
+                "sha256:1b849be08a147ef4113e35c191a51c5792613a9a54697b497cd91656d906a232",
+                "sha256:9f1ba9c1d5965b534e85258d8b677dd94e9b1a9a2e918b85ccd42590596b47c0"
+            ],
+            "index": "pypi",
+            "version": "==1.1.2"
         },
         "tornado": {
             "hashes": [
