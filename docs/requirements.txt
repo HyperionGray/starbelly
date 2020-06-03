@@ -1,3 +1,5 @@
+# RTD does not support Pipenv natively, so this is a workaround.
 sphinx
-sphinx_rtd_theme
-
+sphinx-rtd-theme
+sphinxcontrib_trio
+.
