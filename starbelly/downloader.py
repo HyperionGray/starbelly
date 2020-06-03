@@ -15,6 +15,7 @@ from yarl import URL
 logger = logging.getLogger(__name__)
 _HTTP_PROXY_SCHEMES = ('http', 'https')
 _SOCKS_PROXY_SCHEMES = ('socks4', 'socks4a', 'socks5')
+_RDNS_SOCKS_PROXY_SCHEMES = ('socks4a', 'socks5')
 
 
 class CrawlItemLimitExceeded(Exception):
@@ -256,8 +257,9 @@ class Downloader:
         proxy_type, proxy_url = self._policy.proxy_rules.get_proxy_url(url)
 
         if proxy_type in _SOCKS_PROXY_SCHEMES:
+            rdns = proxy_type in _RDNS_SOCKS_PROXY_SCHEMES
             session_args['connector'] = aiohttp_socks.SocksConnector.from_url(
-                proxy_url)
+                proxy_url, rdns=rdns)
         else:
             session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 
