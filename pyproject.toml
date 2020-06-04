@@ -19,7 +19,7 @@ psutil = "^5.7.0"
 python-dateutil = "^2.8.1"
 python-mimeparse = "^1.6.0"
 pytz = "==2020.1"
-rethinkdb = {url = "https://hyperiongray.s3-us-west-2.amazonaws.com/rethinkdb-2.4.0-mark2.tar.gz"}
+rethinkdb = {url = "https://hyperiongray.s3-us-west-2.amazonaws.com/rethinkdb-2.4.7%2Bstarbelly.tar.gz"}
 robotexclusionrulesparser = "^1.7.1"
 trio = "^0.15.1"
 trio-asyncio = "^0.11.0"

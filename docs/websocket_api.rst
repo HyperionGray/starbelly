@@ -204,8 +204,7 @@ have changed since the previous event. This is how the job status subscription
 allows clients to efficiently keep track of the status of all jobs. This API is
 used in the GUI to power the Dashboard and Results screens.
 
-For a complete list of API messages, look at the `starbelly-protobuf
-<https://github.com/hyperiongray/starbelly-protobuf>`__ repository.
+For a complete list of API messages, see :ref:`protobuf_messages`.
 
 Web Client
 ----------

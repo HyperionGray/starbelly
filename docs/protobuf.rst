@@ -1,3 +1,5 @@
+.. _protobuf_messages:
+
 Protobuf Messages
 =================
 

@@ -6,7 +6,7 @@ volumes:
 services:
   db:
     network_mode: host
-    image: rethinkdb:2.3
+    image: rethinkdb:2.4
     container_name: starbelly-dev-db
     volumes:
       - db_data:/data

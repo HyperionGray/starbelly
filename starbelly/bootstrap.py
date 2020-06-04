@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 
 from rethinkdb import RethinkDB
+from rethinkdb.trio_net.net_trio import Connection as RethinkDBTrioConnection
 import trio
 
 from .db import (
@@ -60,6 +61,7 @@ class Bootstrap:
         r.set_loop_type('trio')
         db_config = self._config['database']
         return r.ConnectionPool(
+            connection_type=RethinkDBTrioConnection,
             host=db_config['host'],
             port=db_config['port'],
             db=db_config['db'],
