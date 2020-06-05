@@ -97,35 +97,35 @@
               <td>solver_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Unique identifier. </p></td>
             </tr>
           
             <tr>
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Name of CAPTCHA solver entry. </p></td>
             </tr>
           
             <tr>
               <td>created_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this entry was created. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>updated_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this entry was last updated. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>antigate</td>
               <td><a href="#.CaptchaSolverAntigate">CaptchaSolverAntigate</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Extra configuration for Antigate CAPTCHA solver. </p></td>
             </tr>
           
         </tbody>
@@ -146,56 +146,56 @@
               <td>service_url</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The CAPTCHA solving URL endpoint. </p></td>
             </tr>
           
             <tr>
               <td>api_key</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>An API key. </p></td>
             </tr>
           
             <tr>
               <td>require_phrase</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Some CAPTCHAs use a phrase instead of a short sequence of characters. </p></td>
             </tr>
           
             <tr>
               <td>case_sensitive</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Some CAPTCHAs are case sensitive. </p></td>
             </tr>
           
             <tr>
               <td>characters</td>
               <td><a href="#.CaptchaSolverAntigateCharacters">CaptchaSolverAntigateCharacters</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>CAPTCHAs may permit different sets of characters. </p></td>
             </tr>
           
             <tr>
               <td>require_math</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Some CAPTCHAs require solving a match problem. </p></td>
             </tr>
           
             <tr>
               <td>min_length</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The minimum length of the CAPTCHA. </p></td>
             </tr>
           
             <tr>
               <td>max_length</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The maximum length of the CAPTCHA. </p></td>
             </tr>
           
         </tbody>
@@ -216,98 +216,98 @@
               <td>body</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The raw response body. </p></td>
             </tr>
           
             <tr>
               <td>completed_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this response was finished downloading. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>content_type</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The MIME type of this content. </p></td>
             </tr>
           
             <tr>
               <td>cost</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>This item's crawl cost. (See "Crawl Policy" for more details.) </p></td>
             </tr>
           
             <tr>
               <td>duration</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>How long this item took to download </p></td>
             </tr>
           
             <tr>
               <td>exception</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The complete text of any exception that occurred while downloading. </p></td>
             </tr>
           
             <tr>
               <td>headers</td>
               <td><a href="#.Header">Header</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The HTTP headers for this response. </p></td>
             </tr>
           
             <tr>
               <td>is_compressed</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If true, the response body is compressed. </p></td>
             </tr>
           
             <tr>
               <td>is_success</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If true, the response is considered a success. If false, either an HTTP error or an exception occurred. </p></td>
             </tr>
           
             <tr>
               <td>job_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The identifier of the crawl job that this crawl response is associated with. </p></td>
             </tr>
           
             <tr>
               <td>started_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When the request for this item was sent. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>status_code</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The HTTP status code returned for this response. </p></td>
             </tr>
           
             <tr>
               <td>url</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The original request URL. </p></td>
             </tr>
           
             <tr>
               <td>url_can</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The canonicalized request URL. </p></td>
             </tr>
           
         </tbody>
@@ -328,14 +328,14 @@
               <td>domain</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The domain for which this login information is valid. </p></td>
             </tr>
           
             <tr>
               <td>login_url</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The URL for logging into this domain. </p></td>
             </tr>
           
             <tr>
@@ -349,7 +349,7 @@
               <td>users</td>
               <td><a href="#.DomainLoginUser">DomainLoginUser</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Credentials for this domain. </p></td>
             </tr>
           
         </tbody>
@@ -370,21 +370,21 @@
               <td>username</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The username part of a credential. </p></td>
             </tr>
           
             <tr>
               <td>password</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The password part of a credential. </p></td>
             </tr>
           
             <tr>
               <td>working</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If true, this credential is expected to work. If false, the credential is expected to fail. </p></td>
             </tr>
           
         </tbody>
@@ -405,49 +405,49 @@
               <td>subscription_id</td>
               <td><a href="#.int32">int32</a></td>
               <td>required</td>
-              <td><p> </p></td>
+              <td><p>A unique identifier for each subscription. </p></td>
             </tr>
           
             <tr>
               <td>job_list</td>
               <td><a href="#.JobList">JobList</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A list of crawl jobs. </p></td>
             </tr>
           
             <tr>
               <td>schedule_list</td>
               <td><a href="#.ScheduleList">ScheduleList</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A list of schedules. </p></td>
             </tr>
           
             <tr>
               <td>resource_frame</td>
               <td><a href="#.ResourceFrame">ResourceFrame</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A snapshot of resource consumption at a point in time. </p></td>
             </tr>
           
             <tr>
               <td>subscription_closed</td>
               <td><a href="#.SubscriptionClosed">SubscriptionClosed</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Indicates that a subscription has ended. </p></td>
             </tr>
           
             <tr>
               <td>sync_item</td>
               <td><a href="#.SyncItem">SyncItem</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A single crawled item wrapped with metadata to assist synchronization. </p></td>
             </tr>
           
             <tr>
               <td>task_tree</td>
               <td><a href="#.TaskTree">TaskTree</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A snapshot of the Trio task's running at a point in time. </p></td>
             </tr>
           
         </tbody>
@@ -468,14 +468,14 @@
               <td>key</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name of the header. </p></td>
             </tr>
           
             <tr>
               <td>value</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The header's value. </p></td>
             </tr>
           
         </tbody>
@@ -496,91 +496,92 @@
               <td>job_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>required</td>
-              <td><p> </p></td>
+              <td><p>The unique identifier for a crawl job. </p></td>
             </tr>
           
             <tr>
               <td>seeds</td>
               <td><a href="#.string">string</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The list of seed URLs for a crawl job. </p></td>
             </tr>
           
             <tr>
               <td>policy</td>
               <td><a href="#.Policy">Policy</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The crawl policy associated with a crawl job. </p></td>
             </tr>
           
             <tr>
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name assigned to this crawl job. </p></td>
             </tr>
           
             <tr>
               <td>tags</td>
               <td><a href="#.string">string</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The tags associated with this crawl job. </p></td>
             </tr>
           
             <tr>
               <td>run_state</td>
               <td><a href="#.JobRunState">JobRunState</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The crawl job's current run state. </p></td>
             </tr>
           
             <tr>
               <td>started_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The password part of a credential.
+When this crawl job started. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>completed_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Which this crawl job ended. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>item_count</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> Default: -1</p></td>
+              <td><p>The number of requests sent for this crawl, inclusive of HTTP errors and exceptions. Default: -1</p></td>
             </tr>
           
             <tr>
               <td>http_success_count</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> Default: -1</p></td>
+              <td><p>The number of successful responses for this crawl. Default: -1</p></td>
             </tr>
           
             <tr>
               <td>http_error_count</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> Default: -1</p></td>
+              <td><p>The number of HTTP error responses for this crawl. Default: -1</p></td>
             </tr>
           
             <tr>
               <td>exception_count</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> Default: -1</p></td>
+              <td><p>The number of requests that resulted in an exception during this crawl. Default: -1</p></td>
             </tr>
           
             <tr>
               <td>http_status_counts</td>
               <td><a href="#.Job.HttpStatusCountsEntry">Job.HttpStatusCountsEntry</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Counts of the number of times each HTTP status code has been received during this crawl. </p></td>
             </tr>
           
         </tbody>
@@ -637,7 +638,7 @@
     
   
     <h3 id=".Page">Page</h3>
-    <p>For paginating large sets.</p>
+    <p>For paginating large sets, similar to LIMIT/OFFSET in SQL.</p>
 
     
       <table class="field-table">
@@ -650,14 +651,14 @@
               <td>limit</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> Default: 10</p></td>
+              <td><p>The number of items to include on each page. Default: 10</p></td>
             </tr>
           
             <tr>
               <td>offset</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The number of items to skip over before emitting items for the current page. </p></td>
             </tr>
           
         </tbody>
@@ -741,91 +742,91 @@
               <td>policy_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Unique identifier for this policy. </p></td>
             </tr>
           
             <tr>
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name assigned to this policy. </p></td>
             </tr>
           
             <tr>
               <td>created_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this policy was created. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>updated_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this policy was last updated. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>captcha_solver_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The CAPTCHA sovler to use. </p></td>
             </tr>
           
             <tr>
               <td>authentication</td>
               <td><a href="#.PolicyAuthentication">PolicyAuthentication</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The authentication subpolicy controls how the crawler logs in to websites. </p></td>
             </tr>
           
             <tr>
               <td>limits</td>
               <td><a href="#.PolicyLimits">PolicyLimits</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The limits subpolicy controls how long the crawler runs. </p></td>
             </tr>
           
             <tr>
               <td>proxy_rules</td>
               <td><a href="#.PolicyProxyRule">PolicyProxyRule</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The proxy subpolicy controls what proxies the crawler uses. </p></td>
             </tr>
           
             <tr>
               <td>mime_type_rules</td>
               <td><a href="#.PolicyMimeTypeRule">PolicyMimeTypeRule</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The MIME-type subpolicy controls what types of content the crawler downloads. </p></td>
             </tr>
           
             <tr>
               <td>robots_txt</td>
               <td><a href="#.PolicyRobotsTxt">PolicyRobotsTxt</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The robots.txt subpolicy controls how the crawler handles robots directives. </p></td>
             </tr>
           
             <tr>
               <td>url_normalization</td>
               <td><a href="#.PolicyUrlNormalization">PolicyUrlNormalization</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The normalization subpolicy controls how the crawler normalizes URLs in its crawl frontier. </p></td>
             </tr>
           
             <tr>
               <td>url_rules</td>
               <td><a href="#.PolicyUrlRule">PolicyUrlRule</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The URL rules subpolicy controls how the crawler computes cost numbers for URLs in its crawl frontier. </p></td>
             </tr>
           
             <tr>
               <td>user_agents</td>
               <td><a href="#.PolicyUserAgent">PolicyUserAgent</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The user agent subpolicy controls what user agent strings the crawler sends. </p></td>
             </tr>
           
         </tbody>
@@ -867,21 +868,21 @@
               <td>max_cost</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Crawl items that exceed this cost will not be fetched. </p></td>
             </tr>
           
             <tr>
               <td>max_duration</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The crawl will end after this many seconds have elapsed. </p></td>
             </tr>
           
             <tr>
               <td>max_items</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Crawl will end after this many items have been downloaded. </p></td>
             </tr>
           
         </tbody>
@@ -902,21 +903,21 @@
               <td>pattern</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A regex pattern to match against the MIME type. </p></td>
             </tr>
           
             <tr>
               <td>match</td>
               <td><a href="#.PatternMatch">PatternMatch</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Allows to invert a pattern. </p></td>
             </tr>
           
             <tr>
               <td>save</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If true, items with matching MIME types are saved and non-matches are discarded. If false, it's the opposite. </p></td>
             </tr>
           
         </tbody>
@@ -937,21 +938,21 @@
               <td>pattern</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A regex pattern to match against the URL. </p></td>
             </tr>
           
             <tr>
               <td>match</td>
               <td><a href="#.PatternMatch">PatternMatch</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Allows to invert a pattern. </p></td>
             </tr>
           
             <tr>
               <td>proxy_url</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The URL of the proxy to use when items match this rule. If not provided, then no proxy is used. </p></td>
             </tr>
           
         </tbody>
@@ -993,14 +994,14 @@
               <td>enabled</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If true, URL normalization is applied to URLs in the crawl frontier. If false, URLs are not normalized. </p></td>
             </tr>
           
             <tr>
               <td>strip_parameters</td>
               <td><a href="#.string">string</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>A list of URL query parameters that are removed during normalization. </p></td>
             </tr>
           
         </tbody>
@@ -1021,28 +1022,28 @@
               <td>pattern</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>A regex pattern to match against the URL. </p></td>
             </tr>
           
             <tr>
               <td>match</td>
               <td><a href="#.PatternMatch">PatternMatch</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Allows to invert a pattern. </p></td>
             </tr>
           
             <tr>
               <td>action</td>
               <td><a href="#.PolicyUrlRule.Action">PolicyUrlRule.Action</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The arithmetic operation to perform when a URL is matched. </p></td>
             </tr>
           
             <tr>
               <td>amount</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The right operand to the arithmetic operation. (The left operand is the cost of the parent item.) </p></td>
             </tr>
           
         </tbody>
@@ -1084,28 +1085,28 @@
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name of the rate-limit. (Read-only) </p></td>
             </tr>
           
             <tr>
               <td>delay</td>
               <td><a href="#.float">float</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The delay, in seconds, between requests associated with this rate-limit token. </p></td>
             </tr>
           
             <tr>
               <td>token</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The rate-limit token. (Read-only) </p></td>
             </tr>
           
             <tr>
               <td>domain</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name of the domain that this rate limit applies to. </p></td>
             </tr>
           
         </tbody>
@@ -1525,7 +1526,7 @@
               <td>job_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>required</td>
-              <td><p> </p></td>
+              <td><p>Get items beloning to this job. </p></td>
             </tr>
           
             <tr>
@@ -1553,14 +1554,14 @@
               <td>compression_ok</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> Default: true</p></td>
+              <td><p>If true, some items may have compressed response bodies. The caller should check the compression flag for each item and handle accordingly. Default: true</p></td>
             </tr>
           
             <tr>
               <td>page</td>
               <td><a href="#.Page">Page</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Pagination options for job items. </p></td>
             </tr>
           
         </tbody>
@@ -1665,28 +1666,28 @@
               <td>page</td>
               <td><a href="#.Page">Page</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Pagination options for the job list. </p></td>
             </tr>
           
             <tr>
               <td>started_after</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Only return jobs started after the given datetime. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>tag</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Only return jobs matching the given tag. </p></td>
             </tr>
           
             <tr>
               <td>schedule_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Only return jobs belonging to the given schedule. </p></td>
             </tr>
           
         </tbody>
@@ -1707,7 +1708,7 @@
               <td>page</td>
               <td><a href="#.Page">Page</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Pagination options for policies. </p></td>
             </tr>
           
         </tbody>
@@ -1728,7 +1729,7 @@
               <td>page</td>
               <td><a href="#.Page">Page</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Pagination options for rate limits. </p></td>
             </tr>
           
         </tbody>
@@ -1756,7 +1757,7 @@
               <td>page</td>
               <td><a href="#.Page">Page</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Pagination options for job schedules. </p></td>
             </tr>
           
         </tbody>
@@ -1798,7 +1799,7 @@
               <td>duration</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> Default: 5</p></td>
+              <td><p>The amount of time to spend collecting samples. Default: 5</p></td>
             </tr>
           
             <tr>
@@ -1875,42 +1876,42 @@
               <td>job_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If specified, update the state of that job. Omit when creating new jobs. </p></td>
             </tr>
           
             <tr>
               <td>run_state</td>
               <td><a href="#.JobRunState">JobRunState</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Set the run state for the job. </p></td>
             </tr>
           
             <tr>
               <td>policy_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Set the policy for this job. (This is only applicable when creating a new job.) </p></td>
             </tr>
           
             <tr>
               <td>seeds</td>
               <td><a href="#.string">string</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Set the seeds for this job. (This is only applicable when creating a new job.) </p></td>
             </tr>
           
             <tr>
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Set the name for this job. (This is only applicable when creating a new job.) </p></td>
             </tr>
           
             <tr>
               <td>tags</td>
               <td><a href="#.string">string</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Set the tags for this job. (This is only applicable when creating a new job.) </p></td>
             </tr>
           
         </tbody>
@@ -1952,14 +1953,14 @@
               <td>domain</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The domain to set the rate limit for. </p></td>
             </tr>
           
             <tr>
               <td>delay</td>
               <td><a href="#.float">float</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The delay, in seconds, between requests to this domain. </p></td>
             </tr>
           
         </tbody>
@@ -2022,21 +2023,21 @@
               <td>job_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>required</td>
-              <td><p> </p></td>
+              <td><p>The job ID to subscribe to. </p></td>
             </tr>
           
             <tr>
               <td>sync_token</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If provided, resume an earlier sync subscription at the point represented by this token. (Tokens are obtained from previously received sync items.) </p></td>
             </tr>
           
             <tr>
               <td>compression_ok</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> Default: true</p></td>
+              <td><p>If true, then some response bodies may be compressed. The caller should check the compression flag on each item and handle accordingly. Default: true</p></td>
             </tr>
           
         </tbody>
@@ -2078,14 +2079,7 @@
               <td>period</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> Default: 3</p></td>
-            </tr>
-          
-            <tr>
-              <td>top_n</td>
-              <td><a href="#.int32">int32</a></td>
-              <td>optional</td>
-              <td><p> Default: 20</p></td>
+              <td><p>The number of seconds in between task snapshots. Default: 3</p></td>
             </tr>
           
         </tbody>
@@ -2127,63 +2121,63 @@
               <td>timestamp</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this snapshot was created. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>cpus</td>
               <td><a href="#.ResourceFrameCpu">ResourceFrameCpu</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Information about CPU usage. </p></td>
             </tr>
           
             <tr>
               <td>memory</td>
               <td><a href="#.ResourceFrameMemory">ResourceFrameMemory</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Information about memory usage. </p></td>
             </tr>
           
             <tr>
               <td>disks</td>
               <td><a href="#.ResourceFrameDisk">ResourceFrameDisk</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Information about disk usage. </p></td>
             </tr>
           
             <tr>
               <td>networks</td>
               <td><a href="#.ResourceFrameNetwork">ResourceFrameNetwork</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Information about network interface usage. </p></td>
             </tr>
           
             <tr>
               <td>jobs</td>
               <td><a href="#.ResourceFrameJob">ResourceFrameJob</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Information about current crawl jobs. </p></td>
             </tr>
           
             <tr>
               <td>current_downloads</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The total number of in-flight requests made by the downloader. </p></td>
             </tr>
           
             <tr>
               <td>maximum_downloads</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The maximum number of in-flight requests permitted by the downloader. </p></td>
             </tr>
           
             <tr>
               <td>rate_limiter</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The number of items buffered inside the rate limiter. </p></td>
             </tr>
           
         </tbody>
@@ -2204,7 +2198,7 @@
               <td>usage</td>
               <td><a href="#.double">double</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>CPU utilization as a percentaged (0.0-100.0) </p></td>
             </tr>
           
         </tbody>
@@ -2225,21 +2219,21 @@
               <td>mount</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The mountpoint for a file system. </p></td>
             </tr>
           
             <tr>
               <td>used</td>
               <td><a href="#.int64">int64</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The amount of space used on a file system, in bytes. </p></td>
             </tr>
           
             <tr>
               <td>total</td>
               <td><a href="#.int64">int64</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The total space on a file system, in bytes. </p></td>
             </tr>
           
         </tbody>
@@ -2260,21 +2254,21 @@
               <td>job_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The job's identifier. </p></td>
             </tr>
           
             <tr>
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The job's name. </p></td>
             </tr>
           
             <tr>
               <td>current_downloads</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The number of items this job is currently downloading. </p></td>
             </tr>
           
         </tbody>
@@ -2295,14 +2289,14 @@
               <td>used</td>
               <td><a href="#.int64">int64</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Memory usage in bytes. </p></td>
             </tr>
           
             <tr>
               <td>total</td>
               <td><a href="#.int64">int64</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The total amount of memory on the system, in bytes. </p></td>
             </tr>
           
         </tbody>
@@ -2323,21 +2317,21 @@
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name of the network interface. </p></td>
             </tr>
           
             <tr>
               <td>sent</td>
               <td><a href="#.int64">int64</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The number of bytes sent on this interface. </p></td>
             </tr>
           
             <tr>
               <td>received</td>
               <td><a href="#.int64">int64</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The number of bytes received on this interface. </p></td>
             </tr>
           
         </tbody>
@@ -2365,14 +2359,14 @@
               <td>is_success</td>
               <td><a href="#.bool">bool</a></td>
               <td>required</td>
-              <td><p> </p></td>
+              <td><p>If true, this is a successful response to a request. If false, an error occurred. </p></td>
             </tr>
           
             <tr>
               <td>error_message</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If this is an error response, this field contains information about the error. </p></td>
             </tr>
           
             <tr>
@@ -2898,91 +2892,91 @@ ones included in this response). </p></td>
               <td>schedule_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Unique identifier for this schedule. </p></td>
             </tr>
           
             <tr>
               <td>created_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this schedule was created. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>updated_at</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>When this job was last updated. (RFC-3339) </p></td>
             </tr>
           
             <tr>
               <td>enabled</td>
               <td><a href="#.bool">bool</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>If true, jobs will run as scheduled. If false, the schedule is ignored and no new jobs will be created. </p></td>
             </tr>
           
             <tr>
               <td>time_unit</td>
               <td><a href="#.ScheduleTimeUnit">ScheduleTimeUnit</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The unit of measurement referred to by `num_units`. </p></td>
             </tr>
           
             <tr>
               <td>num_units</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The number of time units that elapse between jobs. </p></td>
             </tr>
           
             <tr>
               <td>timing</td>
               <td><a href="#.ScheduleTiming">ScheduleTiming</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>Indicates how the timing of a new job is related to the timing of the previous job. </p></td>
             </tr>
           
             <tr>
               <td>schedule_name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name of this schedule. </p></td>
             </tr>
           
             <tr>
               <td>job_name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The template to use when naming jobs created by this schedule. </p></td>
             </tr>
           
             <tr>
               <td>seeds</td>
               <td><a href="#.string">string</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The seed URLs to use for jobs created by this schedule. </p></td>
             </tr>
           
             <tr>
               <td>policy_id</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The policy to use for jobs created by this schedule. </p></td>
             </tr>
           
             <tr>
               <td>tags</td>
               <td><a href="#.string">string</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>The tags to use for jobs created by this schedule. </p></td>
             </tr>
           
             <tr>
               <td>job_count</td>
               <td><a href="#.int32">int32</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The number of jobs created by this schedule. </p></td>
             </tr>
           
         </tbody>
@@ -3080,14 +3074,14 @@ ones included in this response). </p></td>
               <td>item</td>
               <td><a href="#.CrawlResponse">CrawlResponse</a></td>
               <td>required</td>
-              <td><p> </p></td>
+              <td><p>The item downloaded by the crawl job. </p></td>
             </tr>
           
             <tr>
               <td>token</td>
               <td><a href="#.bytes">bytes</a></td>
               <td>required</td>
-              <td><p> </p></td>
+              <td><p>The sync token associated with this item. This can be used to resume a subscription later from the same point. </p></td>
             </tr>
           
         </tbody>
@@ -3108,14 +3102,14 @@ ones included in this response). </p></td>
               <td>name</td>
               <td><a href="#.string">string</a></td>
               <td>optional</td>
-              <td><p> </p></td>
+              <td><p>The name of the Trio task. </p></td>
             </tr>
           
             <tr>
               <td>subtasks</td>
               <td><a href="#.TaskTree">TaskTree</a></td>
               <td>repeated</td>
-              <td><p> </p></td>
+              <td><p>Child tasks belonging to this task. </p></td>
             </tr>
           
         </tbody>
@@ -3135,19 +3129,19 @@ ones included in this response). </p></td>
           <tr>
             <td>ALPHANUMERIC</td>
             <td>1</td>
-            <td><p></p></td>
+            <td><p>The CAPTCHA may contain any alphanumeric characters.</p></td>
           </tr>
         
           <tr>
             <td>NUMBERS_ONLY</td>
             <td>2</td>
-            <td><p></p></td>
+            <td><p>The CAPTCHA contains numeric characters only.</p></td>
           </tr>
         
           <tr>
             <td>ALPHA_ONLY</td>
             <td>3</td>
-            <td><p></p></td>
+            <td><p>The CAPTCHA contains alphabetic characters only.</p></td>
           </tr>
         
       </tbody>
@@ -3164,37 +3158,37 @@ ones included in this response). </p></td>
           <tr>
             <td>CANCELLED</td>
             <td>1</td>
-            <td><p></p></td>
+            <td><p>The job was cancelled.</p></td>
           </tr>
         
           <tr>
             <td>COMPLETED</td>
             <td>2</td>
-            <td><p></p></td>
+            <td><p>The job ran to completion.</p></td>
           </tr>
         
           <tr>
             <td>PAUSED</td>
             <td>3</td>
-            <td><p></p></td>
+            <td><p>The job is paused but may be resumed in the future.</p></td>
           </tr>
         
           <tr>
             <td>PENDING</td>
             <td>4</td>
-            <td><p></p></td>
+            <td><p>The job has been created but has not started running yet.</p></td>
           </tr>
         
           <tr>
             <td>RUNNING</td>
             <td>5</td>
-            <td><p></p></td>
+            <td><p>The job is currently funning.</p></td>
           </tr>
         
           <tr>
             <td>DELETED</td>
             <td>6</td>
-            <td><p>This isn't really a valid run state. It indicates that job no longer exists.</p></td>
+            <td><p>This isn't actually a valid run state. This state is sent to job status subscriptions when a job is deleted so that subscribers know that the job is gone.</p></td>
           </tr>
         
       </tbody>
