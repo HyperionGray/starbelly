@@ -64,7 +64,8 @@ class CrawlExtractor:
         '''
         async for response in self._receive_channel:
             try:
-                await self._extract(response)
+                if response.is_success:
+                    await self._extract(response)
             except Exception:
                 logger.exception('%r Extractor exception on %r', self, response)
             finally:

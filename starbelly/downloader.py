@@ -90,6 +90,10 @@ class DownloadResponse:
     def is_success(self):
         return self.status_code == 200
 
+    @property
+    def is_exception(self):
+        return self.exception is not None
+
     def start(self):
         ''' Called when the request has been sent and the response is being
         waited for. '''
@@ -193,9 +197,7 @@ class Downloader:
         :rtype DownloadResponse:
         '''
         async with self._semaphore, trio_asyncio.open_loop():
-            with trio.fail_after(20):
-                response = await self._download_asyncio(request,
-                    skip_mime=skip_mime)
+            response = await self._download_asyncio(request, skip_mime=skip_mime)
         return response
 
     async def _download(self, request):
@@ -206,11 +208,7 @@ class Downloader:
         '''
         stats = self._stats
         try:
-            with trio.move_on_after(20) as cancel_scope:
-                response = await self._download_asyncio(request)
-            if cancel_scope.cancelled_caught:
-                logger.warning('%r Timed out downloading %s', self, request.url)
-                response.set_exception('Timed out')
+            response = await self._download_asyncio(request)
 
             # Update stats before forwarding response.
             stats['item_count'] += 1
@@ -248,9 +246,8 @@ class Downloader:
         '''
         if self._cookie_jar is None:
             self._cookie_jar = aiohttp.CookieJar()
-        # Timeout is handled by the caller:
         session_args = {
-            'timeout': aiohttp.ClientTimeout(total=None),
+            'timeout': aiohttp.ClientTimeout(total=20),
             'cookie_jar': self._cookie_jar,
         }
         url = request.url
@@ -296,6 +293,8 @@ class Downloader:
                 dl_response.url, dl_response.cost)
         except asyncio.CancelledError:
             raise
+        except asyncio.TimeoutError:
+            dl_response.set_exception('Timed out')
         except MimeNotAllowedError as exc:
             # This exception re-raises so that instead of being recorded as a
             # failed download, the download is removed from the crawl results
