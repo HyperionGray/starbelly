@@ -463,7 +463,7 @@ the client. Some subscriptions can be paused and resumed using a "sync token".
 
 The following classes implement subscription behavior.
 
-.. autoclass:: CrawlSyncSubscription
+.. autoclass:: JobSyncSubscription
     :members:
 
 .. autoclass:: JobStatusSubscription
