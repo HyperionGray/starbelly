@@ -6,14 +6,14 @@ from . import api_handler
 
 
 @api_handler
-async def subscribe_crawl_sync(command, crawl_manager, response,
+async def subscribe_job_sync(command, crawl_manager, response,
         subscription_manager):
     ''' Handle the subscribe crawl items command. '''
     job_id = str(UUID(bytes=command.job_id))
     compression_ok = command.compression_ok
     job_state_recv = crawl_manager.get_job_state_channel()
     sync_token = command.sync_token if command.HasField('sync_token') else None
-    sub_id = subscription_manager.subscribe_crawl_sync(job_id, compression_ok,
+    sub_id = subscription_manager.subscribe_job_sync(job_id, compression_ok,
         job_state_recv, sync_token)
     response.new_subscription.subscription_id = sub_id
 
