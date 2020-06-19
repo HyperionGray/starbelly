@@ -83,7 +83,7 @@ class SubscriptionManager:
         '''
         self._subscriptions.pop(subscription_id).cancel()
 
-    def subscribe_crawl_sync(self, job_id, compression_ok, job_state_recv,
+    def subscribe_job_sync(self, job_id, compression_ok, job_state_recv,
             sync_token):
         '''
         Subscribe to crawl job sync.

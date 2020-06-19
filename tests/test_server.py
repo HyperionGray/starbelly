@@ -13,7 +13,7 @@ from starbelly.rate_limiter import GLOBAL_RATE_LIMIT_TOKEN
 from starbelly.schedule import Schedule
 from starbelly.server import InvalidRequestException, Server
 from starbelly.server.subscription import (
-    subscribe_crawl_sync,
+    subscribe_job_sync,
     subscribe_job_status,
     subscribe_resource_monitor,
     subscribe_task_monitor,
@@ -476,7 +476,7 @@ async def test_subscription():
     # server handlers directly so that we can mock out the subscription manager.
     job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     subscription_manager = Mock()
-    subscription_manager.subscribe_crawl_sync.return_value = 1
+    subscription_manager.subscribe_job_sync.return_value = 1
     subscription_manager.subscribe_job_status.return_value = 2
     subscription_manager.subscribe_resource_monitor.return_value = 3
     subscription_manager.subscribe_task_monitor.return_value = 4
@@ -488,7 +488,7 @@ async def test_subscription():
     command1.job_id = b'\xaa' * 16
     response1 = Response()
     crawl_manager = Mock()
-    await subscribe_crawl_sync(command1, crawl_manager, response1,
+    await subscribe_job_sync(command1, crawl_manager, response1,
         subscription_manager)
     assert response1.new_subscription.subscription_id == 1
 
