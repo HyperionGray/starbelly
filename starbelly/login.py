@@ -113,7 +113,7 @@ class LoginManager:
             return
 
         # Ensure login has users
-        if not getattr(domain_login, "users", []):
+        if not domain_login.get("users", []):
             logger.warning("No users for login: %s", domain_login)
             return
 
