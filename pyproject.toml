@@ -30,7 +30,7 @@ yarl = "^1.4.2"
 scikit-learn = ">=0.18" # required for formasaurus
 scipy = "^1.4.1" # required for formasaurus
 sklearn-crfsuite = ">=0.3.1" # required for formasaurus
-joblib = "^0.15.1" # required for formasaurus
+joblib = "^1.1.1" # required for formasaurus
 tldextract = "^2.2.2" # required for formasaurus
 
 [tool.poetry.dev-dependencies]
