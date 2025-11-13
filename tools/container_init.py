@@ -4,6 +4,16 @@ An entry point for running inside a container, e.g. Docker.
 This initializes any external resources (such as config files and database
 tables), then it execs the command passed into it.
 
+When available, this script uses dumb-init to wrap the target process. dumb-init
+acts as a minimal init system (PID 1) that properly handles signals and reaps
+zombie processes, ensuring containers shut down gracefully. If dumb-init is not
+available, the script will fall back to direct execution with a warning.
+
+For production Docker containers, ensure dumb-init is installed. On Alpine Linux:
+  apk add dumb-init
+On Debian/Ubuntu:
+  apt-get install dumb-init
+
 This is also helpful in development environments if you want to initialize the
 database.
 '''
