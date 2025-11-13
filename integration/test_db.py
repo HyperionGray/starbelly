@@ -1247,6 +1247,87 @@ class TestServerDb():
         assert items[1]['sequence'] == 101
         assert items[1]['join'] is None
 
+    async def test_get_job_item(self, db_pool, job_table, response_table,
+            response_body_table):
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2018, 1, 1, 12, 5, 0, tzinfo=timezone.utc)
+        job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        job = {
+            'id': job_id,
+            'name': 'Test Job',
+            'seeds': ['https://seed1.example'],
+            'tags': ['tag1'],
+            'run_state': RunState.COMPLETED,
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 300,
+            'item_count': 2,
+            'http_success_count': 1,
+            'http_error_count': 1,
+            'exception_count': 0,
+            'http_status_counts': {'200': 1, '404': 1},
+            'schedule_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        }
+        responses = [{
+            'sequence': 100,
+            'job_id': job_id,
+            'url': 'http://sequence.example/1',
+            'url_can': 'http://sequence.example/1',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 5.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 200,
+            'is_success': True,
+            'body_id': b'\xcc' * 16,
+        },{
+            'sequence': 101,
+            'job_id': job_id,
+            'url': 'http://sequence.example/2',
+            'url_can': 'http://sequence.example/2',
+            'started_at': started_at,
+            'completed_at': completed_at,
+            'duration': 1.0,
+            'cost': 1.0,
+            'content_type': 'text/plain',
+            'status_code': 404,
+            'is_success': False,
+            'body_id': None,
+        }]
+        body = {
+            'id': b'\xcc' * 16,
+            'body': 'Hello world!'.encode('ascii'),
+            'is_compressed': False,
+        }
+        async with db_pool.connection() as conn:
+            await job_table.insert(job).run(conn)
+            await response_table.insert(responses).run(conn)
+            await response_body_table.insert(body).run(conn)
+        server_db = ServerDb(db_pool)
+        
+        # Test getting first item
+        item = await server_db.get_job_item(job_id, 100)
+        assert item is not None
+        assert item['sequence'] == 100
+        assert item['url'] == 'http://sequence.example/1'
+        assert item['join']['body'].decode('ascii') == 'Hello world!'
+        
+        # Test getting second item
+        item = await server_db.get_job_item(job_id, 101)
+        assert item is not None
+        assert item['sequence'] == 101
+        assert item['url'] == 'http://sequence.example/2'
+        assert item['join'] is None
+        
+        # Test non-existent sequence
+        item = await server_db.get_job_item(job_id, 999)
+        assert item is None
+        
+        # Test wrong job_id
+        item = await server_db.get_job_item('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 100)
+        assert item is None
+
     async def test_list_jobs(self, db_pool, job_table):
         started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         completed_at = datetime(2018, 1, 1, 12, 5, 0, tzinfo=timezone.utc)
