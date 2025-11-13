@@ -165,6 +165,8 @@ class Connection:
                 self._nursery = nursery
                 self._subscription_manager = SubscriptionManager(
                     self._subscription_db, nursery, self._ws)
+                # Start heartbeat task to keep connection alive
+                nursery.start_soon(self._heartbeat, name='WebSocket Heartbeat')
                 while True:
                     request_data = await self._ws.get_message()
                     nursery.start_soon(self._handle_request, request_data,
@@ -175,6 +177,34 @@ class Connection:
             logger.exception('Connection exception')
         finally:
             await self._ws.aclose()
+
+    async def _heartbeat(self):
+        '''
+        Send periodic pings to keep the WebSocket connection alive.
+        
+        This coroutine sends a ping every 30 seconds and waits up to 60 seconds
+        for a pong response. If the client doesn't respond in time, the
+        connection will be closed.
+        
+        :returns: This runs until the connection is closed or a ping times out.
+        '''
+        ping_interval = 30  # Send a ping every 30 seconds
+        ping_timeout = 60   # Wait up to 60 seconds for a pong
+        
+        try:
+            while True:
+                await trio.sleep(ping_interval)
+                logger.debug('Sending ping to %s', self._client)
+                with trio.fail_after(ping_timeout):
+                    await self._ws.ping()
+                logger.debug('Received pong from %s', self._client)
+        except trio.TooSlowError:
+            logger.warning('Ping timeout for %s, closing connection', self._client)
+            # Let the connection close naturally by raising an exception
+            raise
+        except ConnectionClosed:
+            # Connection was closed, nothing to do
+            logger.debug('Heartbeat stopped for %s (connection closed)', self._client)
 
     async def _handle_request(self, request_data):
         '''

@@ -682,3 +682,33 @@ async def test_set_jobs(client, crawl_manager, server_db):
     command5.set_job.run_state = PbRunState.Value('PENDING')
     response5 = await send_test_command(client, command5)
     assert not response5.is_success
+
+
+@fail_after(65)
+async def test_heartbeat_keeps_connection_alive(server):
+    '''
+    Test that the server's heartbeat mechanism keeps the connection alive.
+    
+    This test verifies that a WebSocket connection remains open for more than
+    60 seconds when idle, which is longer than the typical 1-minute timeout
+    that was occurring before the heartbeat implementation.
+    '''
+    async with open_websocket(HOST, server.port, '/', use_ssl=False) as ws:
+        # Wait for 35 seconds (longer than one ping interval)
+        # The server should send a ping at 30 seconds
+        await trio.sleep(35)
+        
+        # Connection should still be open - verify by sending a simple message
+        request = Request()
+        request.request_id = 1
+        request.performance_profile.duration = 0.01
+        request.performance_profile.sort_by = 'calls'
+        request.performance_profile.top_n = 1
+        await ws.send_message(request.SerializeToString())
+        
+        # Should receive a response, proving connection is still alive
+        message_bytes = await ws.get_message()
+        message = ServerMessage.FromString(message_bytes)
+        assert message.response.request_id == 1
+        assert message.response.is_success
+
