@@ -391,7 +391,10 @@ version = "0.9.0"
 description = "Formasaurus tells you the types of HTML forms and their fields using machine learning"
 optional = false
 python-versions = "*"
-files = []
+files = [
+    {file = "formasaurus-0.9.0-py2.py3-none-any.whl", hash = "sha256:a6faac9701359ea601ea139c0de51b345a0d4b9fc54d1e85a2d6dc08bd1120ea"},
+    {file = "formasaurus-0.9.0.tar.gz", hash = "sha256:b54a49a1c4274bdffa4f53b35e46eae2d300517285e9db811dd5124b95ca5b19"},
+]
 
 [package.dependencies]
 docopt = "*"
@@ -404,10 +407,6 @@ w3lib = ">=1.13.0"
 [package.extras]
 annotation = ["Tornado (>=4.0.0)", "ipython (>=4.0)", "ipywidgets"]
 with-deps = ["joblib", "lxml", "scikit-learn (>=0.18)", "scipy", "sklearn-crfsuite (>=0.3.1)"]
-
-[package.source]
-type = "url"
-url = "https://hyperiongray.s3-us-west-2.amazonaws.com/formasaurus-0.9.0.tar.gz"
 
 [[package]]
 name = "h11"
