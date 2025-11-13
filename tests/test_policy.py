@@ -309,6 +309,24 @@ def test_policy_limit_invalid():
         PolicyLimits({"max_items": -10})
     with pytest.raises(PolicyValidationError):
         PolicyLimits({"max_duration": -10})
+    with pytest.raises(PolicyValidationError):
+        PolicyLimits({"download_timeout": 0})
+    with pytest.raises(PolicyValidationError):
+        PolicyLimits({"download_timeout": -10})
+
+
+def test_policy_limit_download_timeout():
+    # Test default value
+    limits = PolicyLimits({})
+    assert limits.download_timeout == 20
+
+    # Test custom value
+    limits = PolicyLimits({"download_timeout": 30})
+    assert limits.download_timeout == 30
+
+    # Test that other limits still work
+    assert not limits.exceeds_max_cost(100)
+    assert not limits.met_item_limit(100)
 
 
 def test_policy_mime_rules_text_only():

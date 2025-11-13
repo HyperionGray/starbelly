@@ -247,7 +247,7 @@ class Downloader:
         if self._cookie_jar is None:
             self._cookie_jar = aiohttp.CookieJar()
         session_args = {
-            'timeout': aiohttp.ClientTimeout(total=20),
+            'timeout': aiohttp.ClientTimeout(total=self._policy.limits.download_timeout),
             'cookie_jar': self._cookie_jar,
         }
         url = request.url

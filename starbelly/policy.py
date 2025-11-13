@@ -224,6 +224,8 @@ class PolicyLimits:
             pb.max_duration = doc['max_duration']
         if doc.get('max_items') is not None:
             pb.max_items = doc['max_items']
+        if doc.get('download_timeout') is not None:
+            pb.download_timeout = doc['download_timeout']
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
@@ -239,6 +241,8 @@ class PolicyLimits:
         doc['max_duration'] = pb.max_duration if pb.HasField('max_duration') \
             else None
         doc['max_items'] = pb.max_items if pb.HasField('max_items') else None
+        doc['download_timeout'] = pb.download_timeout if pb.HasField('download_timeout') \
+            else None
 
     def __init__(self, doc):
         '''
@@ -249,10 +253,13 @@ class PolicyLimits:
         self._max_cost = doc.get('max_cost')
         self._max_duration = doc.get('max_duration')
         self._max_items = doc.get('max_items')
+        self._download_timeout = doc.get('download_timeout', 20)
         if self._max_duration is not None and self._max_duration < 0:
             _invalid('Max duration must be ≥0')
         if self._max_items is not None and self._max_items < 0:
             _invalid('Max items must be ≥0')
+        if self._download_timeout is not None and self._download_timeout <= 0:
+            _invalid('Download timeout must be >0')
 
     @property
     def max_duration(self):
@@ -262,6 +269,15 @@ class PolicyLimits:
         :rtype: float or None
         '''
         return self._max_duration
+
+    @property
+    def download_timeout(self):
+        '''
+        The timeout in seconds for downloading a resource.
+
+        :rtype: float
+        '''
+        return self._download_timeout
 
     def met_item_limit(self, items):
         '''
