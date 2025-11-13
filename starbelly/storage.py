@@ -4,6 +4,7 @@ import logging
 import functools
 
 import mimeparse
+import soft404
 import trio
 
 
@@ -26,6 +27,37 @@ def should_compress_body(response):
     elif type_ == 'application' and subtype in ('json', 'pdf'):
         should_compress = True
     return should_compress
+
+
+def should_check_soft404(response):
+    '''
+    Returns true if the response should be checked for soft 404.
+
+    Only check HTML pages with 200 status code.
+
+    :param starbelly.downloader.DownloadResponse response:
+    '''
+    if response.status_code != 200:
+        return False
+    type_, subtype, _ = mimeparse.parse_mime_type(response.content_type)
+    return type_ == 'text' and subtype == 'html'
+
+
+def calculate_soft404(body):
+    '''
+    Calculate the soft 404 probability for a page body.
+
+    :param bytes body: The HTML body of the page.
+    :returns: Probability that the page is a soft 404 (0.0 to 1.0).
+    :rtype: float
+    '''
+    try:
+        # soft404 expects a string, so decode the body
+        html = body.decode('utf-8', errors='ignore')
+        return soft404.probability(html)
+    except Exception:
+        logger.exception('Error calculating soft404 probability')
+        return None
 
 
 class CrawlStorage:
@@ -106,6 +138,13 @@ class CrawlStorage:
                 'body': body,
                 'is_compressed': compress_body,
             }
+
+            # Check for soft 404
+            if should_check_soft404(response):
+                soft404_prob = await trio.run_sync_in_worker_thread(
+                    calculate_soft404, response.body)
+                if soft404_prob is not None:
+                    response_doc['soft404_probability'] = soft404_prob
         else:
             response_doc['exception'] = response.exception
             response_doc['is_success'] = False
