@@ -682,3 +682,27 @@ async def test_set_jobs(client, crawl_manager, server_db):
     command5.set_job.run_state = PbRunState.Value('PENDING')
     response5 = await send_test_command(client, command5)
     assert not response5.is_success
+
+
+@fail_after(90)
+async def test_keepalive(client, autojump_clock):
+    '''
+    Test that the WebSocket connection stays alive with keepalive pings.
+
+    This test verifies that the connection can remain idle for longer than
+    1 minute without dropping, thanks to the automatic keepalive pings sent
+    every 30 seconds.
+    '''
+    # Wait for 65 seconds (longer than the 1 minute timeout mentioned in the issue)
+    # The keepalive should send pings at 30 and 60 seconds, keeping the connection alive
+    await trio.sleep(65)
+
+    # Verify the connection is still active by sending a simple command
+    request = new_request(1)
+    request.performance_profile.duration = 0.01
+    request.performance_profile.sort_by = 'calls'
+    request.performance_profile.top_n = 1
+    response = await send_test_command(client, request)
+
+    # If we get here without a ConnectionClosed exception, the keepalive worked
+    assert response.request_id == 1
