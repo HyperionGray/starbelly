@@ -101,6 +101,58 @@ async def get_job_items(command, response, server_db):
 
 
 @api_handler
+async def get_job_item(command, response, server_db):
+    """ Get a single item (crawl response) from a job. """
+    job_id = str(UUID(bytes=command.job_id))
+    sequence = command.sequence
+    
+    item_doc = await server_db.get_job_item(job_id, sequence)
+    
+    if not item_doc:
+        raise InvalidRequestException(
+            f"No item with sequence={sequence} found for job {job_id}"
+        )
+    
+    # Reuse the ResponseListItems message structure but with a single item
+    response.list_items.total = 1
+    compression_ok = command.compression_ok if command.HasField("compression_ok") else True
+    
+    item = response.list_items.items.add()
+    
+    if item_doc["join"] is None:
+        item.is_compressed = False
+    elif item_doc["join"]["is_compressed"] and not compression_ok:
+        item.body = gzip.decompress(item_doc["join"]["body"])
+        item.is_compressed = False
+    else:
+        item.body = item_doc["join"]["body"]
+        item.is_compressed = item_doc["join"]["is_compressed"]
+    
+    if "content_type" in item_doc:
+        item.content_type = item_doc["content_type"]
+    if "exception" in item_doc:
+        item.exception = item_doc["exception"]
+    if "status_code" in item_doc:
+        item.status_code = item_doc["status_code"]
+    
+    header_iter = iter(item_doc.get("headers", []))
+    for key in header_iter:
+        value = next(header_iter)
+        header = item.headers.add()
+        header.key = key
+        header.value = value
+    
+    item.cost = item_doc["cost"]
+    item.job_id = UUID(item_doc["job_id"]).bytes
+    item.completed_at = item_doc["completed_at"].isoformat()
+    item.started_at = item_doc["started_at"].isoformat()
+    item.duration = item_doc["duration"]
+    item.url = item_doc["url"]
+    item.url_can = item_doc["canonical_url"]
+    item.is_success = item_doc["is_success"]
+
+
+@api_handler
 async def list_jobs(command, response, server_db):
     """ Return a list of jobs. """
     limit = command.page.limit

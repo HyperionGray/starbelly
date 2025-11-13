@@ -1011,6 +1011,38 @@ class ServerDb:
 
         return count, items
 
+    async def get_job_item(self, job_id, sequence):
+        '''
+        Get a single crawled item by job ID and sequence number.
+
+        :param str job_id: The job ID
+        :param int sequence: The sequence number of the item
+        :returns: The item document or None if not found
+        :rtype: dict or None
+        '''
+        def get_body(item):
+            return {
+                'join': r.branch(
+                    item.has_fields('body_id'),
+                    r.table('response_body').get(item['body_id']),
+                    None
+                )
+            }
+
+        query = (
+            r.table('response')
+             .get(sequence)
+             .merge(get_body)
+             .without('body_id')
+        )
+
+        async with self._db_pool.connection() as conn:
+            item = await query.run(conn)
+            # Verify the item belongs to the specified job
+            if item and item.get('job_id') == job_id:
+                return item
+            return None
+
     async def list_jobs(self, limit, offset, started_after=None, tag=None,
             schedule_id=None):
         '''
