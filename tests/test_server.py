@@ -690,3 +690,27 @@ async def test_set_jobs(client, crawl_manager, server_db):
     response6 = await send_test_command(client, command6)
     assert not response6.is_success
     assert 'Tags cannot be modified' in response6.error_message
+
+    # Attempt to modify seeds (should fail):
+    command7 = new_request(7)
+    command7.set_job.job_id = b'\xaa' * 16
+    command7.set_job.seeds.append('https://newseed.example')
+    response7 = await send_test_command(client, command7)
+    assert not response7.is_success
+    assert 'Seeds cannot be modified' in response7.error_message
+
+    # Attempt to modify policy_id (should fail):
+    command8 = new_request(8)
+    command8.set_job.job_id = b'\xaa' * 16
+    command8.set_job.policy_id = b'\xcc' * 16
+    response8 = await send_test_command(client, command8)
+    assert not response8.is_success
+    assert 'Policy cannot be modified' in response8.error_message
+
+    # Attempt to modify name (should fail):
+    command9 = new_request(9)
+    command9.set_job.job_id = b'\xaa' * 16
+    command9.set_job.name = 'Modified Job Name'
+    response9 = await send_test_command(client, command9)
+    assert not response9.is_success
+    assert 'Name cannot be modified' in response9.error_message
