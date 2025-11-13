@@ -8,6 +8,7 @@ from yarl import URL
 import trio
 
 from .downloader import DownloadRequest
+from .rate_limiter import get_domain_token
 
 
 r = RethinkDB()
@@ -16,17 +17,20 @@ logger = logging.getLogger(__name__)
 
 class RobotsTxtManager:
     ''' Store and manage robots.txt files. '''
-    def __init__(self, db_pool, max_age=24*60*60, max_cache=1e3):
+    def __init__(self, db_pool, rate_limiter=None, max_age=24*60*60, max_cache=1e3):
         '''
         Constructor.
 
         :param db_pool: A DB connection pool.
+        :param rate_limiter: A rate limiter for applying crawl delays. Optional.
+        :type rate_limiter: starbelly.rate_limiter.RateLimiter
         :param int max_age: The maximum age before a robots.txt is downloaded
             again.
         :param int max_cache: The maximum number of robots.txt files to cache
             in memory.
         '''
         self._db_pool = db_pool
+        self._rate_limiter = rate_limiter
         self._events = dict()
         self._cache = OrderedDict()
         self._max_age = max_age
@@ -77,6 +81,8 @@ class RobotsTxtManager:
                 robots = await self._get_robots(robots_url, downloader)
                 event = self._events.pop(robots_url)
                 event.set()
+                # Apply crawl delay if policy says to obey it and we have a rate limiter
+                self._apply_crawl_delay(url, robots, policy)
 
         # Note: we only check the first user agent.
         user_agent = policy.user_agents.get_first_user_agent()
@@ -84,6 +90,28 @@ class RobotsTxtManager:
         if policy.robots_txt.usage == 'OBEY':
             return robots_decision
         return not robots_decision
+
+    def _apply_crawl_delay(self, url, robots, policy):
+        '''
+        Apply crawl delay from robots.txt to the rate limiter if the policy
+        allows it.
+
+        :param str url: The URL being checked (used to determine domain).
+        :param RobotsTxt robots: The robots.txt object.
+        :param Policy policy: The policy being used.
+        '''
+        if not policy.robots_txt.obey_crawl_delay or not self._rate_limiter:
+            return
+
+        user_agent = policy.user_agents.get_first_user_agent()
+        crawl_delay = robots.get_crawl_delay(user_agent)
+        if crawl_delay is not None:
+            parsed_url = URL(url)
+            domain = parsed_url.host
+            token = get_domain_token(domain)
+            logger.info('Setting rate limit for %s: %f seconds (from robots.txt)',
+                domain, crawl_delay)
+            self._rate_limiter.set_rate_limit(token, crawl_delay)
 
     async def _get_robots(self, robots_url, downloader):
         '''
@@ -229,6 +257,16 @@ class RobotsTxt:
         :rtype: bool
         '''
         return self._robots.is_allowed(user_agent, url)
+
+    def get_crawl_delay(self, user_agent):
+        '''
+        Return the crawl delay specified for ``user_agent`` in this robots.txt.
+
+        :param str user_agent: The user agent to check crawl delay for.
+        :returns: The crawl delay in seconds, or None if not specified.
+        :rtype: float or None
+        '''
+        return self._robots.get_crawl_delay(user_agent)
 
     def is_older_than(self, age):
         '''

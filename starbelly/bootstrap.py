@@ -99,7 +99,7 @@ class Bootstrap:
             logger.info('Rate limiter is initialized.')
 
             # Create a robots.txt manager
-            robots_txt_manager = RobotsTxtManager(db_pool)
+            robots_txt_manager = RobotsTxtManager(db_pool, rate_limiter)
 
             # Create a tracker for job stats and initialize with jobs that are
             # unfinished or recently finishe.d
