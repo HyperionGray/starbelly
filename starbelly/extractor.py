@@ -2,7 +2,12 @@ import hashlib
 import logging
 
 from bs4 import BeautifulSoup
-import cchardet
+try:
+    import cchardet
+    chardet = lambda s: cchardet.detect(s).get('encoding')
+except ImportError:
+    import chardet as chardet_module
+    chardet = lambda s: chardet_module.detect(s).get('encoding')
 import feedparser
 import mimeparse
 import trio
@@ -11,7 +16,6 @@ import yarl
 
 
 logger = logging.getLogger(__name__)
-chardet = lambda s: cchardet.detect(s).get('encoding')
 
 
 class CrawlExtractor:
@@ -84,18 +88,26 @@ class CrawlExtractor:
         insert_items = list()
 
         for counter, url in enumerate(extracted_urls):
+            # Normalize URL first, before applying any rules.
+            # This ensures that URL rules can match against normalized URLs,
+            # making regex patterns simpler and more reliable (session IDs
+            # and other parameters won't interfere with pattern matching).
+            url_can = self._policy.url_normalization.normalize(url)
+            
             # Check if the policy allows us to follow this URL.
-            new_cost = self._policy.url_rules.get_cost(response.cost, url)
+            # Use the normalized URL for cost calculation.
+            new_cost = self._policy.url_rules.get_cost(response.cost, url_can)
             exceeds_max_cost = self._policy.limits.exceeds_max_cost(new_cost)
             if new_cost <= 0 or exceeds_max_cost:
                 continue
-            robots_ok = await self._robots_txt_manager.is_allowed(url,
+            
+            # Check robots.txt with the normalized URL.
+            robots_ok = await self._robots_txt_manager.is_allowed(url_can,
                 self._policy, self._downloader)
             if not robots_ok:
                 continue
 
-            # Normalize and hash URL.
-            url_can = self._policy.url_normalization.normalize(url)
+            # Hash the normalized URL for deduplication.
             hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
             url_hash = hash_.digest()
 
