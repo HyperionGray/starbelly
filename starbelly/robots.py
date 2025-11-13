@@ -16,17 +16,17 @@ logger = logging.getLogger(__name__)
 
 class RobotsTxtManager:
     ''' Store and manage robots.txt files. '''
-    def __init__(self, db_pool, max_age=24*60*60, max_cache=1e3):
+    def __init__(self, robots_txt_db, max_age=24*60*60, max_cache=1e3):
         '''
         Constructor.
 
-        :param db_pool: A DB connection pool.
+        :param robots_txt_db: A RobotsTxtDb instance for database operations.
         :param int max_age: The maximum age before a robots.txt is downloaded
             again.
         :param int max_cache: The maximum number of robots.txt files to cache
             in memory.
         '''
-        self._db_pool = db_pool
+        self._db = robots_txt_db
         self._events = dict()
         self._cache = OrderedDict()
         self._max_age = max_age
@@ -105,7 +105,7 @@ class RobotsTxtManager:
         '''
         # Check DB. If not there (or expired), check network.
         now = datetime.now(timezone.utc)
-        robots_doc = await self._get_robots_from_db(robots_url)
+        robots_doc = await self._db.get_robots_txt(robots_url)
 
         if robots_doc is None or \
                 (now - robots_doc['updated_at']).seconds > self._max_age:
@@ -138,7 +138,7 @@ class RobotsTxtManager:
             del robots_doc['url']
 
         # Upsert robots_docs.
-        await self._save_robots_to_db(robots_doc)
+        await self._db.save_robots_txt(robots_doc)
 
         # Add to cache before completing the future to avoid race condition.
         self._cache[robots_url] = robots
@@ -146,26 +146,6 @@ class RobotsTxtManager:
         if len(self._cache) > self._max_cache:
             self._cache.popitem(last=False)
         return robots
-
-    async def _get_robots_from_db(self, robots_url):
-        '''
-        Get robots document from the database.
-
-        Returns None if it doesn't exist in the database.
-
-        :param str robots_url: The URL of the robots.txt file.
-        :returns: A database document.
-        :rtype: dict
-        '''
-        query = r.table('robots_txt').get_all(robots_url, index='url').nth(0)
-
-        async with self._db_pool.connection() as conn:
-            try:
-                db_robots = await query.run(conn)
-            except r.ReqlNonExistenceError:
-                db_robots = None
-
-        return db_robots
 
     async def _get_robots_from_net(self, robots_url, downloader):
         '''
@@ -193,14 +173,6 @@ class RobotsTxtManager:
             robots_file = None
 
         return robots_file
-
-    async def _save_robots_to_db(self, robots_doc):
-        async with self._db_pool.connection() as conn:
-            await (
-                r.table('robots_txt')
-                 .insert(robots_doc, conflict='update')
-                 .run(conn)
-            )
 
 
 class RobotsTxt:

@@ -1107,3 +1107,47 @@ class SubscriptionDb:
             async with cursor:
                 async for item in cursor:
                     yield item
+
+
+class RobotsTxtDb:
+    ''' Handles database queries for the RobotsTxtManager class. '''
+    def __init__(self, db_pool):
+        '''
+        Constructor
+
+        :param db_pool: A RethinkDB connection pool.
+        '''
+        self._db_pool = db_pool
+
+    async def get_robots_txt(self, robots_url):
+        '''
+        Get robots.txt document from the database.
+
+        Returns None if it doesn't exist in the database.
+
+        :param str robots_url: The URL of the robots.txt file.
+        :returns: A database document or None.
+        :rtype: dict
+        '''
+        query = r.table('robots_txt').get_all(robots_url, index='url').nth(0)
+
+        async with self._db_pool.connection() as conn:
+            try:
+                db_robots = await query.run(conn)
+            except r.ReqlNonExistenceError:
+                db_robots = None
+
+        return db_robots
+
+    async def save_robots_txt(self, robots_doc):
+        '''
+        Save or update a robots.txt document in the database.
+
+        :param dict robots_doc: The robots.txt document to save.
+        '''
+        async with self._db_pool.connection() as conn:
+            await (
+                r.table('robots_txt')
+                 .insert(robots_doc, conflict='update')
+                 .run(conn)
+            )

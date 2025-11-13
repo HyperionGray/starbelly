@@ -12,6 +12,7 @@ from .db import (
     CrawlExtractorDb,
     CrawlStorageDb,
     LoginDb,
+    RobotsTxtDb,
     ScheduleDb,
     ServerDb,
     SubscriptionDb,
@@ -99,7 +100,8 @@ class Bootstrap:
             logger.info('Rate limiter is initialized.')
 
             # Create a robots.txt manager
-            robots_txt_manager = RobotsTxtManager(db_pool)
+            robots_txt_db = RobotsTxtDb(db_pool)
+            robots_txt_manager = RobotsTxtManager(robots_txt_db)
 
             # Create a tracker for job stats and initialize with jobs that are
             # unfinished or recently finishe.d
