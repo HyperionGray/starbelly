@@ -165,6 +165,7 @@ class Connection:
                 self._nursery = nursery
                 self._subscription_manager = SubscriptionManager(
                     self._subscription_db, nursery, self._ws)
+                nursery.start_soon(self._keepalive_task, name='WebSocket Keepalive')
                 while True:
                     request_data = await self._ws.get_message()
                     nursery.start_soon(self._handle_request, request_data,
@@ -175,6 +176,31 @@ class Connection:
             logger.exception('Connection exception')
         finally:
             await self._ws.aclose()
+
+    async def _keepalive_task(self):
+        '''
+        Send periodic pings to keep the WebSocket connection alive.
+
+        This task sends a ping every 30 seconds to prevent idle timeout
+        disconnections. The ping method waits for a pong response, so if the
+        connection is broken, this task will fail and cause the connection to
+        close gracefully.
+
+        :returns: This runs until the connection is closed or cancelled.
+        '''
+        try:
+            while True:
+                await trio.sleep(30)
+                try:
+                    await self._ws.ping()
+                    logger.debug('Keepalive ping sent for %s', self._client)
+                except ConnectionClosed:
+                    logger.debug('Keepalive detected closed connection for %s',
+                        self._client)
+                    raise
+        except trio.Cancelled:
+            # Normal cancellation when connection closes
+            pass
 
     async def _handle_request(self, request_data):
         '''
