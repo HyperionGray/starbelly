@@ -1,0 +1,66 @@
+<ma-card>
+  <h2>
+    CAPTCHA Solvers
+  </h2>
+  <p class='lead'>
+    Configure external services for solving login CAPTCHAs during crawling.
+  </p>
+  <p *ngIf='totalRows != 0'>
+    Showing {{startRow}}-{{endRow}} of {{totalRows}} CAPTCHA solvers.
+  </p>
+  <div *ngIf='totalRows > 10' class='text-xs-center'>
+    <ma-pager [currentPage]='currentPage'
+              [totalItems]='totalRows'
+              [itemsPerPage]='rowsPerPage'
+              [maxPages]='5'
+              (selectPage)='selectPage($event)'></ma-pager>
+  </div>
+  <table class='striped'>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Last Updated</th>
+        <th>Service URL</th>
+        <th>&nbsp;</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="solvers == null">
+        <td class='empty-table' colspan="999">
+          Loading…
+        </td>
+      </tr>
+      <tr *ngIf="solvers != null && solvers.length==0">
+        <td class='empty-table' colspan="999">
+          There are no CAPTCHA solvers.
+          Do you want to <a [routerLink]='Routes.captchaCreate.toUrl()'>create one?</a>
+        </td>
+      </tr>
+      <tr *ngFor="let solver of solvers">
+        <td>
+          <a [routerLink]='solverUrl(solver)'>
+            {{solver.name}}
+          </a>
+        </td>
+        <td>{{solver.updatedAt | date:'y-MM-dd H:mm:ss'}}</td>
+        <td>{{solver.serviceUrl}}</td>
+        <td>
+          <ma-button #duplicateButton size='small' type='primary' title='Duplicate'
+            (click)='duplicateSolver(duplicateButton, solver)'>
+            <fa name='copy'></fa>
+          </ma-button>
+          <ma-button #deleteButton class='ml-1' size='small' type='danger'
+            title='Delete' (click)='deleteSolver(deleteButton, solver)'>
+            <fa name='trash'></fa>
+          </ma-button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    <ma-button type='primary' [routerLink]='Routes.captchaCreate.toUrl()'>
+      <fa name='plus-circle'></fa>
+      <span>New CAPTCHA Solver</span>
+    </ma-button>
+  </p>
+</ma-card>

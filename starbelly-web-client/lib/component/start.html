@@ -1,0 +1,50 @@
+<ma-card title='Start A Crawl'>
+  <h2>Start Crawl</h2>
+  <p class='lead'>
+    Run a crawl with the specified policy.
+  </p>
+
+  <form (ngSubmit)='startCrawl()' [ngFormModel]='form'>
+    <ma-input-group [control]='seedUrlControl'>
+      <label>Seed URL</label>
+      <input type='text'
+             [(ngModel)]='seedUrl'
+             [ngFormControl]='seedUrlControl'
+             placeholder='Seed URL'>
+    </ma-input-group>
+
+    <ma-input-group>
+      <label>Policy</label>
+      <select [(ngModel)]='selectedPolicy' [disabled]='policies == null'>
+        <option *ngFor='let policy of policies' [ngValue]='policy'>
+          {{policy.name}}
+        </option>
+      </select>
+    </ma-input-group>
+
+    <ma-input-group [control]='nameControl'>
+      <label>Name</label>
+      <input type='text'
+             [(ngModel)]='name'
+             [ngFormControl]='nameControl'
+             class='form-control'
+             placeholder='(Optional) Name this crawl'>
+    </ma-input-group>
+
+    <ma-input-group [control]='tagsControl'>
+      <label>Tags</label>
+      <input type='text'
+             [(ngModel)]='tags'
+             [ngFormControl]='tagsControl'
+             class='form-control'
+             placeholder='(Optional) Tags separated by spaces'>
+    </ma-input-group>
+
+    <div class='clearfix'>
+      <ma-button class='float-xs-right' [submit]='true' [disabled]='!form.valid'>
+        <fa name='play-circle'></fa>
+        <span>Start Crawl</span>
+      </ma-button>
+    </div>
+  </form>
+</ma-card>

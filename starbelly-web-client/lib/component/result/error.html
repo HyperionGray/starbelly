@@ -1,0 +1,67 @@
+<div class='row'>
+  <div class='col-lg'>
+    <ma-card>
+      <h2>
+        {{jobName == null ? 'Loading…' : jobName}}
+      </h2>
+      <p class='lead'>Items that returned an HTTP error.</p>
+      <p *ngIf='totalRows != 0'>
+        Showing {{startRow}}-{{endRow}} of {{totalRows}} crawl errors.
+      </p>
+      <div *ngIf='totalRows > 10' class='text-xs-center'>
+        <ma-pager [currentPage]='currentPage'
+                  [totalItems]='totalRows'
+                  [itemsPerPage]='rowsPerPage'
+                  [maxPages]='5'
+                  (selectPage)='selectPage($event)'></ma-pager>
+      </div>
+      <table class='striped'>
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>Status</th>
+            <th>Cost</th>
+            <th title='Duration in seconds'>Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="items == null">
+            <td class='empty-table' colspan="999">
+              Loading…
+            </td>
+          </tr>
+          <tr *ngIf="items != null && items.length==0">
+            <td class='empty-table' colspan="999">
+              This crawl has no successful items.
+            </td>
+          </tr>
+          <tr *ngFor="let item of items; let index=index">
+            <td [attr.colspan]='showBody == index ? 4 : 1'
+                [class.expanded]='showBody == index'>
+              <fa name='caret-right'
+                  [fw]='true'
+                  [class.hidden-xs-up]='showBody == index'
+                  (click)='showBody = index'></fa>
+              <fa name='caret-down'
+                  [fw]='true'
+                  [class.hidden-xs-up]='showBody != index'
+                  (click)='showBody = null'></fa>
+              <external-link [href]='item.url'></external-link>
+              <pre *ngIf='showBody == index'><span *ngFor='let header of item.headers'>{{header.key}}: {{header.value}}<br></span>
+{{item.bodyStr}}</pre>
+            </td>
+            <td [class.hidden-xs-up]='showBody == index'>
+              {{item.statusCode}}
+            </td>
+            <td [class.hidden-xs-up]='showBody == index'>
+              {{item.cost | number:'1.1'}}
+            </td>
+            <td [class.hidden-xs-up]='showBody == index'>
+              {{item.duration | number:'1.3'}}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </ma-card>
+  </div>
+</div>

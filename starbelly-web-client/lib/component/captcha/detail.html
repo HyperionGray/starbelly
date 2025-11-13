@@ -1,0 +1,107 @@
+<div class='row'>
+  <div class='col-lg'>
+    <ma-card>
+      <h2 *ngIf='solver != null'>CAPTCHA Solver: {{solver == null ? 'Loading…' : solver.name}}</h2>
+      <p class='lead'>
+        Configure a solving service for login CAPTCHAs.
+      </p>
+      <div *ngIf='solver != null'>
+        <ma-input-group [inline]='true'>
+          <label class='form-labels'>Name</label>
+          <input type='text'
+                 [(ngModel)]='solver.name'
+                 placeholder='CAPTCHA Solver Name'>
+        </ma-input-group>
+        <ma-input-group [inline]='true' *ngIf='!newSolver'>
+          <label class='form-labels'>Created</label>
+          <input type='text'
+                 [value]='solver.createdAt | date:"y-MM-dd H:mm:ss"'
+                 disabled>
+        </ma-input-group>
+        <ma-input-group [inline]='true' *ngIf='!newSolver'>
+          <label class='form-labels'>Updated</label>
+          <input type='text'
+                 [value]='solver.updatedAt | date:"y-MM-dd H:mm:ss"'
+                 disabled>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='form-labels'>Service URL</label>
+          <input type='text'
+                 [(ngModel)]='solver.serviceUrl'
+                 placeholder='Service URL'>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='form-labels'>API Key</label>
+          <input type='text'
+                 [(ngModel)]='solver.apiKey'
+                 placeholder='API Key'>
+        </ma-input-group>
+        <ma-checkbox-group [inline]='true'>
+          <label class='form-labels'>
+            Case Sensitive
+            <input [(ngModel)]='solver.caseSensitive' type='checkbox'>
+          </label>
+        </ma-checkbox-group>
+        <ma-checkbox-group [inline]='true'>
+          <label class='form-labels'>
+            Require Phrase
+            <input [(ngModel)]='solver.requirePhrase' type='checkbox'>
+          </label>
+        </ma-checkbox-group>
+        <ma-checkbox-group [inline]='true'>
+          <label class='form-labels'>
+            Requires Math
+            <input [(ngModel)]='solver.requireMath' type='checkbox'>
+          </label>
+        </ma-checkbox-group>
+        <ma-input-group [inline]='true'>
+          <label class='form-labels'>
+            Characters
+          </label>
+          <select [(ngModel)]='solver.characters'>
+            <option [value]='ALPHANUMERIC.name'>Alphanumeric</option>
+            <option [value]='ALPHA_ONLY.name'>Only Alphabet</option>
+            <option [value]='NUMBERS_ONLY.name'>Only Numbers</option>
+          </select>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='form-labels'>
+            Min Length
+          </label>
+          <input type='text'
+                 [(ngModel)]='solver.minLength'
+                 placeholder='Min Length (blank for no limit)'>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='form-labels'>
+            Max Length
+          </label>
+          <input type='text'
+                 [(ngModel)]='solver.maxLength'
+                 placeholder='Max Length (blank for no limit)'>
+        </ma-input-group>
+      </div>
+    </ma-card>
+  </div>
+</div>
+<div class='row buttons' *ngIf='solver != null'>
+  <div class='col-lg'>
+    <p>
+      <ma-button #saveButton class='float-sm-right' type='primary'
+                 (click)='save(saveButton)'>
+        <fa name='save'></fa>
+        <span>Save</span>
+      </ma-button>
+      <ma-button type='link'
+                 [routerLink]='Routes.captchaList.toUrl()'>
+        <span>Cancel</span>
+      </ma-button>
+    </p>
+    <p *ngIf='saveError.isNotEmpty' class='text-danger result'>
+      {{saveError}}
+    </p>
+    <p *ngIf='saveSuccess' class='text-success result'>
+      CAPTCHA solver saved.
+    </p>
+  </div>
+</div>

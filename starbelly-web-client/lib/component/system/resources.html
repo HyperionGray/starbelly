@@ -1,0 +1,94 @@
+<div class='row'>
+  <div class='col-lg'>
+    <ma-card>
+      <h2>
+        Resource Monitor
+      </h2>
+      <div *ngIf='frame != null'>
+        <p class='lead'>CPU Usage ({{cpuUsage() | number:'1.1'}}% cumulative)</p>
+        <table>
+          <tbody>
+            <tr *ngFor='let cpu of frame.cpus; let index=index'>
+              <td style='width: 6em;'>
+                <strong>CPU{{index}}</strong>
+              </td>
+              <td style='width: 4em;'>
+                {{cpu.usage}}%
+              </td>
+              <td>
+                <div style='width: 100%; height: 1em; background-color: var(--ma-divider-color); display: inline-block; margin-right: 0.5em;'>
+                  <div style='height: 1em; background-color: var(--ma-primary-color);' [ngStyle]='{"width": cpu.usage.toString() + "%"}'></div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class='lead'>Memory Usage</p>
+        <p>
+          {{frame.memory.used | dataSize}} / {{frame.memory.total | dataSize}}
+          ({{memoryUsage()}}%)
+        </p>
+        <p class='lead'>Disks</p>
+        <table class='striped'>
+          <thead>
+            <tr>
+              <th>Mount</th>
+              <th>Used</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor='let disk of frame.disks'>
+              <td>{{disk.mount}}</td>
+              <td>{{disk.used | dataSize}}</td>
+              <td>{{disk.total | dataSize}}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class='lead'>Networks</p>
+        <table class='striped'>
+          <thead>
+            <tr>
+              <th>Interface</th>
+              <th>Sent</th>
+              <th>Received</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor='let network of frame.networks'>
+              <td>{{network.name}}</td>
+              <td>{{network.sent | dataSize}}</td>
+              <td>{{network.received | dataSize}}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class='lead'>Jobs</p>
+        <table class='striped'>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Current Downloads</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf='frame.jobs.length == 0'>
+              <td class='empty-table' colspan="999">
+                There are no jobs running.
+              </td>
+            </tr>
+            <tr *ngFor='let job of frame.jobs'>
+              <td>{{jobNames[job.jobId]}}</td>
+              <td>{{job.currentDownloads}}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class='lead'>Rate Limiter</p>
+        <p>{{frame.rateLimiter | number}}</p>
+        <p class='lead'>Current Downloads</p>
+        <p>{{frame.currentDownloads | number}}</p>
+        <p class='lead'>Maximum Downloads</p>
+        <p>{{frame.maximumDownloads | number}}</p>
+      </div>
+    </ma-card>
+  </div>
+</div>

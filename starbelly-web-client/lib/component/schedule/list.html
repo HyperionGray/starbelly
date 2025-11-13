@@ -1,0 +1,60 @@
+<ma-card>
+  <h2>
+    Crawl Schedule
+  </h2>
+  <p *ngIf='totalRows != 0'>
+    Showing {{startRow}}-{{endRow}} of {{totalRows}} schedules.
+  </p>
+  <div *ngIf='totalRows > 10' class='text-xs-center'>
+    <ma-pager [currentPage]='currentPage'
+              [totalItems]='totalRows'
+              [itemsPerPage]='rowsPerPage'
+              [maxPages]='5'
+              (selectPage)='selectPage($event)'></ma-pager>
+  </div>
+  <table class='striped'>
+    <thead>
+      <tr>
+        <th>Name<fa class='pl-1' name='angle-down'></fa></th>
+        <th>Job Count</th>
+        <th>Last Modified</th>
+        <th>&nbsp;</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="schedules == null">
+        <td class='empty-table' colspan="999">
+          Loading…
+        </td>
+      </tr>
+      <tr *ngIf="schedules != null && schedules.length==0">
+        <td class='empty-table' colspan="999">
+          There are no crawl schedules.
+          Do you want to <a [routerLink]='Routes.scheduleCreate.toUrl()'>schedule a crawl?</a>
+        </td>
+      </tr>
+      <tr *ngFor="let schedule of schedules">
+        <td>
+          <a [routerLink]='detailUrl(schedule.scheduleId)'>
+            {{schedule.scheduleName}}
+          </a>
+          <ma-tag *ngFor='let tag of schedule.tags' type='primary' size='small'>{{tag}}</ma-tag>
+        </td>
+        <td>{{schedule.jobCount}}</td>
+        <td>{{schedule.updatedAt | date:'y-MM-dd H:mm:ss'}}</td>
+        <td>
+          <ma-button #deleteButton size='small' type='danger' title='Delete Schedule'
+                     (click)='deleteSchedule(deleteButton, schedule)'>
+            <fa name='trash'></fa>
+          </ma-button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    <ma-button type='primary' [routerLink]='Routes.scheduleCreate.toUrl()'>
+      <fa name='plus-circle'></fa>
+      <span>New Schedule</span>
+    </ma-button>
+  </p>
+</ma-card>

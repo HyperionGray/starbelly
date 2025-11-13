@@ -1,0 +1,78 @@
+<ma-app class='hyperion-theme'>
+  <ma-toast-outlet [service]='toast'></ma-toast-outlet>
+
+  <ma-top-nav [fixed]='true'>
+    <div class='float-xs-left breadcrumbs'>
+      <ma-breadcrumbs></ma-breadcrumbs>
+    </div>
+    <div class='float-xs-right'>
+      <span *ngIf='server.isConnected'>
+        <fa name='plug'></fa>
+        <span class='icon-padding'>Connected</span>
+      </span>
+      <span *ngIf='!server.isConnected'>
+        <fa name='spinner' [pulse]='true'></fa>
+        <span class='icon-padding'>Connecting to server</span>
+      </span>
+    </div>
+  </ma-top-nav>
+
+  <ma-side-nav [fixed]='true'>
+    <ma-side-nav-header>
+      <img src='/images/logo_45px.png'>
+      Starbelly
+    </ma-side-nav-header>
+    <ma-side-nav-item [route]='Routes.dashboard.toUrl()'>
+      <fa name='tachometer-alt' [fw]='true' size='lg'></fa>
+      Dashboard
+      <ma-tag type='primary'
+              [pill]='true'
+              class='float-xs-right'>{{jobStatus.newJobBadge}}</ma-tag>
+    </ma-side-nav-item>
+    <ma-side-nav-item [route]='Routes.start.toUrl()'>
+      <fa name='play-circle' [fw]='true' size='lg'></fa> Start Crawl
+    </ma-side-nav-item>
+    <ma-side-nav-item [route]='Routes.scheduleList.toUrl()'>
+      <fa name='calendar' [fw]='true' size='lg'></fa> Schedule
+    </ma-side-nav-item>
+    <ma-side-nav-item [route]='Routes.resultList.toUrl()'>
+      <fa name='sitemap' [fw]='true' size='lg'></fa> Results
+    </ma-side-nav-item>
+    <ma-side-nav-item [route]='Routes.policyList.toUrl()'>
+      <fa name='book' [fw]='true' size='lg'></fa> Policy
+    </ma-side-nav-item>
+    <ma-side-nav-menu>
+      <ma-side-nav-menu-header>
+        <fa name='cogs' [fw]='true' size='lg'></fa> Configuration
+      </ma-side-nav-menu-header>
+      <ma-side-nav-item [route]='Routes.captchaList.toUrl()'>
+        <fa name='eye' [fw]='true' size='lg'></fa> CAPTCHA Solvers
+      </ma-side-nav-item>
+      <ma-side-nav-item [route]='Routes.credentialList.toUrl()'>
+        <fa name='key' [fw]='true' size='lg'></fa> Credentials
+      </ma-side-nav-item>
+      <ma-side-nav-item [route]='Routes.rateLimit.toUrl()'>
+        <fa name='stopwatch' [fw]='true' size='lg'></fa> Rate Limits
+      </ma-side-nav-item>
+    </ma-side-nav-menu>
+    <ma-side-nav-menu>
+      <ma-side-nav-menu-header>
+        <fa name='desktop' [fw]='true' size='lg'></fa> System
+      </ma-side-nav-menu-header>
+      <ma-side-nav-item [route]='Routes.systemProfile.toUrl()'>
+        <fa name='microchip' [fw]='true' size='lg'></fa> CPU Profile
+      </ma-side-nav-item>
+      <ma-side-nav-item [route]='Routes.systemResources.toUrl()'>
+        <fa name='chart-bar' [fw]='true' size='lg'></fa> Resource Monitor
+      </ma-side-nav-item>
+      <ma-side-nav-item [route]='Routes.systemTasks.toUrl()'>
+        <fa name='tasks' [fw]='true' size='lg'></fa> Task Monitor
+      </ma-side-nav-item>
+    </ma-side-nav-menu>
+  </ma-side-nav>
+
+  <ma-content>
+    <router-outlet [routes]='Routes.all'></router-outlet>
+  </ma-content>
+</ma-app>
+

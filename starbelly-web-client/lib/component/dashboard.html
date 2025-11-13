@@ -1,0 +1,61 @@
+<ma-card>
+  <h2>Crawls</h2>
+  <p class='lead'>
+    Unfinished and recently finished crawls.
+  </p>
+  <table class='striped'>
+    <thead>
+      <tr>
+        <th>Name<fa class='pl-1' name='angle-up'></fa></th>
+        <th>Status</th>
+        <th>Items</th>
+        <th>Errors</th>
+        <th>Exceptions</th>
+        <th>&nbsp;</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="jobStatus.jobs.length==0">
+        <td class='empty-table' colspan="999">
+          There are no active or recent crawls.
+        </td>
+      </tr>
+      <tr *ngFor="let job of jobStatus.jobs">
+        <td>
+          <a [routerLink]='jobLink(job)'>
+            {{job.name}}
+          </a>
+          <ma-tag *ngFor='let tag of job.tags' type='primary' size='small'>{{tag}}</ma-tag>
+        </td>
+        <td>
+          {{job.runStateStr}}
+        </td>
+        <td>{{job.httpSuccessCount}}</td>
+        <td>{{job.httpErrorCount}}</td>
+        <td>{{job.exceptionCount}}</td>
+        <td>
+          <ma-button #runButton size='small'
+                     [disabled]='busyJobs.contains(job.jobId)'
+                     *ngIf='job.runState == PAUSED'
+                     (click)='setJobRunState(runButton, job, RUNNING)'>
+            <fa name='play'></fa>
+          </ma-button>
+          <ma-button #pauseButton size='small'
+                     class='ml-1'
+                     [disabled]='busyJobs.contains(job.jobId)'
+                     *ngIf='job.runState == RUNNING'
+                     (click)='setJobRunState(pauseButton, job, PAUSED)'>
+            <fa name='pause'></fa>
+          </ma-button>
+          <ma-button #cancelButton size='small'
+                     class='ml-1'
+                     [disabled]='busyJobs.contains(job.jobId)'
+                     *ngIf='job.runState == RUNNING || job.runState == PAUSED'
+                     (click)='setJobRunState(cancelButton, job, CANCELLED)'>
+            <fa name='ban'></fa>
+          </ma-button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</ma-card>

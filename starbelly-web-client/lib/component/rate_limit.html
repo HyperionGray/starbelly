@@ -1,0 +1,116 @@
+<div class='row'>
+  <div class='col-lg'>
+    <ma-card>
+      <h2>Rate Limits</h2>
+      <p class='lead'>Customize delay between requests to the same domain.</p>
+      <p *ngIf='totalRows != 0'>
+        Showing {{startRow}}-{{endRow}} of {{totalRows}} rate limits.
+      </p>
+      <div *ngIf='totalRows > 10' class='text-xs-center'>
+        <ma-pager [currentPage]='currentPage'
+                  [totalItems]='totalRows'
+                  [itemsPerPage]='rowsPerPage'
+                  [maxPages]='5'
+                  (selectPage)='selectPage($event)'></ma-pager>
+      </div>
+      <table class='striped'>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Delay (s)</th>
+            <th>&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="rateLimits == null">
+            <td class='empty-table' colspan="999">
+              Loading…
+            </td>
+          </tr>
+          <tr *ngIf="rateLimits != null && rateLimits.length==0">
+            <td class='empty-table' colspan="999">
+              No rate limits have been set.
+            </td>
+          </tr>
+          <tr *ngFor="let wrapper of rateLimits">
+            <td>
+              {{wrapper.rateLimit.name}}
+            </td>
+            <td>
+              <span *ngIf='!wrapper.isEditing'>{{wrapper.rateLimit.delay}}</span>
+              <p *ngIf='wrapper.error != null' class='text-danger'>
+                {{wrapper.error}}
+              </p>
+              <input #delay *ngIf='wrapper.isEditing'
+                [ngModel]='wrapper.rateLimit.delay'
+                (keyup.enter)='saveRateLimit(wrapper, delay.value)'
+                (keyup.esc)='wrapper.isEditing = false'>
+            </td>
+            <td>
+              <ma-button type='primary'
+                         size='small'
+                         [disabled]='wrapper.isEditing'
+                         (click)='wrapper.isEditing=true'>
+                <fa name='edit'></fa>
+              </ma-button>
+              <ma-button #deleteButton *ngIf='wrapper.canDelete'
+                         class='ml-1' size='small' type='danger'
+                         (click)='deleteRateLimit(deleteButton, wrapper)'>
+                <fa name='trash'></fa>
+              </ma-button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <ma-button type='success' (click)='showNewModal=true'>
+          <fa name='plus-circle'></fa>
+          <span>Add rate limit…</span>
+        </ma-button>
+      </p>
+    </ma-card>
+  </div>
+</div>
+<ma-overlay *ngIf='showNewModal'>
+  <ma-card id='newRateLimitCard'>
+    <h3>Add Rate Limit</h3>
+    <p class='lead'>
+      Set the delay in seconds between requests to a given domain.
+    </p>
+    <p *ngIf='newModalError != null' class='text-danger'>
+      {{newModalError}}
+    </p>
+    <form (ngSubmit)='createRateLimit(domain.value, delay.value)'
+          [ngFormModel]='newRateLimitForm'>
+      <ma-input-group [control]='newDomainControl'>
+        <label>Domain</label>
+        <input #domain
+          type='text'
+          [ngFormControl]='newDomainControl'
+          placeholder='Enter a domain name…'>
+      </ma-input-group>
+      <ma-input-group [control]='newDelayControl'>
+        <label>Delay</label>
+        <input #delay
+          type='text'
+          [ngFormControl]='newDelayControl'
+          placeholder='Enter a delay in seconds…'>
+      </ma-input-group>
+      <p class='clearfix'>
+        <ma-button type='link'
+                   class='float-xs-left'
+                   (click)='showNewModal=false'>
+          Cancel
+        </ma-button>
+
+        <ma-button type='primary'
+                   class='float-xs-right'
+                   [submit]='true'
+                   [disabled]='!newRateLimitForm.valid'>
+          <fa name='save'></fa>
+          <span>Save</span>
+        </ma-button>
+      </p>
+    </form>
+  </ma-card>
+</ma-overlay>

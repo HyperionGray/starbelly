@@ -1,0 +1,57 @@
+<ma-card>
+  <h2>
+    Crawl Results
+  </h2>
+  <p *ngIf='totalRows != 0'>
+    Showing {{startRow}}-{{endRow}} of {{totalRows}} crawls.
+  </p>
+  <div *ngIf='totalRows > 10' class='text-xs-center'>
+    <ma-pager [currentPage]='currentPage'
+              [totalItems]='totalRows'
+              [itemsPerPage]='rowsPerPage'
+              [maxPages]='5'
+              (selectPage)='selectPage($event)'></ma-pager>
+  </div>
+  <table class='striped'>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Started <fa name='angle-down'></fa></th>
+        <th>Ended</th>
+        <th>Items</th>
+        <th>&nbsp;</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="jobs == null">
+        <td class='empty-table' colspan="999">
+          Loading…
+        </td>
+      </tr>
+      <tr *ngIf="jobs != null && jobs.length==0">
+        <td class='empty-table' colspan="999">
+          There are no crawls.
+          Do you want to <a [routerLink]='Routes.start.toUrl()'>start a crawl?</a>
+        </td>
+      </tr>
+      <tr *ngFor="let job of jobs">
+        <td>
+          <a [routerLink]='detailUrl(job)'>{{job.name}}</a>
+          <ma-tag *ngFor='let tag of job.tags' type='primary' size='small'>{{tag}}</ma-tag>
+        </td>
+        <td>{{job.runStateStr}}</td>
+        <td>{{job.startedAt | date:'y-MM-dd H:mm:ss'}}</td>
+        <td>{{job.completedAt | date:'y-MM-dd H:mm:ss'}}</td>
+        <td>{{job.itemCount}}</td>
+        <td>
+          <ma-button #deleteButton size='small' type='danger'
+            *ngIf='job.runState == CANCELLED || job.runState == COMPLETED'
+            (click)='deleteJob(deleteButton, job)'>
+            <fa name='trash'></fa>
+          </ma-button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</ma-card>

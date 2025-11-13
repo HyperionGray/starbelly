@@ -1,0 +1,25 @@
+<div class='row'>
+  <div class='col-lg'>
+    <ma-card>
+      <h2>
+        Task Monitor
+        <small *ngIf='rootTask != null'>{{rootTask.count | number}} Tasks</small>
+      </h2>
+      <div *ngIf='rootTask != null'>
+        <p *ngIf='!paused'>
+          <ma-button class='mr-1' type='warning' size='small' (click)='pause()'>
+            <fa name='pause'></fa>
+            <span>Updating every {{period | number}} seconds</span>
+          </ma-button>
+        </p>
+        <p *ngIf='paused'>
+          <ma-button class='mr-1' type='success' size='small' (click)='resume()'>
+            <fa name='play'></fa>
+            <span>Resume updates</span>
+          </ma-button>
+        </p>
+        <task-tree [task]='rootTask'></task-tree>
+      </div>
+    </ma-card>
+  </div>
+</div>

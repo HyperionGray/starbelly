@@ -1,0 +1,132 @@
+<div class='row'>
+  <div class='col-lg'>
+    <ma-card>
+      <div class='alert alert-success' *ngIf='created'>
+        <strong>A new schedule has been created.</strong>
+        <span *ngIf='schedule.enabled'>The first job will start in 60 seconds.</span>
+      </div>
+      <h2>Schedule: {{schedule == null ? 'Loading…' : schedule.scheduleName}}</h2>
+      <p class='lead'>
+        Schedule crawls to run automatically.
+      </p>
+      <div *ngIf='schedule != null'>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'>Name</label>
+          <input type='text'
+                 [(ngModel)]='schedule.scheduleName'
+                 placeholder='Schedule Name'>
+        </ma-input-group>
+        <ma-radio-group [inline]='true'>
+          <label class='radio-label'>
+            Status
+          </label>
+          <label title='Jobs will be started according to schedule'>
+            <input type='radio'
+                   [checked]='schedule.enabled'
+                   (change)='schedule.enabled=true'>
+            Enabled
+          </label>
+          <label title='Jobs will not be started from this schedule'>
+            <input type='radio'
+                   [checked]='!schedule.enabled'
+                   (change)='schedule.enabled=false'>
+            Disabled
+          </label>
+        </ma-radio-group>
+        <dl>
+          <dt>Created</dt>
+          <dd>{{schedule.createdAt | date:"y-MM-dd H:mm:ss"}}</dd>
+        </dl>
+        <dl>
+          <dt>Updated</dt>
+          <dd>{{schedule.updatedAt | date:"y-MM-dd H:mm:ss"}}</dd>
+        </dl>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'>Seed URL</label>
+          <input type='text'
+                 [(ngModel)]='seedUrl'
+                 placeholder='Seed URL'>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'>Policy</label>
+          <select [(ngModel)]='schedule.policyId'>
+            <option *ngFor='let policy of policies' [ngValue]='policy.policyId'>{{policy.name}}</option>
+          </select>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'>Job Name</label>
+          <input type='text'
+                 [(ngModel)]='schedule.jobName'
+                 placeholder='(Optional) Name for each crawl'>
+        </ma-input-group>
+        <p class='legend'>
+          Each crawl job is given a name when it is created. The name may
+          include macros like <code>{COUNT}</code>, <code>{TIME}</code>, and
+          <code>{DATE}</code>.
+        </p>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'>Tags</label>
+          <input type='text'
+                 [(ngModel)]='schedule.tagString'
+                 placeholder='(Optional) Tags separated by spaces'>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'>Run Job</label>
+          <select [(ngModel)]='schedule.timing'>
+            <option [ngValue]='REGULAR_INTERVAL'>At regular intervals</option>
+            <option [ngValue]='AFTER_PREVIOUS_JOB_FINISHED'>After previous job finishes</option>
+          </select>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'># Units</label>
+          <input type='text'
+                 [(ngModel)]='schedule.numUnits'
+                 placeholder='Number of time units'>
+        </ma-input-group>
+        <ma-input-group [inline]='true'>
+          <label class='input-label'>Time Unit</label>
+          <select [(ngModel)]='schedule.timeUnit'>
+            <option [ngValue]='MINUTES'>minutes</option>
+            <option [ngValue]='HOURS'>hours</option>
+            <option [ngValue]='DAYS'>days</option>
+            <option [ngValue]='WEEKS'>weeks</option>
+            <option [ngValue]='MONTHS'>months</option>
+            <option [ngValue]='YEARS'>years</option>
+          </select>
+        </ma-input-group>
+        <dl>
+          <dt>Latest Job</dt>
+          <dd>
+            <span *ngIf='latestJob == null'>N/A</span>
+            <span *ngIf='latestJob != null'>
+              {{latestJob.name}},
+              {{latestJob.runStateStr}},
+              {{latestJob.itemCount | number}} items
+            <a [routerLink]='listScheduleJobsUrl()'>View more…</a>
+            </span>
+          </dd>
+        </dl>
+      </div>
+    </ma-card>
+  </div>
+</div>
+<div class='row buttons' *ngIf='schedule != null'>
+  <div class='col-lg'>
+    <p>
+      <ma-button #saveButton class='float-sm-right' type='primary'
+        (click)='save(saveButton)'>
+        <fa name='save'></fa>
+        <span>Save</span>
+      </ma-button>
+      <ma-button type='link' [routerLink]='Routes.scheduleList.toUrl()'>
+        Cancel
+      </ma-button>
+    </p>
+    <p *ngIf='saveError.isNotEmpty' class='text-danger result'>
+      {{saveError}}
+    </p>
+    <p *ngIf='saveSuccess' class='text-success result'>
+      Schedule saved.
+    </p>
+  </div>
+</div>

@@ -1,0 +1,46 @@
+<ma-card>
+  <h2>
+    Jobs
+    <small>{{scheduleName}}</small>
+  </h2>
+  <p *ngIf='totalRows != 0'>
+    Showing {{startRow}}-{{endRow}} of {{totalRows}} jobs.
+  </p>
+  <div *ngIf='totalRows > rowsPerPage' class='text-xs-center'>
+    <ma-pager [currentPage]='currentPage'
+              [totalItems]='totalRows'
+              [itemsPerPage]='rowsPerPage'
+              [maxPages]='5'
+              (selectPage)='selectPage($event)'></ma-pager>
+  </div>
+  <table class='striped'>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Started<fa class='pl-1' name='angle-down'></fa></th>
+        <th>Ended</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="jobs == null">
+        <td class='empty-table' colspan="999">
+          Loading…
+        </td>
+      </tr>
+      <tr *ngIf="jobs != null && jobs.length==0">
+        <td class='empty-table' colspan="999">
+          There are no jobs for this crawl schedule.
+        </td>
+      </tr>
+      <tr *ngFor="let job of jobs">
+        <td>
+          <a [routerLink]='jobDetailUrl(job)'>{{job.name}}</a>
+        </td>
+        <td>{{job.runStateStr}}</td>
+        <td>{{job.startedAt | date:'y-MM-dd H:mm:ss'}}</td>
+        <td>{{job.completedAt | date:'y-MM-dd H:mm:ss'}}</td>
+      </tr>
+    </tbody>
+  </table>
+</ma-card>

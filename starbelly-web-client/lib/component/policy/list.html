@@ -1,0 +1,69 @@
+<ma-card>
+  <h2>
+    Crawl Policy
+  </h2>
+  <p class='lead'>
+    A policy controls the behavior of a crawl.
+  </p>
+  <p *ngIf='totalRows != 0'>
+    Showing {{startRow}}-{{endRow}} of {{totalRows}} policies.
+  </p>
+  <div *ngIf='totalRows > 10' class='text-xs-center'>
+    <ma-pager [currentPage]='currentPage'
+              [totalItems]='totalRows'
+              [itemsPerPage]='rowsPerPage'
+              [maxPages]='5'
+              (selectPage)='selectPage($event)'></ma-pager>
+  </div>
+  <table class='striped'>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Created</th>
+        <th>Updated</th>
+        <th>&nbsp;</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="policies == null">
+        <td class='empty-table' colspan="999">
+          Loading…
+        </td>
+      </tr>
+      <tr *ngIf="policies != null && policies.length==0">
+        <td class='empty-table' colspan="999">
+          There are no policies.
+          Do you want to
+          <a [routerLink]='Routes.policyCreate.toUrl()'>create one?</a>
+        </td>
+      </tr>
+      <tr *ngFor="let policy of policies">
+        <td>
+          <a [routerLink]='detailUrl(policy)'>
+            {{policy.name}}
+          </a>
+        </td>
+        <td>{{policy.createdAt | date:'y-MM-dd H:mm:ss'}}</td>
+        <td>{{policy.updatedAt | date:'y-MM-dd H:mm:ss'}}</td>
+        <td>
+          <ma-button #duplicateButton size='small' type='primary'
+            title='Duplicate'
+            (click)='duplicatePolicy(duplicateButton, policy)'>
+            <fa name='copy'></fa>
+          </ma-button>
+          <ma-button #deleteButton class='ml-1' size='small' type='danger'
+            title='Delete'
+            (click)='deletePolicy(deleteButton, policy)'>
+            <fa name='trash'></fa>
+          </ma-button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    <ma-button type='primary' [routerLink]='Routes.policyCreate.toUrl()'>
+      <fa name='plus-circle'></fa>
+      <span>New Policy</span>
+    </ma-button>
+  </p>
+</ma-card>

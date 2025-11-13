@@ -1,0 +1,9 @@
+@import "package:ng_modular_admin/src/modular-admin/modular-admin";
+
+fa + span.icon-padding {
+    padding-left: 0.5em;
+}
+
+span.icon-padding + fa {
+    padding-left: 0.5em;
+}

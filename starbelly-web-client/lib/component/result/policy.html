@@ -1,0 +1,157 @@
+<div class='row'>
+  <div class='col-lg'>
+    <ma-card>
+      <h2>
+        {{job == null ? 'Loading…' : job.name}}
+        <small>Policy</small>
+      </h2>
+      <div *ngIf='job != null'>
+        <p>
+          The policy is frozen when a crawl is started, so this crawl's policy
+          may differ from the
+          <a [routerLink]='policyUrl(job)'>current version</a>
+          of the policy.
+        </p>
+        <p>
+          <strong>Name:</strong>
+          {{job.policy.name}}<br>
+          <strong>Created:</strong>
+          {{job.policy.createdAt | date:'y-MM-dd H:mm:ss'}}<br>
+          <strong>Updated:</strong>
+          {{job.policy.updatedAt | date:'y-MM-dd H:mm:ss'}}
+        </p>
+        <p>
+          <strong>Authentication</strong>
+        </p>
+        <ul>
+          <li>{{job.policy.authentication.enabled ? 'Always try to log in' : 'Never try to log in'}}</li>
+          <li>
+            CAPTCHA Solver:
+            <span *ngIf='job.policy.captchaSolverId.isEmpty'>None</span>
+            <span *ngIf='job.policy.captchaSolverId.isNotEmpty && captchaSolver == null'>
+              <a [routerLink]='captchaUrl(job)'>
+                {{captchaSolver.name}}
+              </a>
+            </span>
+          </li>
+        </ul>
+        <p>
+          <strong>Robots.txt</strong>
+        </p>
+        <ul>
+          <li>{{job.policy.robotsTxt.usage}}</li>
+        </ul>
+        <div *ngIf='job.policy.urlNormalization != null'>
+          <p>
+            <strong>URL Normalization</strong>
+          </p>
+          <ul>
+            <li>{{job.policy.urlNormalization.enabled ? 'Enabled' : 'Disabled'}}</li>
+            <li>Strip parameters: {{job.policy.urlNormalization.stripParameters.join(', ')}}</li>
+          </ul>
+        </div>
+        <p>
+          <strong>URL Rules</strong>
+        </p>
+        <ol>
+          <li *ngFor='let urlRule of job.policy.urlRules; let index=index; let first=first; let last=last'>
+            <span *ngIf='job.policy.urlRules.length == 1'>Always</span>
+            <span *ngIf='job.policy.urlRules.length > 1'>
+              <span *ngIf='!last'>
+                <span *ngIf='first'>If</span>
+                <span *ngIf='!first'>Else if</span>
+                the URL
+                {{urlRule.match == MATCHES ? 'matches' : 'does not match'}}
+                the regex
+                <code>{{urlRule.pattern}}</code>
+                then
+              </span>
+              <span *ngIf='last'>Else</span>
+            </span>
+            {{urlRule.action == ACTION_ADD ? 'add' : 'multiply by'}}
+            {{urlRule.amount}}.
+          </li>
+        </ol>
+        <p>
+          <strong>User Agents</strong>
+        </p>
+        <ol>
+          <li *ngFor='let userAgent of job.policy.userAgents'>
+            {{userAgent.name}}
+          </li>
+        </ol>
+        <p>
+          <strong>Proxy Rules</strong>
+        </p>
+        <ol>
+          <li *ngFor='let proxyRule of job.policy.proxyRules; let index=index; let first=first; let last=last'>
+            <span *ngIf='!last'>
+              <span *ngIf='first'>If</span>
+              <span *ngIf='!first'>Else if</span>
+              the URL
+              {{proxyRule.match == MATCHES ? 'matches' : 'does not match'}}
+              &nbsp;the regex&nbsp;
+              <code>{{proxyRule.pattern}}</code>
+              then use the proxy
+              <code>{{proxyRule.proxyUrl}}</code>
+            </span>
+            <span *ngIf='last'>
+              <span *ngIf='index > 0'>
+                Else, {{proxyRule.match == MATCHES ? 'always' : 'never'}}
+              </span>
+              <span *ngIf='index == 0'>
+                {{proxyRule.match == MATCHES ? 'Always' : 'Never'}}
+              </span>
+              <span *ngIf='proxyRule.match == MATCHES'>
+                use the proxy
+                <code>{{proxyRule.proxyUrl}}</code>
+              </span>
+              <span *ngIf='proxyRule.match == DOES_NOT_MATCH'>
+                use a proxy.
+              </span>
+            </span>
+          </li>
+        </ol>
+        <p>
+          <strong>MIME Type Rules</strong>
+        </p>
+        <ol>
+          <li *ngFor='let mimeRule of job.policy.mimeTypeRules; let index=index; let first=first; let last=last'>
+            <span *ngIf='job.policy.mimeTypeRules.length == 1'>Always</span>
+            <span *ngIf='job.policy.mimeTypeRules.length > 1'>
+              <span *ngIf='!last'>
+                <span *ngIf='first'>If</span>
+                <span *ngIf='!first'>Else if</span>
+                the MIME type
+                {{mimeRule.match == MATCHES ? 'matches' : 'does not match'}}
+                the regex
+                <code>{{mimeRule.pattern}}</code>
+                then
+              </span>
+              <span *ngIf='last'>Else</span>
+            </span>
+            {{mimeRule.save ? 'save' : 'discard'}}
+            the response body.
+          </li>
+        </ol>
+        <p>
+          <strong>Limits</strong>
+        </p>
+        <ul>
+          <li>
+            Max Cost:
+            {{job.policy.limits.maxCost.isEmpty ? 'N/A' : job.policy.limits.maxCost}}
+          </li>
+          <li>
+            Max Duration:
+            {{job.policy.limits.maxDuration.isEmpty ? 'N/A' : job.policy.limits.maxDuration}}
+          </li>
+          <li>
+            Max Items:
+            {{job.policy.limits.maxItems.isEmpty ? 'N/A' : job.policy.limits.maxItems}}
+          </li>
+        </ul>
+      </div>
+    </ma-card>
+  </div>
+</div>
