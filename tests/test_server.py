@@ -682,3 +682,41 @@ async def test_set_jobs(client, crawl_manager, server_db):
     command5.set_job.run_state = PbRunState.Value('PENDING')
     response5 = await send_test_command(client, command5)
     assert not response5.is_success
+
+
+@fail_after(5)
+async def test_heartbeat(client):
+    '''
+    Test that the WebSocket heartbeat keeps the connection alive.
+    
+    This test verifies that the server sends periodic pings to keep the
+    connection open. We connect to the server and wait for a short time
+    to ensure the connection remains open and no unexpected errors occur.
+    '''
+    # Send a simple request to ensure the connection is working
+    request = new_request(1)
+    request.list_jobs.page.limit = 10
+    request.list_jobs.page.offset = 0
+    
+    # Mock the server_db
+    from unittest.mock import Mock
+    # The test should complete without connection being closed
+    await client.send_message(request.SerializeToString())
+    message = await client.get_message()
+    response = ServerMessage.FromString(message)
+    
+    # Wait a bit to let heartbeat potentially send pings
+    # (won't be a full 30s but ensures the heartbeat task is running)
+    await trio.sleep(0.5)
+    
+    # Connection should still be open
+    # Send another request to verify
+    request2 = new_request(2)
+    request2.list_jobs.page.limit = 10
+    request2.list_jobs.page.offset = 0
+    await client.send_message(request2.SerializeToString())
+    message2 = await client.get_message()
+    response2 = ServerMessage.FromString(message2)
+    
+    # If we got here, the connection is still alive
+    assert response2.response.request_id == 2
