@@ -224,10 +224,19 @@ class Downloader:
                     http_status_counts.get(response.status_code, 0) + 1
 
             await self._send_channel.send(response)
-        except MimeNotAllowedError:
-            # Mime errors are raised to this level in order to abort the
-            # download, and from here they can be ignored.
-            pass
+        except MimeNotAllowedError as exc:
+            # MIME errors indicate the response MIME type was not allowed by
+            # policy. Create a response with exception info so it's visible in
+            # the results.
+            response = DownloadResponse.from_request(request)
+            response.start()
+            response.set_exception(f'MIME type not allowed by policy: {exc.mime}')
+            
+            # Update stats to track MIME drops
+            stats['item_count'] += 1
+            stats['exception_count'] += 1
+            
+            await self._send_channel.send(response)
         finally:
             await self._rate_limiter_reset.send(request.url)
             self._semaphore.release()

@@ -304,3 +304,48 @@ async def test_socks_proxy_get(asyncio_loop, nursery):
     assert stats['item_count'] == 1
     assert stats['http_success_count'] == 1
     assert stats['http_status_counts'][200] == 1
+
+
+async def test_mime_not_allowed(asyncio_loop, nursery):
+    ''' Test that MIME-dropped items are tracked as exceptions. '''
+    # Create a server that returns a disallowed MIME type:
+    async def handler(stream):
+        request = await stream.receive_some(4096)
+        assert request.startswith(b'GET /foo HTTP/1.1')
+        assert request.endswith(b'\r\n\r\n')
+        await stream.send_all(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-type: application/pdf\r\n'  # Not allowed by policy
+                b'\r\n'
+                b'%PDF-1.4 fake pdf content\r\n'
+            )
+        await stream.aclose()
+    serve_tcp = partial(trio.serve_tcp, handler, port=0, host='127.0.0.1')
+    http_server = await nursery.start(serve_tcp)
+    addr, port = http_server[0].socket.getsockname()
+
+    # Run the test:
+    job_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    policy = make_policy()  # Policy only allows text/* MIME types
+    request_send, request_recv = trio.open_memory_channel(0)
+    response_send, response_recv = trio.open_memory_channel(0)
+    semaphore = trio.Semaphore(1)
+    rate_limiter_reset = Mock()
+    rate_limiter_reset.send = AsyncMock()
+    stats = make_stats()
+    dl = Downloader(job_id, policy, response_send, request_recv, semaphore,
+        rate_limiter_reset, stats)
+    nursery.start_soon(dl.run)
+    request = make_request('http://{}:{}/foo'.format(addr, port))
+    await request_send.send(request)
+    response = await response_recv.receive()
+    nursery.cancel_scope.cancel()
+    
+    # Verify that the MIME-dropped item is stored as an exception
+    assert response.is_exception
+    assert 'MIME type not allowed by policy' in response.exception
+    assert 'application/pdf' in response.exception
+    assert stats['item_count'] == 1
+    assert stats['exception_count'] == 1
+    assert stats['http_success_count'] == 0
+    assert stats['http_error_count'] == 0
