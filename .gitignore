@@ -6,3 +6,6 @@
 .vscode
 __pycache__
 README.html
+*.whl
+*.dist-info/
+formasaurus/
