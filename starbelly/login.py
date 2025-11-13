@@ -201,7 +201,7 @@ class LoginManager:
             response.content_type, response.body, auto_detect_fun=chardet
         )
 
-        forms = await trio.run_sync_in_worker_thread(
+        forms = await trio.to_thread.run_sync(
             partial(formasaurus.extract_forms, html, proba=True)
         )
         form, meta = select_login_form(forms)
