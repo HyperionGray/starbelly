@@ -231,3 +231,167 @@ async def test_login_with_captcha(asyncio_loop, mocker, nursery):
     assert request.form_data['username'] == 'john'
     assert request.form_data['password'] == 'fake'
     assert request.form_data['captcha'] == 'ABCD1234'
+
+
+async def test_login_no_form_found(caplog):
+    '''Test error logging when no login form is found'''
+    import logging
+    caplog.set_level(logging.DEBUG)
+    
+    job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    db = Mock()
+    login = {
+        'domain': 'login.example',
+        'login_url': 'https://login.example/index',
+        'users': [{'username': 'john', 'password': 'fake'}]
+    }
+    db.get_login = AsyncMock(return_value=login)
+    policy = make_policy()
+    downloader = Mock()
+    # HTML with no form at all
+    html1 = b'''<html>
+        <head><title>No Login Here</title></head>
+        <body>
+            <p>This page has no login form</p>
+        </body>
+        </html>'''
+    response1 = DownloadResponse(
+        frontier_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        cost=1.0,
+        url='https://login.example/index',
+        canonical_url='https://login.example/index',
+        content_type='text/html',
+        body=html1,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
+    downloader.download = AsyncMock(return_values=(response1,))
+    login_manager = LoginManager(job_id, db, policy, downloader)
+    
+    await login_manager.login('login.example')
+    
+    # Verify logging messages
+    assert 'Starting login process for domain: login.example' in caplog.text
+    assert 'Analyzing' in caplog.text and 'forms on page' in caplog.text
+    assert 'No login form found on page' in caplog.text
+    assert "Can't find login form" in caplog.text
+
+
+async def test_login_missing_username_password_fields(caplog):
+    '''Test error logging when username/password fields cannot be identified'''
+    import logging
+    caplog.set_level(logging.DEBUG)
+    
+    job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    db = Mock()
+    login = {
+        'domain': 'login.example',
+        'login_url': 'https://login.example/index',
+        'users': [{'username': 'john', 'password': 'fake'}]
+    }
+    db.get_login = AsyncMock(return_value=login)
+    policy = make_policy()
+    downloader = Mock()
+    # HTML with a form but no proper login fields
+    html1 = b'''<html>
+        <head><title>Login Test</title></head>
+        <body>
+            <form action="/search" method="GET">
+                <input type="text" name="query">
+                <input type="submit" value="Search">
+            </form>
+        </body>
+        </html>'''
+    response1 = DownloadResponse(
+        frontier_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        cost=1.0,
+        url='https://login.example/index',
+        canonical_url='https://login.example/index',
+        content_type='text/html',
+        body=html1,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
+    downloader.download = AsyncMock(return_values=(response1,))
+    login_manager = LoginManager(job_id, db, policy, downloader)
+    
+    await login_manager.login('login.example')
+    
+    # Verify logging messages - should warn about no login form
+    assert 'Starting login process for domain: login.example' in caplog.text
+    assert 'No login form found on page' in caplog.text
+
+
+async def test_login_successful_with_logging(caplog):
+    '''Test that successful login has appropriate logging'''
+    import logging
+    caplog.set_level(logging.DEBUG)
+    
+    job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    db = Mock()
+    login = {
+        'domain': 'login.example',
+        'login_url': 'https://login.example/index',
+        'users': [{'username': 'john', 'password': 'fake'}]
+    }
+    db.get_login = AsyncMock(return_value=login)
+    policy = make_policy()
+    downloader = Mock()
+    html1 = \
+    b'''<html>
+        <head><title>Login Test</title></head>
+        <body>
+            <form action="/login" method="POST">
+            <input type="text" name="username">
+            <input type="password" name="password">
+            <input type="submit" value="Log In">
+        </body>
+        </html>'''
+    response1 = DownloadResponse(
+        frontier_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        cost=1.0,
+        url='https://login.example',
+        canonical_url='https://login.example',
+        content_type='text/html',
+        body=html1,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
+    response2 = DownloadResponse(
+        frontier_id='cccccccc-cccc-cccc-cccc-cccccccccccc',
+        cost=1.0,
+        url='https://login.example',
+        canonical_url='https://login.example',
+        content_type='text/html',
+        body=None,
+        started_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2019, 2, 1, 10, 2, 0, tzinfo=timezone.utc),
+        exception=None,
+        status_code=200,
+        headers=dict()
+    )
+    downloader.download = AsyncMock(return_values=(response1, response2))
+    login_manager = LoginManager(job_id, db, policy, downloader)
+    
+    await login_manager.login('login.example')
+    
+    # Verify key logging messages
+    assert 'Starting login process for domain: login.example' in caplog.text
+    assert 'Attempting login' in caplog.text and 'john' in caplog.text
+    assert 'Successfully fetched login page' in caplog.text
+    assert 'Analyzing' in caplog.text and 'forms on page' in caplog.text
+    assert 'Selected login form with probability' in caplog.text
+    assert 'Analyzing' in caplog.text and 'fields for login form' in caplog.text
+    assert 'Selected fields' in caplog.text
+    assert 'Login form parsed successfully' in caplog.text
+    assert 'Submitting login form to' in caplog.text
+    assert 'Login form submitted successfully' in caplog.text
