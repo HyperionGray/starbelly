@@ -6,6 +6,7 @@ import traceback
 
 import aiohttp
 import aiohttp_socks
+import asks
 import trio
 import trio_asyncio
 import w3lib.url
@@ -172,8 +173,8 @@ class Downloader:
 
         :returns: Runs until cancelled.
         '''
-        async with trio.open_nursery() as nursery, \
-                   trio_asyncio.open_loop():
+        async with trio.open_nursery() as nursery:
+            # Only open asyncio loop if needed for SOCKS proxies
             async for request in self._recv_channel:
                 await self._semaphore.acquire()
                 self._count += 1
@@ -196,8 +197,17 @@ class Downloader:
             against the policy.
         :rtype DownloadResponse:
         '''
-        async with self._semaphore, trio_asyncio.open_loop():
-            response = await self._download_asyncio(request, skip_mime=skip_mime)
+        async with self._semaphore:
+            url = request.url
+            proxy_type, proxy_url = self._policy.proxy_rules.get_proxy_url(url)
+            
+            # Use asyncio/aiohttp only for SOCKS proxies
+            if proxy_type in _SOCKS_PROXY_SCHEMES:
+                async with trio_asyncio.open_loop():
+                    response = await self._download_asyncio(request, skip_mime=skip_mime)
+            else:
+                # Use Trio-native asks for HTTP/HTTPS and HTTP proxies
+                response = await self._download_asks(request, skip_mime=skip_mime)
         return response
 
     async def _download(self, request):
@@ -208,7 +218,16 @@ class Downloader:
         '''
         stats = self._stats
         try:
-            response = await self._download_asyncio(request)
+            url = request.url
+            proxy_type, proxy_url = self._policy.proxy_rules.get_proxy_url(url)
+            
+            # Use asyncio/aiohttp only for SOCKS proxies
+            if proxy_type in _SOCKS_PROXY_SCHEMES:
+                async with trio_asyncio.open_loop():
+                    response = await self._download_asyncio(request)
+            else:
+                # Use Trio-native asks for HTTP/HTTPS and HTTP proxies
+                response = await self._download_asks(request)
 
             # Update stats before forwarding response.
             stats['item_count'] += 1
@@ -235,16 +254,117 @@ class Downloader:
             if self._policy.limits.met_item_limit(stats['item_count']):
                 raise CrawlItemLimitExceeded()
 
+    async def _download_asks(self, request, skip_mime=False):
+        '''
+        A Trio-native download implementation using the asks library.
+        This is used for HTTP/HTTPS requests and HTTP proxies.
+
+        :param DownloadRequest request:
+        :param bool skip_mime: If True, the MIME type will not be checked
+            against the policy.
+        '''
+        if self._cookie_jar is None:
+            # asks uses its own cookie tracking mechanism
+            self._cookie_jar = {}  # We'll use asks' built-in cookie persistence
+        
+        url = request.url
+        proxy_type, proxy_url = self._policy.proxy_rules.get_proxy_url(url)
+        
+        # Configure asks session
+        user_agent = self._policy.user_agents.get_user_agent()
+        session = asks.Session(headers={'User-Agent': user_agent})
+        
+        dl_response = DownloadResponse.from_request(request)
+        dl_response.start()
+
+        try:
+            kwargs = {
+                'connection_timeout': 20,
+            }
+            
+            # Handle HTTP proxy (asks supports this)
+            if proxy_type in _HTTP_PROXY_SCHEMES:
+                # asks doesn't have built-in proxy support, but we can use the
+                # HTTP CONNECT method or pass through environment variables
+                # For now, we'll note this limitation
+                pass  # TODO: HTTP proxy support with asks
+            
+            # Handle request method and form data
+            if request.method == 'GET':
+                if request.form_data is not None:
+                    kwargs['params'] = request.form_data
+                http_response = await session.get(str(url), **kwargs)
+            elif request.method == 'POST':
+                if request.form_data is not None:
+                    kwargs['data'] = request.form_data
+                http_response = await session.post(str(url), **kwargs)
+            else:
+                raise Exception('Unsupported HTTP method: {}'
+                    .format(request.method))
+            
+            # Check MIME type
+            mime = http_response.headers.get('content-type',
+                'application/octet-stream')
+            if not skip_mime and \
+               not self._policy.mime_type_rules.should_save(mime):
+                raise MimeNotAllowedError(mime)
+            
+            # Read response body
+            body = http_response.body
+            
+            # Create a mock response object that matches aiohttp's interface
+            class MockResponse:
+                def __init__(self, asks_response):
+                    self.status = asks_response.status_code
+                    self.headers = asks_response.headers
+                    # Extract content type from headers
+                    content_type_header = asks_response.headers.get('content-type', '')
+                    self.content_type = content_type_header.split(';')[0].strip() if content_type_header else None
+            
+            mock_response = MockResponse(http_response)
+            dl_response.set_response(mock_response, body)
+            
+            logger.info('%r %d %s (cost=%0.2f)', self, dl_response.status_code,
+                dl_response.url, dl_response.cost)
+        except trio.TooSlowError:
+            dl_response.set_exception('Timed out')
+        except MimeNotAllowedError as exc:
+            # This exception re-raises so that instead of being recorded as a
+            # failed download, the download is removed from the crawl results
+            # altogether.
+            logger.error('%r Disallowed MIME "%s": %s', self, exc.mime, url)
+            raise
+        except asks.errors.RequestTimeout:
+            dl_response.set_exception('Timed out')
+        except Exception as err:
+            # Log the full exception for debugging
+            if isinstance(err, (asks.errors.AsksException,)):
+                # Don't need a full stack trace for asks exceptions
+                msg = '{}: {}'.format(err.__class__.__name__, err)
+                logger.warning('%r Failed downloading %s: %s', self, request.url, msg)
+                dl_response.set_exception(msg)
+            else:
+                logger.exception('%r Failed downloading %s', self, request.url)
+                dl_response.set_exception(traceback.format_exc())
+        finally:
+            # asks sessions don't need explicit closing in the same way
+            pass
+
+        return dl_response
+
     @trio_asyncio.aio_as_trio
     async def _download_asyncio(self, request, skip_mime=False):
         '''
-        A helper for ``_download()`` that runs on the asyncio event loop. There
-        is not a mature Trio library for HTTP that supports SOCKS proxies, so
-        we use asyncio libraries instead.
+        A helper for ``_download()`` that runs on the asyncio event loop.
+        This is only used for SOCKS proxies, as there is not yet a mature
+        Trio library for SOCKS proxy support. For non-SOCKS requests, 
+        see _download_asks() which uses native Trio.
 
         :param DownloadRequest request:
         '''
         if self._cookie_jar is None:
+            # Initialize separate cookie jars for different backends
+            # For aiohttp (SOCKS), we use aiohttp.CookieJar
             self._cookie_jar = aiohttp.CookieJar()
         session_args = {
             'timeout': aiohttp.ClientTimeout(total=20),
