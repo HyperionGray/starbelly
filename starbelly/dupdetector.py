@@ -6,7 +6,12 @@ content based on URL patterns and content similarity.
 """
 import logging
 from bs4 import BeautifulSoup
-import cchardet
+try:
+    import cchardet
+    chardet = lambda s: cchardet.detect(s).get('encoding')
+except ImportError:
+    import chardet as chardet_module
+    chardet = lambda s: chardet_module.detect(s).get('encoding')
 import mimeparse
 import w3lib.encoding
 
@@ -18,7 +23,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-chardet = lambda s: cchardet.detect(s).get('encoding')
 
 
 class DuplicateDetector:
