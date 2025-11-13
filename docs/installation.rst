@@ -15,15 +15,46 @@ the instructions for your platform.
 Next, install `Docker Compose <https://docs.docker.com/compose/install/>`__
 using the instructions for your platform.
 
-Docker Compose
---------------
+Building from Source
+--------------------
 
-Docker Compose is used to set up and run multiple Docker containers together.
-You should have installed Docker Compose in the previous step. Now you need a
-Docker Compose configuration file (usually called ``docker-compose.yml``) that
-specifies what containers need to be created and how they should be configured.
-A sample docker-compose.yml configuration file is available for Starbelly, but
-you may need to tailor this file to your unique environment.
+The Starbelly repository includes a Dockerfile and docker-compose configuration
+that properly handles container initialization and signal handling. This is the
+recommended approach for production deployments.
+
+Clone the Starbelly repository:
+
+.. code::
+
+    $ git clone https://github.com/HyperionGray/starbelly.git
+    $ cd starbelly
+
+Build and start the containers:
+
+.. code::
+
+    $ docker-compose -f docker-compose.prod.yml up -d
+
+This will build the Docker images with proper init process handling, create the
+corresponding containers, and start the entire application. The Dockerfile uses
+``dumb-init`` as PID 1 to ensure that the containers respond properly to shutdown
+signals (SIGTERM, SIGINT) and don't hang when stopping.
+
+Once the application has started, open up a browser and try navigating to
+``http://localhost:8000`` to access the Starbelly server directly, or configure
+the nginx web server for production use.
+
+You should see the application responding to requests.
+
+If you experience any problems, try using the command ``docker-compose logs``
+to view logging output from the Docker containers.
+
+Using Pre-built Images
+----------------------
+
+Alternatively, you can use pre-built Docker images if available. A sample
+docker-compose.yml configuration file is available in the
+`starbelly-docker repository <https://github.com/HyperionGray/starbelly-docker>`__.
 
 Download this `zip file
 <https://github.com/HyperionGray/starbelly-docker/archive/master.zip>`__
@@ -36,17 +67,16 @@ git@github.com:HyperionGray/starbelly-docker.git`` instead.) From the
     $ docker-compose up -d
 
 This will download the required Docker images, create the corresponding
-containers, and then start the entire application on ports 80 and 443. Once
-the application has started, open up a browser and try navigating to the host
-where you are running Starbelly. The default username and password is "admin".
+containers, and then start the entire application on ports 80 and 443.
 
-You should see the Dashboard:
+.. note::
 
-.. image:: dashboard.png
-   :alt: screenshot of dashboard
-
-If you experience any problems, try using the command ``docker-compose logs``
-to view logging output from the Docker containers.
+   If you are building your own Docker images for Starbelly, it is important to
+   use an init process like ``dumb-init`` or ``tini`` as PID 1 in your containers.
+   This ensures that signals are properly forwarded to child processes and that
+   zombie processes are reaped. Without an init process, containers may hang when
+   you attempt to stop them. The Dockerfile in this repository demonstrates the
+   correct configuration.
 
 Security
 --------

@@ -1,0 +1,52 @@
+# Production Docker Compose configuration for Starbelly
+# This configuration uses dumb-init to ensure proper signal handling
+
+version: '3'
+
+volumes:
+  db_data: {}
+
+services:
+  db:
+    image: rethinkdb:2.4
+    container_name: starbelly-db
+    ports:
+      - "28015:28015"  # RethinkDB client driver port
+      - "8080:8080"    # RethinkDB admin interface
+    volumes:
+      - db_data:/data
+    # RethinkDB image already includes proper init handling
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: starbelly-app
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"  # Starbelly application port
+    environment:
+      # These can be overridden via .env file
+      - STARBELLY_LOG_LEVEL=info
+    volumes:
+      # Mount configuration directory
+      - ./conf:/starbelly/conf
+    # The container uses dumb-init as PID 1 for proper signal handling
+    restart: unless-stopped
+
+  web:
+    image: nginx:1.15
+    container_name: starbelly-web
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Mount your TLS certificates here
+      # - ./certs/server.crt:/etc/nginx/tls/server.crt:ro
+      # - ./certs/server.key:/etc/nginx/tls/server.key:ro
+    restart: unless-stopped
