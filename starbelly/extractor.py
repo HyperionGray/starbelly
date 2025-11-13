@@ -79,7 +79,7 @@ class CrawlExtractor:
         :param starbelly.downloader.DownloadReponse:
         '''
         logger.debug('%r Extracting links from %s', self, response.url)
-        extracted_urls = await trio.run_sync_in_worker_thread(
+        extracted_urls = await trio.to_thread.run_sync(
             extract_urls, response)
         insert_items = list()
 
