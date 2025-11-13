@@ -151,6 +151,28 @@ class Connection:
         self._stats_tracker = stats_tracker
         self._subscription_manager = None
 
+    async def _heartbeat(self):
+        '''
+        Send periodic pings to keep the connection alive.
+
+        This function sends a ping every 30 seconds and waits up to 10 seconds
+        for a pong response. If the timeout is exceeded or the connection is
+        closed, the function exits and the connection will be cleaned up.
+
+        :returns: This runs until the connection is closed or cancelled.
+        '''
+        try:
+            while True:
+                with trio.fail_after(10):
+                    await self._ws.ping()
+                await trio.sleep(30)
+        except trio.TooSlowError:
+            logger.warning('Heartbeat timeout for %s', self._client)
+            raise
+        except ConnectionClosed:
+            logger.debug('Heartbeat stopped: connection closed for %s',
+                self._client)
+
     async def run(self):
         '''
         Run the connection: read requests and send responses.
@@ -165,6 +187,7 @@ class Connection:
                 self._nursery = nursery
                 self._subscription_manager = SubscriptionManager(
                     self._subscription_db, nursery, self._ws)
+                nursery.start_soon(self._heartbeat, name='Heartbeat')
                 while True:
                     request_data = await self._ws.get_message()
                     nursery.start_soon(self._handle_request, request_data,
