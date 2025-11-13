@@ -7,14 +7,37 @@ from . import api_handler
 
 @api_handler
 async def subscribe_job_sync(command, crawl_manager, response,
-        subscription_manager):
-    ''' Handle the subscribe crawl items command. '''
-    job_id = str(UUID(bytes=command.job_id))
+        subscription_manager, server_db):
+    ''' 
+    Handle the subscribe crawl items command.
+    
+    Supports three subscription modes via the job_id parameter:
+    1. Single job: Pass a 16-byte UUID 
+    2. Tag subscription: Pass b"tag:" + tag_name (UTF-8 encoded)
+    3. Schedule subscription: Pass b"schedule:" + schedule_id (16-byte UUID)
+    '''
+    job_id_bytes = command.job_id
     compression_ok = command.compression_ok
     job_state_recv = crawl_manager.get_job_state_channel()
     sync_token = command.sync_token if command.HasField('sync_token') else None
-    sub_id = subscription_manager.subscribe_job_sync(job_id, compression_ok,
-        job_state_recv, sync_token)
+    
+    # Detect subscription type based on job_id content
+    if job_id_bytes.startswith(b'tag:'):
+        # Tag-based subscription
+        tag = job_id_bytes[4:].decode('utf-8')
+        sub_id = subscription_manager.subscribe_job_sync_by_tag(
+            tag, compression_ok, job_state_recv, server_db, sync_token)
+    elif job_id_bytes.startswith(b'schedule:'):
+        # Schedule-based subscription  
+        schedule_id = str(UUID(bytes=job_id_bytes[9:9+16]))
+        sub_id = subscription_manager.subscribe_job_sync_by_schedule(
+            schedule_id, compression_ok, job_state_recv, server_db, sync_token)
+    else:
+        # Single job subscription (original behavior)
+        job_id = str(UUID(bytes=job_id_bytes))
+        sub_id = subscription_manager.subscribe_job_sync(job_id, compression_ok,
+            job_state_recv, sync_token)
+    
     response.new_subscription.subscription_id = sub_id
 
 

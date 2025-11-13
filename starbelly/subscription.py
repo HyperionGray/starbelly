@@ -159,6 +159,66 @@ class SubscriptionManager:
         self._nursery.start_soon(sub.run, name="Task Monitor Subscription")
         return sub_id
 
+    def subscribe_job_sync_by_tag(self, tag, compression_ok, job_state_recv, 
+                                    server_db, sync_token):
+        """
+        Subscribe to crawl job sync for all jobs with a specific tag.
+
+        :param str tag: The tag to filter jobs by.
+        :param bool compression_ok:
+        :param trio.ReceiveChannel job_state_recv:
+        :param server_db: Database access layer.
+        :param sync_token:
+        :type sync_token: bytes or None
+        :returns: A subscription ID.
+        :rtype: int
+        """
+        logger.debug("subscribe_job_sync_by_tag tag=%s", tag)
+        sub_id = next(self._subscription_id)
+        sub = TagSyncSubscription(
+            id_=sub_id,
+            tag=tag,
+            subscription_db=self._subscription_db,
+            server_db=server_db,
+            websocket=self._websocket,
+            compression_ok=compression_ok,
+            job_state_recv=job_state_recv,
+            sync_token=sync_token,
+        )
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub.run, name=f"Tag Sync Subscription ({tag})")
+        return sub_id
+
+    def subscribe_job_sync_by_schedule(self, schedule_id, compression_ok,
+                                        job_state_recv, server_db, sync_token):
+        """
+        Subscribe to crawl job sync for all jobs from a specific schedule.
+
+        :param str schedule_id: The schedule ID to filter jobs by.
+        :param bool compression_ok:
+        :param trio.ReceiveChannel job_state_recv:
+        :param server_db: Database access layer.
+        :param sync_token:
+        :type sync_token: bytes or None
+        :returns: A subscription ID.
+        :rtype: int
+        """
+        logger.debug("subscribe_job_sync_by_schedule schedule_id=%s", schedule_id)
+        sub_id = next(self._subscription_id)
+        sub = ScheduleSyncSubscription(
+            id_=sub_id,
+            schedule_id=schedule_id,
+            subscription_db=self._subscription_db,
+            server_db=server_db,
+            websocket=self._websocket,
+            compression_ok=compression_ok,
+            job_state_recv=job_state_recv,
+            sync_token=sync_token,
+        )
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub.run, name=f"Schedule Sync Subscription ({schedule_id[:8]})")
+        return sub_id
+
 
 class JobSyncSubscription:
     """
@@ -620,3 +680,279 @@ class TaskMonitorSubscription:
                     nodes.append((trio_child_task, pb_child_task))
 
         return message
+
+
+class TagSyncSubscription:
+    """
+    A subscription stream that allows a client to sync items from all crawl jobs
+    that have a specific tag.
+
+    This subscription monitors job state events and automatically adds/removes
+    jobs as they are created or completed.
+    """
+
+    def __init__(
+        self,
+        id_,
+        websocket,
+        tag,
+        subscription_db,
+        server_db,
+        compression_ok,
+        job_state_recv,
+        sync_token=None,
+    ):
+        """
+        Constructor.
+
+        :param int id_: An identifier for this subscription.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
+        :param str tag: The tag to filter jobs by.
+        :param subscription_db: A subscription database layer.
+        :param server_db: A server database layer.
+        :param bool compression_ok: If true, response bodies are gzipped.
+        :param trio.ReceiveChannel job_state_recv: A channel that will receive
+            updates to job status.
+        :param bytes sync_token: If provided, indicates that the sync should be
+            restarted from the point represented by this token.
+        """
+        self._id = id_
+        self._db = subscription_db
+        self._server_db = server_db
+        self._websocket = websocket
+        self._tag = tag
+        self._compression_ok = compression_ok
+        self._job_state_recv = job_state_recv
+        self._cancel_scope = None
+        self._job_subscriptions = {}  # job_id -> JobSyncSubscription
+
+    def __repr__(self):
+        """ For debugging purposes. """
+        return f"<TagSyncSubscription id={self._id} tag={self._tag}>"
+
+    @property
+    def id_(self):
+        """
+        Get this subscription's ID.
+
+        :rtype: int
+        """
+        return self._id
+
+    def cancel(self):
+        """ Cancel the subscription. """
+        if self._cancel_scope:
+            self._cancel_scope.cancel()
+        else:
+            raise Exception("Tried to cancel subscription that isn't running.")
+
+    async def run(self):
+        """
+        Run the subscription.
+
+        :returns: This function returns when the subscription is cancelled.
+        """
+        logger.info("%r Starting", self)
+        try:
+            async with trio.open_nursery() as nursery:
+                self._cancel_scope = nursery.cancel_scope
+                # Get existing jobs with this tag
+                await self._initialize_jobs(nursery)
+                # Monitor for new/completed jobs
+                nursery.start_soon(self._monitor_jobs, nursery)
+        except (trio.BrokenResourceError, trio.ClosedResourceError):
+            logger.info("%r Aborted", self)
+        except Exception as e:
+            logger.exception("%r Exception: %s", self, e)
+        finally:
+            logger.info("%r Finished", self)
+
+    async def _initialize_jobs(self, nursery):
+        """
+        Find existing jobs with the tag and create subscriptions for them.
+        """
+        job_ids = await self._server_db.get_job_ids_by_tag(self._tag)
+        logger.debug("%r Found %d existing jobs", self, len(job_ids))
+        for job_id in job_ids:
+            await self._add_job_subscription(job_id, nursery)
+
+    async def _monitor_jobs(self, nursery):
+        """
+        Monitor job state events and add/remove job subscriptions as needed.
+        """
+        async for job_state in self._job_state_recv:
+            job_id = job_state.job_id
+            run_state = job_state.run_state
+
+            # Check if job has our tag
+            has_tag = await self._server_db.job_has_tag(job_id, self._tag)
+            
+            if has_tag and job_id not in self._job_subscriptions:
+                # New job with our tag - add subscription
+                logger.debug("%r Adding job %s", self, job_id[:8])
+                await self._add_job_subscription(job_id, nursery)
+            elif job_id in self._job_subscriptions and run_state in FINISHED_STATES:
+                # Job finished - remove subscription
+                logger.debug("%r Removing job %s", self, job_id[:8])
+                self._job_subscriptions[job_id].cancel()
+                del self._job_subscriptions[job_id]
+
+    async def _add_job_subscription(self, job_id, nursery):
+        """
+        Create a job sync subscription for a specific job.
+        """
+        if job_id in self._job_subscriptions:
+            return
+
+        # Create a new channel for this job to receive state events
+        job_send, job_recv = trio.open_memory_channel(0)
+        
+        sub = JobSyncSubscription(
+            id_=self._id,  # Use same subscription ID
+            job_id=job_id,
+            subscription_db=self._db,
+            websocket=self._websocket,
+            compression_ok=self._compression_ok,
+            job_state_recv=job_recv,
+            sync_token=None,
+        )
+        self._job_subscriptions[job_id] = sub
+        nursery.start_soon(sub.run, name=f"Job Sync {job_id[:8]}")
+
+
+class ScheduleSyncSubscription:
+    """
+    A subscription stream that allows a client to sync items from all crawl jobs
+    that belong to a specific schedule.
+
+    This subscription monitors job state events and automatically adds/removes
+    jobs as they are created or completed.
+    """
+
+    def __init__(
+        self,
+        id_,
+        websocket,
+        schedule_id,
+        subscription_db,
+        server_db,
+        compression_ok,
+        job_state_recv,
+        sync_token=None,
+    ):
+        """
+        Constructor.
+
+        :param int id_: An identifier for this subscription.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
+        :param str schedule_id: The schedule ID to filter jobs by.
+        :param subscription_db: A subscription database layer.
+        :param server_db: A server database layer.
+        :param bool compression_ok: If true, response bodies are gzipped.
+        :param trio.ReceiveChannel job_state_recv: A channel that will receive
+            updates to job status.
+        :param bytes sync_token: If provided, indicates that the sync should be
+            restarted from the point represented by this token.
+        """
+        self._id = id_
+        self._db = subscription_db
+        self._server_db = server_db
+        self._websocket = websocket
+        self._schedule_id = schedule_id
+        self._compression_ok = compression_ok
+        self._job_state_recv = job_state_recv
+        self._cancel_scope = None
+        self._job_subscriptions = {}  # job_id -> JobSyncSubscription
+
+    def __repr__(self):
+        """ For debugging purposes. """
+        return f"<ScheduleSyncSubscription id={self._id} schedule_id={self._schedule_id[:8]}>"
+
+    @property
+    def id_(self):
+        """
+        Get this subscription's ID.
+
+        :rtype: int
+        """
+        return self._id
+
+    def cancel(self):
+        """ Cancel the subscription. """
+        if self._cancel_scope:
+            self._cancel_scope.cancel()
+        else:
+            raise Exception("Tried to cancel subscription that isn't running.")
+
+    async def run(self):
+        """
+        Run the subscription.
+
+        :returns: This function returns when the subscription is cancelled.
+        """
+        logger.info("%r Starting", self)
+        try:
+            async with trio.open_nursery() as nursery:
+                self._cancel_scope = nursery.cancel_scope
+                # Get existing jobs from this schedule
+                await self._initialize_jobs(nursery)
+                # Monitor for new/completed jobs
+                nursery.start_soon(self._monitor_jobs, nursery)
+        except (trio.BrokenResourceError, trio.ClosedResourceError):
+            logger.info("%r Aborted", self)
+        except Exception as e:
+            logger.exception("%r Exception: %s", self, e)
+        finally:
+            logger.info("%r Finished", self)
+
+    async def _initialize_jobs(self, nursery):
+        """
+        Find existing jobs from the schedule and create subscriptions for them.
+        """
+        job_ids = await self._server_db.get_job_ids_by_schedule(self._schedule_id)
+        logger.debug("%r Found %d existing jobs", self, len(job_ids))
+        for job_id in job_ids:
+            await self._add_job_subscription(job_id, nursery)
+
+    async def _monitor_jobs(self, nursery):
+        """
+        Monitor job state events and add/remove job subscriptions as needed.
+        """
+        async for job_state in self._job_state_recv:
+            job_id = job_state.job_id
+            run_state = job_state.run_state
+            schedule_id = job_state.schedule_id
+
+            if schedule_id == self._schedule_id and job_id not in self._job_subscriptions:
+                # New job from our schedule - add subscription
+                logger.debug("%r Adding job %s", self, job_id[:8])
+                await self._add_job_subscription(job_id, nursery)
+            elif job_id in self._job_subscriptions and run_state in FINISHED_STATES:
+                # Job finished - remove subscription
+                logger.debug("%r Removing job %s", self, job_id[:8])
+                self._job_subscriptions[job_id].cancel()
+                del self._job_subscriptions[job_id]
+
+    async def _add_job_subscription(self, job_id, nursery):
+        """
+        Create a job sync subscription for a specific job.
+        """
+        if job_id in self._job_subscriptions:
+            return
+
+        # Create a new channel for this job to receive state events
+        job_send, job_recv = trio.open_memory_channel(0)
+        
+        sub = JobSyncSubscription(
+            id_=self._id,  # Use same subscription ID
+            job_id=job_id,
+            subscription_db=self._db,
+            websocket=self._websocket,
+            compression_ok=self._compression_ok,
+            job_state_recv=job_recv,
+            sync_token=None,
+        )
+        self._job_subscriptions[job_id] = sub
+        nursery.start_soon(sub.run, name=f"Job Sync {job_id[:8]}")
