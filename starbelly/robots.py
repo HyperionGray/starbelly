@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from datetime import datetime, timezone
 import logging
+import xml.etree.ElementTree as ET
 
 from robotexclusionrulesparser import RobotExclusionRulesParser
 from rethinkdb import RethinkDB
@@ -84,6 +85,53 @@ class RobotsTxtManager:
         if policy.robots_txt.usage == 'OBEY':
             return robots_decision
         return not robots_decision
+
+    async def get_sitemap_urls(self, url, policy, downloader):
+        '''
+        Get sitemap URLs from the applicable robots.txt file.
+
+        This fetches the applicable robots.txt if we don't have a recent copy
+        of it cached in memory or in the database. The ``policy`` is used if a
+        robots.txt file needs to be fetched from the network.
+
+        :param str url: Use this URL to determine which robots.txt to check.
+        :param Policy policy:
+        :param Downloader downloader:
+        :returns: A list of sitemap URLs (may be empty).
+        :rtype: list[str]
+        '''
+        if not policy.robots_txt.use_sitemap:
+            return []
+
+        robots_url = str(URL(url).with_path('robots.txt')
+                                 .with_query(None)
+                                 .with_fragment(None))
+
+        # Check if cache has a current copy of robots.txt.
+        try:
+            robots = self._cache[robots_url]
+            if robots.is_older_than(self._max_age):
+                del self._cache[robots_url]
+                robots = None
+            else:
+                self._cache.move_to_end(robots_url)
+        except KeyError:
+            robots = None
+
+        # Do we need to fetch robots into cache?
+        if robots is None:
+            try:
+                # If another task is fetching it, then just wait for that task.
+                await self._events[robots_url].wait()
+                robots = self._cache[robots_url]
+            except KeyError:
+                # Create a new task to fetch it.
+                self._events[robots_url] = trio.Event()
+                robots = await self._get_robots(robots_url, downloader)
+                event = self._events.pop(robots_url)
+                event.set()
+
+        return robots.get_sitemaps()
 
     async def _get_robots(self, robots_url, downloader):
         '''
@@ -202,6 +250,76 @@ class RobotsTxtManager:
                  .run(conn)
             )
 
+    async def get_sitemap_contents(self, sitemap_url, downloader):
+        '''
+        Fetch and parse a sitemap XML file, returning all URLs.
+
+        This handles both regular sitemaps and sitemap index files.
+        For sitemap index files, it recursively fetches and parses
+        all referenced sitemaps.
+
+        :param str sitemap_url: The URL of the sitemap to fetch.
+        :param Downloader downloader:
+        :returns: A list of URLs found in the sitemap(s).
+        :rtype: list[str]
+        '''
+        logger.info('Fetching sitemap: %s', sitemap_url)
+        request = DownloadRequest(frontier_id=None, job_id=None, method='GET',
+            url=sitemap_url, form_data=None, cost=0)
+        response = await downloader.download(request, skip_mime=True)
+
+        if response.status_code != 200 or response.body is None:
+            logger.warning('Failed to fetch sitemap %s: status=%s',
+                sitemap_url, response.status_code)
+            return []
+
+        try:
+            return await trio.run_sync_in_worker_thread(
+                self._parse_sitemap_xml, response.body)
+        except Exception as e:
+            logger.exception('Failed to parse sitemap %s: %s', sitemap_url, e)
+            return []
+
+    def _parse_sitemap_xml(self, xml_content):
+        '''
+        Parse a sitemap XML file and extract URLs.
+
+        Handles both regular sitemaps (<urlset>) and sitemap index files
+        (<sitemapindex>).
+
+        :param bytes xml_content: The XML content to parse.
+        :returns: A list of URLs.
+        :rtype: list[str]
+        '''
+        try:
+            root = ET.fromstring(xml_content)
+        except ET.ParseError as e:
+            logger.warning('Failed to parse sitemap XML: %s', e)
+            return []
+
+        # Define the sitemap namespace
+        ns = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+
+        # Check if this is a sitemap index or a regular sitemap
+        if root.tag.endswith('sitemapindex'):
+            # This is a sitemap index, extract sitemap URLs
+            # Note: We return sitemap URLs here, and the caller should
+            # fetch them separately to avoid deep recursion
+            sitemap_urls = [elem.text for elem in root.findall('.//sm:loc', ns)
+                           if elem.text]
+            logger.debug('Found %d sitemap URLs in sitemap index',
+                len(sitemap_urls))
+            return sitemap_urls
+        elif root.tag.endswith('urlset'):
+            # This is a regular sitemap, extract page URLs
+            urls = [elem.text for elem in root.findall('.//sm:loc', ns)
+                   if elem.text]
+            logger.debug('Found %d URLs in sitemap', len(urls))
+            return urls
+        else:
+            logger.warning('Unknown sitemap root element: %s', root.tag)
+            return []
+
 
 class RobotsTxt:
     '''
@@ -229,6 +347,15 @@ class RobotsTxt:
         :rtype: bool
         '''
         return self._robots.is_allowed(user_agent, url)
+
+    def get_sitemaps(self):
+        '''
+        Return a list of sitemap URLs from this robots.txt file.
+
+        :returns: A list of sitemap URLs (may be empty).
+        :rtype: list[str]
+        '''
+        return self._robots.sitemaps
 
     def is_older_than(self, age):
         '''
