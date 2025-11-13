@@ -1011,6 +1011,38 @@ class ServerDb:
 
         return count, items
 
+    async def get_job_item(self, sequence):
+        '''
+        Get a single crawled item by its sequence number.
+
+        :param int sequence: The sequence number of the item to retrieve.
+        :returns: A database document or None if not found.
+        :rtype: dict or None
+        '''
+        def get_body(item):
+            return {
+                'join': r.branch(
+                    item.has_fields('body_id'),
+                    r.table('response_body').get(item['body_id']),
+                    None
+                )
+            }
+
+        query = (
+            r.table('response')
+             .get(sequence)
+             .merge(get_body)
+             .without('body_id')
+        )
+
+        async with self._db_pool.connection() as conn:
+            try:
+                item = await query.run(conn)
+            except ReqlNonExistenceError:
+                item = None
+
+        return item
+
     async def list_jobs(self, limit, offset, started_after=None, tag=None,
             schedule_id=None):
         '''
