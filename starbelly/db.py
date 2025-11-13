@@ -233,22 +233,27 @@ class CrawlManagerDb:
         return job_id
 
 
-    async def finish_job(self, job_id, run_state, completed_at):
+    async def finish_job(self, job_id, run_state, completed_at, failure_reason=None):
         '''
-        Set a job as finished, i.e. either cancelled or completed.
+        Set a job as finished, i.e. either cancelled, completed, or failed.
 
         :param str job_id: The ID of the job to finish.
         :param starbelly.job.RunState run_state:
         :param datetime completed_at: The datetime that the job was completed.
+        :param str failure_reason: Optional reason for failure if job failed.
         '''
+        update_doc = {
+            'run_state': run_state,
+            'completed_at': completed_at,
+            'duration': completed_at - r.row['started_at'],
+        }
+        if failure_reason is not None:
+            update_doc['failure_reason'] = failure_reason
+        
         job_query = (
             r.table('job')
              .get(job_id)
-             .update({
-                'run_state': run_state,
-                'completed_at': completed_at,
-                'duration': completed_at - r.row['started_at'],
-             })
+             .update(update_doc)
         )
         async with self._db_pool.connection() as conn:
             await job_query.run(conn)

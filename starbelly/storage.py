@@ -31,7 +31,7 @@ def should_compress_body(response):
 class CrawlStorage:
     ''' This class stores crawl items in the database. '''
     def __init__(self, job_id, db, send_channel, receive_channel, policy,
-        sequence):
+        sequence, error_tracker=None):
         '''
         Constructor
 
@@ -41,6 +41,8 @@ class CrawlStorage:
             responses to save.
         :param sequence: An iterator that returns a sequence number for each
             item to be saved.
+        :param error_tracker: Optional callback to track response errors for
+            error rate calculation.
         '''
         self._job_id = job_id
         self._db = db
@@ -48,6 +50,7 @@ class CrawlStorage:
         self._receive_channel = receive_channel
         self._policy = policy
         self._sequence = sequence
+        self._error_tracker = error_tracker
 
     def __repr__(self):
         ''' Put job ID in repr. '''
@@ -62,6 +65,8 @@ class CrawlStorage:
         async for response in self._receive_channel:
             await self._save_response(response)
             await self._db.update_job_stats(self._job_id, response)
+            if self._error_tracker:
+                self._error_tracker(response)
             await self._send_channel.send(response)
 
     async def _save_response(self, response):

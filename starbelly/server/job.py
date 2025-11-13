@@ -44,6 +44,8 @@ async def get_job(command, response, server_db):
     job.started_at = job_doc["started_at"].isoformat()
     if job_doc["completed_at"] is not None:
         job.completed_at = job_doc["completed_at"].isoformat()
+    if job_doc.get("failure_reason") is not None:
+        job.failure_reason = job_doc["failure_reason"]
     run_state = job_doc["run_state"].upper()
     job.run_state = PbRunState.Value(run_state)
     http_status_counts = job_doc["http_status_counts"]
@@ -135,6 +137,8 @@ async def list_jobs(command, response, server_db):
         job.started_at = job_doc["started_at"].isoformat()
         if job_doc["completed_at"] is not None:
             job.completed_at = job_doc["completed_at"].isoformat()
+        if job_doc.get("failure_reason") is not None:
+            job.failure_reason = job_doc["failure_reason"]
         run_state = job_doc["run_state"].upper()
         job.run_state = PbRunState.Value(run_state)
         http_status_counts = job_doc["http_status_counts"]

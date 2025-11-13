@@ -12,6 +12,7 @@ import w3lib.encoding
 from yarl import URL
 
 from .downloader import DownloadRequest
+from .job import CrawlFailedException
 
 
 logger = logging.getLogger(__name__)

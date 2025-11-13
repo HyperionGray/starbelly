@@ -224,6 +224,10 @@ class PolicyLimits:
             pb.max_duration = doc['max_duration']
         if doc.get('max_items') is not None:
             pb.max_items = doc['max_items']
+        if doc.get('max_error_rate') is not None:
+            pb.max_error_rate = doc['max_error_rate']
+        if doc.get('error_rate_window') is not None:
+            pb.error_rate_window = doc['error_rate_window']
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
@@ -239,6 +243,8 @@ class PolicyLimits:
         doc['max_duration'] = pb.max_duration if pb.HasField('max_duration') \
             else None
         doc['max_items'] = pb.max_items if pb.HasField('max_items') else None
+        doc['max_error_rate'] = pb.max_error_rate if pb.HasField('max_error_rate') else None
+        doc['error_rate_window'] = pb.error_rate_window if pb.HasField('error_rate_window') else None
 
     def __init__(self, doc):
         '''
@@ -249,10 +255,16 @@ class PolicyLimits:
         self._max_cost = doc.get('max_cost')
         self._max_duration = doc.get('max_duration')
         self._max_items = doc.get('max_items')
+        self._max_error_rate = doc.get('max_error_rate')
+        self._error_rate_window = doc.get('error_rate_window', 100)
         if self._max_duration is not None and self._max_duration < 0:
             _invalid('Max duration must be ≥0')
         if self._max_items is not None and self._max_items < 0:
             _invalid('Max items must be ≥0')
+        if self._max_error_rate is not None and (self._max_error_rate < 0 or self._max_error_rate > 100):
+            _invalid('Max error rate must be between 0 and 100')
+        if self._error_rate_window is not None and self._error_rate_window < 1:
+            _invalid('Error rate window must be ≥1')
 
     @property
     def max_duration(self):
@@ -262,6 +274,24 @@ class PolicyLimits:
         :rtype: float or None
         '''
         return self._max_duration
+
+    @property
+    def max_error_rate(self):
+        '''
+        The maximum error rate (percentage) allowed over the error rate window.
+
+        :rtype: float or None
+        '''
+        return self._max_error_rate
+
+    @property
+    def error_rate_window(self):
+        '''
+        The number of recent items to consider for error rate calculation.
+
+        :rtype: int
+        '''
+        return self._error_rate_window
 
     def met_item_limit(self, items):
         '''

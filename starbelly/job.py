@@ -25,6 +25,13 @@ class CrawlDurationExceeded(Exception):
     ''' The crawl duration limit has been exceeded. '''
 
 
+class CrawlFailedException(Exception):
+    ''' The crawl has failed due to specific criteria. '''
+    def __init__(self, reason):
+        self.reason = reason
+        super().__init__(reason)
+
+
 class RunState:
     '''
     Lists the allowable run states for a job.
@@ -37,9 +44,10 @@ class RunState:
     RUNNING = 'running'
     CANCELLED = 'cancelled'
     COMPLETED = 'completed'
+    FAILED = 'failed'
 
 
-FINISHED_STATES = RunState.COMPLETED, RunState.CANCELLED
+FINISHED_STATES = RunState.COMPLETED, RunState.CANCELLED, RunState.FAILED
 
 
 @dataclass
@@ -300,6 +308,7 @@ class CrawlManager:
             'http_error_count': 0,
             'exception_count': 0,
             'http_status_counts': {},
+            'failure_reason': None,
         }
 
         if schedule_id is not None:
@@ -365,16 +374,24 @@ class CrawlManager:
         login_manager = LoginManager(job_id, self._login_db, policy, downloader)
         frontier = CrawlFrontier(job_id, self._frontier_db, frontier_send,
             login_manager, policy, stats_dict)
+        
+        # Create the job instance first so we can pass its track_response method
+        job = CrawlJob(job_doc['name'], job_id, job_doc.get('schedule_id'),
+            policy, frontier, downloader, None, None, None)
+        
         storage = CrawlStorage(job_id, self._storage_db, storage_send,
-            storage_recv, policy, self._sequence)
+            storage_recv, policy, self._sequence, job.track_response)
         extractor = CrawlExtractor(job_id, self._extractor_db, extractor_send,
             extractor_recv, policy, downloader, self._robots_txt_manager,
             old_urls, stats_dict)
         terminator = PipelineTerminator(pipeline_end)
+        
+        # Set the remaining components on the job
+        job._storage = storage
+        job._extractor = extractor
+        job._terminator = terminator
 
-        # Now we can create a job instance.
-        return CrawlJob(job_doc['name'], job_id, job_doc.get('schedule_id'),
-            policy, frontier, downloader, storage, extractor, terminator)
+        return job
 
     async def _run_job(self, job):
         '''
@@ -399,6 +416,24 @@ class CrawlManager:
             logger.info('<CrawlManager> job_id=%s finished %r', job.id[:8],
                 exc)
             job_completed = True
+        except CrawlFailedException as exc:
+            logger.warning('<CrawlManager> job_id=%s failed: %s', job.id[:8],
+                exc.reason)
+            # When job fails, update database and cleanup local state:
+            del self._jobs[job.id]
+            await self._rate_limiter.remove_job(job.id)
+            completed_at = datetime.now(timezone.utc)
+            run_state = RunState.FAILED
+            await self._db.finish_job(job.id, run_state, completed_at,
+                failure_reason=exc.reason)
+            await self._db.clear_frontier(job.id)
+            self._stats_tracker.set_run_state(job.id, run_state)
+            self._stats_tracker.complete_job(job.id, completed_at)
+            event = JobStateEvent(job.id, job.schedule_id, run_state,
+                completed_at)
+            self._send_job_state_event(event)
+            logger.info('%r Failed job id=%s', self, job.id[:8])
+            return
 
         # When job finishes, update database and cleanup local state:
         del self._jobs[job.id]
@@ -477,6 +512,10 @@ class CrawlJob:
 
         self._cancel_scope = None
         self._stopped = trio.Event()
+        
+        # Track recent errors for error rate calculation
+        self._recent_errors = []
+        self._error_rate_window = policy.limits.error_rate_window
 
     def __repr__(self):
         ''' Report crawl job ID. '''
@@ -529,6 +568,7 @@ class CrawlJob:
                 nursery.start_soon(self._extractor.run, name='Extractor')
                 nursery.start_soon(self._storage.run, name='Storage')
                 nursery.start_soon(self._terminator.run, name='Terminator')
+                nursery.start_soon(self._check_error_rate, name='ErrorRateChecker')
 
                 # After starting background tasks, this task enforces the
                 # maximum crawl duration.
@@ -538,6 +578,40 @@ class CrawlJob:
                 await trio.sleep_forever()
 
         self._stopped.set()
+
+    async def _check_error_rate(self):
+        '''
+        Periodically check if the error rate exceeds the policy threshold.
+        '''
+        if self._policy.limits.max_error_rate is None:
+            # Error rate checking is not enabled
+            return
+        
+        while True:
+            await trio.sleep(5)  # Check every 5 seconds
+            if len(self._recent_errors) >= self._error_rate_window:
+                error_count = sum(self._recent_errors)
+                error_rate = (error_count / len(self._recent_errors)) * 100
+                
+                if error_rate > self._policy.limits.max_error_rate:
+                    reason = f'Error rate {error_rate:.1f}% exceeds maximum allowed {self._policy.limits.max_error_rate}% over last {self._error_rate_window} documents'
+                    logger.warning('%r %s', self, reason)
+                    raise CrawlFailedException(reason)
+    
+    def track_response(self, response):
+        '''
+        Track a response for error rate calculation.
+        
+        :param starbelly.downloader.DownloadResponse response:
+        '''
+        is_error = response.exception is not None or (
+            response.status_code and response.status_code >= 400
+        )
+        self._recent_errors.append(1 if is_error else 0)
+        
+        # Keep only the most recent items according to the window size
+        if len(self._recent_errors) > self._error_rate_window:
+            self._recent_errors.pop(0)
 
     async def stop(self):
         '''
