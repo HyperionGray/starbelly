@@ -926,8 +926,8 @@ class ServerDb:
         async with self._db_pool.connection() as conn:
             job = await job_query.run(conn)
 
-            if job['run_state'] not in (RunState.CANCELLED, RunState.COMPLETED):
-                raise Exception('Can only delete cancelled or completed jobs.')
+            if job['run_state'] not in (RunState.CANCELLED, RunState.COMPLETED, RunState.PENDING):
+                raise Exception('Can only delete cancelled, completed, or pending jobs.')
 
             await delete_items_query.run(conn)
             await delete_job_query.run(conn)

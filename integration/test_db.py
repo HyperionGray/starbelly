@@ -1155,6 +1155,67 @@ class TestServerDb():
             response_count = await response_table.count().run(conn)
 
 
+    async def test_delete_pending_job(self, db_pool, job_table, response_table):
+        '''Test that pending jobs can be deleted.'''
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        job_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+        job = {
+            'id': job_id,
+            'name': 'Pending Test Job',
+            'seeds': ['https://seed1.example'],
+            'tags': ['test'],
+            'run_state': RunState.PENDING,
+            'started_at': started_at,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {},
+            'schedule_id': None,
+        }
+        async with db_pool.connection() as conn:
+            await job_table.insert(job).run(conn)
+        server_db = ServerDb(db_pool)
+        # This should not raise an exception
+        await server_db.delete_job(job_id)
+        async with db_pool.connection() as conn:
+            job_count = await job_table.filter({'id': job_id}).count().run(conn)
+            assert job_count == 0, "Pending job should have been deleted"
+
+
+    async def test_delete_running_job_fails(self, db_pool, job_table):
+        '''Test that running jobs cannot be deleted.'''
+        started_at = datetime(2018, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        job_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+        job = {
+            'id': job_id,
+            'name': 'Running Test Job',
+            'seeds': ['https://seed1.example'],
+            'tags': ['test'],
+            'run_state': RunState.RUNNING,
+            'started_at': started_at,
+            'completed_at': None,
+            'duration': None,
+            'item_count': 0,
+            'http_success_count': 0,
+            'http_error_count': 0,
+            'exception_count': 0,
+            'http_status_counts': {},
+            'schedule_id': None,
+        }
+        async with db_pool.connection() as conn:
+            await job_table.insert(job).run(conn)
+        server_db = ServerDb(db_pool)
+        # This should raise an exception
+        with pytest.raises(Exception, match='Can only delete'):
+            await server_db.delete_job(job_id)
+        async with db_pool.connection() as conn:
+            job_count = await job_table.filter({'id': job_id}).count().run(conn)
+            assert job_count == 1, "Running job should not have been deleted"
+
+
     async def test_get_job(self, db_pool, job_table):
         job_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         async with db_pool.connection() as conn:
