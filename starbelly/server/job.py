@@ -143,8 +143,51 @@ async def list_jobs(command, response, server_db):
 
 
 @api_handler
+async def cancel_job(command, crawl_manager):
+    """ Cancel a running or paused job. """
+    job_id = str(UUID(bytes=command.job_id))
+    await crawl_manager.cancel_job(job_id)
+
+
+@api_handler
+async def pause_job(command, crawl_manager):
+    """ Pause a running job. """
+    job_id = str(UUID(bytes=command.job_id))
+    await crawl_manager.pause_job(job_id)
+
+
+@api_handler
+async def resume_job(command, crawl_manager):
+    """ Resume a paused job. """
+    job_id = str(UUID(bytes=command.job_id))
+    await crawl_manager.resume_job(job_id)
+
+
+@api_handler
+async def start_job(command, crawl_manager, response):
+    """ Start a new crawl job. """
+    if not command.policy_id:
+        raise InvalidRequestException('"policy_id" is required')
+    if not command.seeds:
+        raise InvalidRequestException('"seeds" is required')
+    name = command.name
+    policy_id = str(UUID(bytes=command.policy_id))
+    seeds = [s.strip() for s in command.seeds]
+    tags = [t.strip() for t in command.tags]
+
+    if name.strip() == "":
+        url = URL(seeds[0])
+        name = url.host
+        if len(seeds) > 1:
+            name += "& {} more".format(len(seeds) - 1)
+
+    job_id = await crawl_manager.start_job(name, seeds, tags, policy_id)
+    response.new_job.job_id = UUID(job_id).bytes
+
+
+@api_handler
 async def set_job(command, crawl_manager, response):
-    """ Create or update job metadata. """
+    """ Create or update job metadata. (DEPRECATED: use start_job, pause_job, cancel_job, or resume_job instead) """
     if command.HasField("job_id"):
         # Update run state of existing job.
         job_id = str(UUID(bytes=command.job_id))
