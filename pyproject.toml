@@ -32,6 +32,7 @@ scipy = "^1.4.1" # required for formasaurus
 sklearn-crfsuite = ">=0.3.1" # required for formasaurus
 joblib = "^1.2.0" # required for formasaurus
 tldextract = "^2.2.2" # required for formasaurus
+MaybeDont = "^0.1.1"
 
 [tool.poetry.dev-dependencies]
 coverage = "^5.1"

@@ -8,6 +8,7 @@ import pickle
 from rethinkdb import RethinkDB
 import trio
 
+from .dupdetector import DuplicateDetector
 from .login import LoginManager
 from .downloader import CrawlItemLimitExceeded, Downloader
 from .extractor import CrawlExtractor
@@ -367,9 +368,13 @@ class CrawlManager:
             login_manager, policy, stats_dict)
         storage = CrawlStorage(job_id, self._storage_db, storage_send,
             storage_recv, policy, self._sequence)
+        
+        # Create duplicate detector (enabled by default)
+        duplicate_detector = DuplicateDetector(enabled=True)
+        
         extractor = CrawlExtractor(job_id, self._extractor_db, extractor_send,
             extractor_recv, policy, downloader, self._robots_txt_manager,
-            old_urls, stats_dict)
+            old_urls, stats_dict, duplicate_detector=duplicate_detector)
         terminator = PipelineTerminator(pipeline_end)
 
         # Now we can create a job instance.

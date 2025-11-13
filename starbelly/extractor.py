@@ -9,6 +9,8 @@ import trio
 import w3lib.encoding
 import yarl
 
+from .dupdetector import DuplicateDetector
+
 
 logger = logging.getLogger(__name__)
 chardet = lambda s: cchardet.detect(s).get('encoding')
@@ -17,7 +19,8 @@ chardet = lambda s: cchardet.detect(s).get('encoding')
 class CrawlExtractor:
     ''' Extract URLs from crawled items and add them to the frontier table. '''
     def __init__(self, job_id, db, send_channel, receive_channel, policy,
-            downloader, robots_txt_manager, old_urls, stats, batch_size=100):
+            downloader, robots_txt_manager, old_urls, stats, batch_size=100,
+            duplicate_detector=None):
         '''
         Constructor.
 
@@ -36,6 +39,7 @@ class CrawlExtractor:
         :param int batch_size: The maximum size of inserts to do in a single
             database query. If more items than this are extracted from a
             document, then multiple queries will be issued.
+        :param DuplicateDetector duplicate_detector: Optional duplicate detector.
         '''
         self._job_id = job_id
         self._db = db
@@ -47,6 +51,7 @@ class CrawlExtractor:
         self._old_urls = old_urls
         self._stats = stats
         self._batch_size = batch_size
+        self._duplicate_detector = duplicate_detector or DuplicateDetector(enabled=False)
 
     def __repr__(self):
         ''' Report crawl job ID. '''
@@ -79,6 +84,12 @@ class CrawlExtractor:
         :param starbelly.downloader.DownloadReponse:
         '''
         logger.debug('%r Extracting links from %s', self, response.url)
+        
+        # Update duplicate detector model with this response
+        if self._duplicate_detector.enabled:
+            await trio.run_sync_in_worker_thread(
+                self._duplicate_detector.update_model, response)
+        
         extracted_urls = await trio.run_sync_in_worker_thread(
             extract_urls, response)
         insert_items = list()
@@ -93,6 +104,13 @@ class CrawlExtractor:
                 self._policy, self._downloader)
             if not robots_ok:
                 continue
+
+            # Check if URL is likely to be a duplicate
+            if self._duplicate_detector.enabled:
+                should_skip = await trio.run_sync_in_worker_thread(
+                    self._duplicate_detector.should_skip_url, url)
+                if should_skip:
+                    continue
 
             # Normalize and hash URL.
             url_can = self._policy.url_normalization.normalize(url)
