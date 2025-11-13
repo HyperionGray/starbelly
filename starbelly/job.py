@@ -178,6 +178,12 @@ class CrawlManager:
         :param str job_id:
         '''
         logger.info('%r Cancelling job_id=%s…', self, job_id[:8])
+        
+        # Stop the job if it's currently running
+        if job_id in self._jobs:
+            job = self._jobs[job_id]
+            await job.stop()
+        
         run_state = RunState.CANCELLED
         completed_at = datetime.now(timezone.utc)
         await self._db.finish_job(job_id, run_state, completed_at)
