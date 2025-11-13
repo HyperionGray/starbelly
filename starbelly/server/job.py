@@ -148,6 +148,11 @@ async def set_job(command, crawl_manager, response):
     if command.HasField("job_id"):
         # Update run state of existing job.
         job_id = str(UUID(bytes=command.job_id))
+        # Tags are immutable and cannot be modified after job creation
+        if command.tags:
+            raise InvalidRequestException(
+                "Tags cannot be modified after job creation"
+            )
         if command.HasField("run_state"):
             run_state = command.run_state
             if run_state == PbRunState.Value("CANCELLED"):

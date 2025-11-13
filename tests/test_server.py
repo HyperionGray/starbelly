@@ -682,3 +682,11 @@ async def test_set_jobs(client, crawl_manager, server_db):
     command5.set_job.run_state = PbRunState.Value('PENDING')
     response5 = await send_test_command(client, command5)
     assert not response5.is_success
+
+    # Attempt to modify tags (should fail):
+    command6 = new_request(6)
+    command6.set_job.job_id = b'\xaa' * 16
+    command6.set_job.tags.extend(['tag3', 'tag4'])
+    response6 = await send_test_command(client, command6)
+    assert not response6.is_success
+    assert 'Tags cannot be modified' in response6.error_message
