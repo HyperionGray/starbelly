@@ -1107,3 +1107,49 @@ class SubscriptionDb:
             async with cursor:
                 async for item in cursor:
                     yield item
+
+
+class CrawlLogDb:
+    ''' Handles database queries for crawl log entries. '''
+    def __init__(self, db_pool):
+        '''
+        Constructor
+
+        :param db_pool: A RethinkDB connection pool.
+        '''
+        self._db_pool = db_pool
+
+    async def insert_log_entry(self, log_entry):
+        '''
+        Insert a log entry into the crawl_log table.
+
+        :param dict log_entry: The log entry document to insert.
+        '''
+        async with self._db_pool.connection() as conn:
+            await r.table('crawl_log').insert(log_entry).run(conn)
+
+    async def get_job_logs(self, job_id, limit=100, offset=0):
+        '''
+        Get log entries for a specific job.
+
+        :param str job_id: The ID of the job to get logs for.
+        :param int limit: Maximum number of log entries to return.
+        :param int offset: Number of log entries to skip.
+        :returns: (total_count, log_entries)
+        :rtype: tuple
+        '''
+        query = (
+            r.table('crawl_log')
+             .get_all(job_id, index='job_id')
+             .order_by(r.desc('timestamp'))
+        )
+
+        async with self._db_pool.connection() as conn:
+            count = await query.count().run(conn)
+            cursor = await query.skip(offset).limit(limit).run(conn)
+            logs = []
+            async with cursor:
+                async for log in cursor:
+                    logs.append(log)
+
+        return count, logs

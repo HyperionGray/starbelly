@@ -136,7 +136,8 @@ class PipelineTerminator:
 class CrawlManager:
     ''' Manage crawl jobs and provide introspection into their states. '''
     def __init__(self, rate_limiter, stats_tracker, robots_txt_manager,
-            crawl_db, frontier_db, extractor_db, storage_db, login_db):
+            crawl_db, frontier_db, extractor_db, storage_db, login_db, 
+            crawl_log_db):
         '''
         Constructor.
 
@@ -149,6 +150,7 @@ class CrawlManager:
         :param starbelly.db.CrawlExtractorDb crawl_db: A database layer.
         :param starbelly.db.CrawlStorageDb crawl_db: A database layer.
         :param starbelly.db.LoginDb login_db: A database layer.
+        :param starbelly.db.CrawlLogDb crawl_log_db: A database layer.
         '''
         self._rate_limiter = rate_limiter
         self._stats_tracker = stats_tracker
@@ -158,6 +160,7 @@ class CrawlManager:
         self._extractor_db = extractor_db
         self._storage_db = storage_db
         self._login_db = login_db
+        self._crawl_log_db = crawl_log_db
 
         self._download_capacity = 20
         self._download_semaphore = trio.Semaphore(self._download_capacity)
@@ -169,6 +172,25 @@ class CrawlManager:
     def __repr__(self):
         ''' Customize repr. '''
         return '<CrawlManager>'
+
+    async def _log_crawl_event(self, job_id, event_type, message, data=None):
+        '''
+        Log a crawl event to the database.
+
+        :param str job_id: The ID of the job.
+        :param str event_type: The type of event (e.g., 'state_change', 'robots_txt', 'login').
+        :param str message: A human-readable message describing the event.
+        :param dict data: Optional additional data about the event.
+        '''
+        log_entry = {
+            'job_id': job_id,
+            'timestamp': datetime.now(timezone.utc),
+            'event_type': event_type,
+            'message': message,
+        }
+        if data:
+            log_entry['data'] = data
+        await self._crawl_log_db.insert_log_entry(log_entry)
 
     async def cancel_job(self, job_id):
         '''
@@ -186,6 +208,8 @@ class CrawlManager:
         self._stats_tracker.complete_job(job_id, completed_at)
         event = JobStateEvent(job_id, schedule_id, run_state, completed_at)
         self._send_job_state_event(event)
+        await self._log_crawl_event(job_id, 'state_change', 
+            'Crawl cancelled')
         logger.info('%r Cancelled job_id=%s', self, job_id[:8])
 
     def get_job_state_channel(self, size=10):
@@ -240,6 +264,8 @@ class CrawlManager:
         event = JobStateEvent(job.id, job.schedule_id, run_state,
             datetime.now(timezone.utc))
         self._send_job_state_event(event)
+        await self._log_crawl_event(job.id, 'state_change', 
+            'Crawl paused')
         logger.info('%r Paused job_id=%s', self, job.id[:8])
 
     async def resume_job(self, job_id):
@@ -253,6 +279,8 @@ class CrawlManager:
         job = self._make_job(job_doc)
         self._nursery.start_soon(self._run_job, job,
             name='Job id={}'.format(job_id[:8]))
+        await self._log_crawl_event(job_id, 'state_change', 
+            'Crawl resumed')
         logger.info('%r Resumed job_id=%s', self, job_id[:8])
 
     async def run(self, *, task_status=trio.TASK_STATUS_IGNORED):
@@ -390,6 +418,8 @@ class CrawlManager:
         event = JobStateEvent(job.id, job.schedule_id, run_state,
             datetime.now(timezone.utc))
         self._send_job_state_event(event)
+        await self._log_crawl_event(job.id, 'state_change', 
+            'Crawl started')
         job_completed = False
 
         try:
@@ -410,6 +440,12 @@ class CrawlManager:
             await self._db.clear_frontier(job.id)
             self._stats_tracker.set_run_state(job.id, run_state)
             self._stats_tracker.complete_job(job.id, completed_at)
+            event = JobStateEvent(job.id, job.schedule_id, run_state,
+                completed_at)
+            self._send_job_state_event(event)
+            await self._log_crawl_event(job.id, 'state_change', 
+                'Crawl completed')
+            logger.info('%r Completed job id=%s', self, job.id[:8])
             event = JobStateEvent(job.id, job.schedule_id, run_state,
                 completed_at)
             self._send_job_state_event(event)

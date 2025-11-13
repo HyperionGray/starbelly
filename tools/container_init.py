@@ -298,6 +298,8 @@ async def init_db(db_config):
         await ensure_db_user(conn, db_name, db_config['user'],
             db_config['password'])
         await ensure_db_table(conn, 'captcha_solver')
+        await ensure_db_table(conn, 'crawl_log')
+        await ensure_db_index(conn, 'crawl_log', 'job_id')
         await ensure_db_table(conn, 'domain_login', primary_key='domain')
         await ensure_db_table(conn, 'frontier')
         await ensure_db_index(conn, 'frontier', 'cost_index',

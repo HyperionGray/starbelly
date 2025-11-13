@@ -16,23 +16,25 @@ logger = logging.getLogger(__name__)
 
 class RobotsTxtManager:
     ''' Store and manage robots.txt files. '''
-    def __init__(self, db_pool, max_age=24*60*60, max_cache=1e3):
+    def __init__(self, db_pool, crawl_log_db=None, max_age=24*60*60, max_cache=1e3):
         '''
         Constructor.
 
         :param db_pool: A DB connection pool.
+        :param crawl_log_db: A CrawlLogDb instance for logging robots.txt fetches.
         :param int max_age: The maximum age before a robots.txt is downloaded
             again.
         :param int max_cache: The maximum number of robots.txt files to cache
             in memory.
         '''
         self._db_pool = db_pool
+        self._crawl_log_db = crawl_log_db
         self._events = dict()
         self._cache = OrderedDict()
         self._max_age = max_age
         self._max_cache = max_cache
 
-    async def is_allowed(self, url, policy, downloader):
+    async def is_allowed(self, url, policy, downloader, job_id=None):
         '''
         Return True if ``url`` is allowed by the applicable robots.txt file.
 
@@ -44,6 +46,7 @@ class RobotsTxtManager:
             policy permit access to it.
         :param Policy policy:
         :param Downloader downloader:
+        :param str job_id: Optional job ID for logging purposes.
         :rtype: bool
         '''
         if policy.robots_txt.usage == 'IGNORE':
@@ -74,7 +77,7 @@ class RobotsTxtManager:
             except KeyError:
                 # Create a new task to fetch it.
                 self._events[robots_url] = trio.Event()
-                robots = await self._get_robots(robots_url, downloader)
+                robots = await self._get_robots(robots_url, downloader, job_id)
                 event = self._events.pop(robots_url)
                 event.set()
 
@@ -85,7 +88,7 @@ class RobotsTxtManager:
             return robots_decision
         return not robots_decision
 
-    async def _get_robots(self, robots_url, downloader):
+    async def _get_robots(self, robots_url, downloader, job_id=None):
         '''
         Locate and return a robots.txt file.
 

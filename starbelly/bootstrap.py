@@ -8,6 +8,7 @@ import trio
 from .db import (
     BootstrapDb,
     CrawlFrontierDb,
+    CrawlLogDb,
     CrawlManagerDb,
     CrawlExtractorDb,
     CrawlStorageDb,
@@ -81,6 +82,7 @@ class Bootstrap:
             db_pool = self._db_pool(nursery)
             bootstrap_db = BootstrapDb(db_pool)
             crawl_db = CrawlManagerDb(db_pool)
+            crawl_log_db = CrawlLogDb(db_pool)
             extractor_db = CrawlExtractorDb(db_pool)
             frontier_db = CrawlFrontierDb(db_pool)
             login_db = LoginDb(db_pool)
@@ -127,7 +129,7 @@ class Bootstrap:
             # Create a crawl manager
             crawl_manager = CrawlManager(rate_limiter, stats_tracker,
                 robots_txt_manager, crawl_db, frontier_db, extractor_db,
-                storage_db, login_db)
+                storage_db, login_db, crawl_log_db)
 
             # Create a resource monitor: one sample per second and keep 1 minute of
             # history.
