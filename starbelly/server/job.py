@@ -144,7 +144,11 @@ async def list_jobs(command, response, server_db):
 
 @api_handler
 async def set_job(command, crawl_manager, response):
-    """ Create or update job metadata. """
+    """
+    Create a new job or update the run state of an existing job.
+    
+    Job metadata (tags, seeds, policy, name) is immutable after creation.
+    """
     if command.HasField("job_id"):
         # Update run state of existing job.
         job_id = str(UUID(bytes=command.job_id))
