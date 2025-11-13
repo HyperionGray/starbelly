@@ -228,7 +228,11 @@ class CrawlManager:
         '''
         Stop the specified job and set it to paused in the database.
 
+        Note: This only works for jobs that are currently running. Jobs that are
+        still pending cannot be paused.
+
         :param str job_id:
+        :raises KeyError: If the job is not currently running.
         '''
         job = self._jobs[job_id]
         logger.info('%r Pausing job_id=%s…', self, job.id[:8])
@@ -382,6 +386,13 @@ class CrawlManager:
         it completes, remove it from the list of internal jobs and update its
         status.
         '''
+        # Check if the job was cancelled while it was pending
+        current_state = await self._db.get_job_run_state(job.id)
+        if current_state in FINISHED_STATES:
+            logger.info('%r Job id=%s was %s while pending, not starting',
+                self, job.id[:8], current_state)
+            return
+        
         # Update local state to indicate that the job is running:
         run_state = RunState.RUNNING
         await self._db.run_job(job.id)

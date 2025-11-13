@@ -153,7 +153,12 @@ async def set_job(command, crawl_manager, response):
             if run_state == PbRunState.Value("CANCELLED"):
                 await crawl_manager.cancel_job(job_id)
             elif run_state == PbRunState.Value("PAUSED"):
-                await crawl_manager.pause_job(job_id)
+                try:
+                    await crawl_manager.pause_job(job_id)
+                except KeyError:
+                    raise InvalidRequestException(
+                        f"Cannot pause job {job_id} because it is not running"
+                    )
             elif run_state == PbRunState.Value("RUNNING"):
                 await crawl_manager.resume_job(job_id)
             else:
