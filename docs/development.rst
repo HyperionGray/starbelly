@@ -75,7 +75,15 @@ Before the first run, create a self-signed certificate:
 Run the Docker containers:
 
 1. Go to the ``starbelly/dev/`` directory and run ``docker-compose up`` to start
-   the Docker containers.
+   the Docker containers (RethinkDB and Nginx for development).
+
+.. note::
+
+   The development ``docker-compose.yml`` file uses standard images for the database
+   and web server. For production deployments or if you want to run the full Starbelly
+   application in Docker, use the ``docker-compose.prod.yml`` file in the project root,
+   which includes proper init process handling with ``dumb-init``. See ``README.Docker.md``
+   for more details on running Starbelly in Docker.
 
 In a second terminal, run the Starbelly server:
 

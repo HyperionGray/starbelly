@@ -10,8 +10,8 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /starbelly
 
-# Install Poetry
-RUN pip install --no-cache-dir poetry==1.1.15
+# Install Poetry (version 1.2+ required for lock-version 2.0)
+RUN pip install --no-cache-dir poetry>=1.2.0
 
 # Copy dependency files
 COPY pyproject.toml poetry.lock ./
