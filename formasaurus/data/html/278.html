@@ -1,0 +1,453 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<META name="verify-v1" content="brMfp/wqbGdghngh4r1CbtlrgxV6kLiicuG8/TMVZLo=" /> 
+<meta http-equiv="Content-Type" content="text/html; charset=euc-kr" />
+<link rel="stylesheet" media="screen" type="text/css" href="../common/css/style2.css" />
+<link rel="stylesheet" type="text/css" href="lib/css/style.css" />
+<link rel="shortcut icon" href="../images/favicon.ico" />
+
+<title>어베스트 | 로그인</title>
+
+<!-- jQuery -->
+	<script type='text/javascript' src="lib/js/jquery-1.11.1.min.js"></script>
+	<script type="text/javascript">
+
+		$(document).ready(function(){
+			$('#Mail').focus();
+			$('#sendNum').click(function(e){
+				var adr = $('#Mail').val();
+				var num = 902324		//jQuery에서 서버에서 저장하고 있는 key값 불러오기
+				var filter1 = /^(\w+)@(\w+)[.](\w+)$/;
+				var filter2 = /^(\w+)@(\w+)[.](\w+)[.](\w+)$/;
+				var filter3 = /^[a-z\d][\w\d_\.-]+@[a-z\d][\w\d-]+\.[a-z\.]{2,6}$/;
+			
+				if(adr.length<=0){
+					alert("이메일을 입력해주세요");
+					return false;
+				}
+				if(filter1.test(adr)!=true && filter2.test(adr)!=true &&  filter3.test(adr)!=true)	{
+					alert('이메일 형식에 맞지 않습니다');
+					return false;
+				}
+				
+				//jQuery의 ajax를 이용하여 인증 번호 값을 서버에 전송.
+					$.ajax({
+						type: 'get',
+						url:'sendmail.asp',
+						data:{address:adr, key:num},
+						success: function(data){
+							alert("이메일로 인증번호를 보냈습니다.");
+					}
+				});
+			});	
+		});
+
+function infocheck() {
+	var email = document.user.Mail.value; 
+	var num = document.user.i_num.value;
+	var key = 902324
+
+	if ( email.search(/(\S+)@(\S+)\.(\S+)/) == -1 ) {
+        	alert("E-mail 형식은 'account@[도메인.com]'과 같이 입력하세요."); 
+        	document.user.Mail.focus(); 
+        	return false;
+	}
+	//인증번호 6자리 이하일때 경고창이 뜰 수 있도록 구현.
+	if(num.length<6) {
+		alert("인증 번호 6자리를 입력해주세요");
+		document.user.i_num.focus();
+		return false;
+	}
+	
+	if (document.user.Name.value.length < 2) {
+	 	alert("성함을 정확히 입력해 주세요.");
+	 	document.user.Name.focus();
+	  	return false;
+	}
+
+	if (document.user.Name.value.length > 30) {
+	  	alert("성함을 한글 7자 이내로 적어 주세요.");
+	  	document.user.Name.focus();
+	  	return false;
+	}
+
+	var eng_check =  /[`~!@#$%^&*|\\\'\";:\/?]/gi;
+	if (document.user.Name.value.search(eng_check)>=0)
+	{
+	alert("특수문자 및 숫자가 포함되어 있습니다.");
+		return false;
+	}
+}
+
+/*이 함수는 textbox에서 값을 받을 때 숫자만 받기 위한 함수로 window의 keyCode값으로 구현하였다.*/
+
+	function checkNum() {
+			var num = document.user.i_num.value;
+			var evCode = (window.netscape) ? Ev.which : event.keyCode;			// 8은 ←(백스페이스), 9는 TAB, 13은 ENTER, 17은 CTRL, 86은 v, 33~40까지는 옆 보조 숫자키 
+			if((evCode < 48 || evCode > 57) && (evCode < 96 || evCode > 105) && evCode !=8 && evCode!=9 && evCode!=13 && evCode!=17 && evCode!=86 && (evCode < 37 || evCode > 40)) {
+				if(window.netscape) {
+					Ev.preventDefault();
+				}else {
+					alert("숫자만 입력하세요");
+					num="";
+					document.user.i_num.focus();
+					event.returnValue = false;
+				}
+			}
+	}
+</script>
+
+</head>
+<body>
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-PD9V8F"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PD9V8F');</script>
+<!-- End Google Tag Manager -->
+
+
+
+<!--- 어베스트 메인 메뉴를 위한 곳 --->
+<link	rel="stylesheet" type="text/css"  href="/common/css/menu_styles.css" />
+<script src="/common/js/menu_common.js" type="text/javascript"></script>
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/ko_KR/all.js#xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+<!--롤오버 여기서 시작 -->
+<script type="text/javascript">
+<!--
+function MM_swapImgRestore() { //v3.0
+  var i,x,a=document.MM_sr; for(i=0;a&&i<a.length&&(x=a[i])&&x.oSrc;i++) x.src=x.oSrc;
+}
+
+function MM_preloadImages() { //v3.0
+  var d=document; if(d.images){ if(!d.MM_p) d.MM_p=new Array();
+    var i,j=d.MM_p.length,a=MM_preloadImages.arguments; for(i=0; i<a.length; i++)
+    if (a[i].indexOf("#")!=0){ d.MM_p[j]=new Image; d.MM_p[j++].src=a[i];}}
+}
+
+function MM_findObj(n, d) { //v4.01
+  var p,i,x;  if(!d) d=document; if((p=n.indexOf("?"))>0&&parent.frames.length) {
+    d=parent.frames[n.substring(p+1)].document; n=n.substring(0,p);}
+  if(!(x=d[n])&&d.all) x=d.all[n]; for (i=0;!x&&i<d.forms.length;i++) x=d.forms[i][n];
+  for(i=0;!x&&d.layers&&i<d.layers.length;i++) x=MM_findObj(n,d.layers[i].document);
+  if(!x && d.getElementById) x=d.getElementById(n); return x;
+}
+
+function MM_swapImage() { //v3.0
+  var i,j=0,x,a=MM_swapImage.arguments; document.MM_sr=new Array; for(i=0;i<(a.length-2);i+=3)
+   if ((x=MM_findObj(a[i]))!=null){document.MM_sr[j++]=x; if(!x.oSrc) x.oSrc=x.src; x.src=a[i+2];}
+}
+//-->
+</script>
+
+
+
+<!--- 어베스트 메인 메뉴를 위한 곳 --->
+<script type="text/javascript" src="/common/js/jquery.js"></script>
+<script type="text/javascript">
+	$(document).ready(function(){
+		var currentPosition = parseInt($("#slidemenu").css("top"));
+		$(window).scroll(function() {
+			var position = $(window).scrollTop(); // 현재 스크롤바의 위치값을 반환합니다.
+			$("#slidemenu").stop().animate({"top":position+currentPosition+"px"},1000);
+		});
+	});
+</script>
+<style type="text/css">
+#slidemenu{background=#ffffff;position:absolute;width:190px;top:120px;right:1px;}
+</style>
+
+
+
+
+<!-- 롤오버 여기까지 -->
+
+<center>
+<table width=100% border=0 cellpadding=0 cellspacing=0><tr><td height=3 bgcolor=#ffffff></td></tr></table>
+<table width=100% height=70 border=0 cellpadding=0 cellspacing=0 bgcolor=#FFFFFF>
+<TR>
+	<td align=center>
+		<table width=960 cellpadding=0 cellspacing=0 border=0>
+		<tr>
+			<TD width=200 align=left><a href="http://www.avastkorea.com"><img src="/images/logo.png" alt="avast! 안티바이러스"></a><br>
+			<!--shop.avastkorea.com-->
+			</TD>
+			<TD width=10></TD>
+			<TD align="left">
+
+				<table width=100% border=0 cellpadding=0 cellspacing=0 style="FONT-SIZE: 13px; FONT-FAMILY: Nanum Gothic, serif; COLOR:#898989; margin-right:5px;">
+				<tr>
+					<td align=right>
+
+				
+					&nbsp;<a href="http://shop.avastkorea.com/login/"><span style="color:#f26522">로그인</span></a>&nbsp; | 
+				
+				<!--
+					<a style="FONT-SIZE: 8pt; FONT-FAMILY: 맑은 고딕, 돋음, Vernada, Arial; COLOR:#000000" href="#" onclick="add_HomePage(this); return false;">시작페이지</a> | 
+					<a style="FONT-SIZE: 8pt; FONT-FAMILY: 맑은 고딕, 돋음, Vernada, Arial; COLOR:#000000" href="#" onclick="add_Favorites(this); return false;">즐겨찾기</a>
+				-->
+				
+
+					&nbsp;VPS :16020100&nbsp; | 
+					&nbsp;<a href="http://www.softmail.jp">Japan</a> |
+					&nbsp;<a href="http://www.avastshop.com">English</a>
+				</td>
+				</tr>
+				</table>
+
+				<table border=0 cellpadding=2 cellspacing=1 style="FONT-SIZE: 17px; FONT-FAMILY: Nanum Gothic, serif; font-weight:700; COLOR:#898989;">
+				<tr>
+					<td width=70 align=center valign=middle>
+						<a href="http://www.avastkorea.com/home-user/">개인용</a>
+					</td>
+					<td width=70 align=center valign=middle>
+						<a href="http://www.avastkorea.com/business/">업무용</a>
+					</td>
+					<td width=80 align=center valign=middle>
+						<a href="http://www.avastkorea.com/support/">고객지원</a>
+					</td>
+					<td width=80 align=center valign=middle>
+						<a href="http://shop.avastkorea.com/">제품구매</a>
+					</td>
+				</tr>
+				</table>	
+
+
+			</TD>
+		</tr>
+		</table>
+	</TD>
+</TR>
+</TABLE>
+<table width=100% border=0 cellpadding=0 cellspacing=0><tr><td height=3 bgcolor=#ffffff></td></tr></table>
+<table width=100% border=0 cellpadding=0 cellspacing=0><tr><td height=1 bgcolor=#e0e0e0></td></tr></table>
+
+<s_t3>
+<div id="container">
+<!---------------- 본 문 시작 ----------------------->
+
+
+	<center>
+		<table bgcolor="#efefef" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 11pt; color:#000000; font-family: 맑은 고딕, Verdana">
+			<tr bgcolor="#ffffff" height="110">
+				<td width="230" align="left" valign="top">
+					<script language="javascript">
+function moveRemote() {
+	window.open("http://939.co.kr/softmail/","Privacy","satus=yes,scrollbars=yes,resizeable=yes, width=840px, height=590px");
+}
+</script>
+
+
+<table height=500 width=220 border=0 cellpadding=0 cellspacing=0>
+<tr height=30>
+	<td bgcolor=#FFFFFF align=left valign=top>
+
+		
+			손님으로 접속하셨습니다.
+		
+		<br>
+
+		
+			<a href="/login/">회원 로그인</a><br>
+			<a href="/login/my_regist.asp">회원 가입</a><br>
+		
+
+
+
+
+	</td>
+	<td width=5 background="/images/col_shad.gif"></td>
+</tr>
+</table>
+
+
+				</td>
+				<td align="left" valign="top" >
+
+					 <table id="login_container" class="login-table">
+					<thead>     <!-- 로그인 로고 이미지 -->
+						<tr>
+							<th><img src="lib/images/login_top.jpg"/></th>
+						</tr>
+					</thead>
+				<tbody>
+					<tr>
+						<td>
+							<FORM NAME="user" ACTION="login_ok.asp" METHOD="POST" onsubmit="return infocheck();">
+								<input id="i_product" name = "i_product" value="" type="hidden">
+								<table id="login_form" class="login-form-table">
+									<tr height=20px><td colspan=2></td></tr>
+									<tr>
+										<td class="td1"><img src="lib/images/login_email.jpg"/></td>
+										<td class="td2">
+											<input id="Mail" name="Mail" class="email-input"/>&nbsp;
+											<!-- 인증번호 전송 버튼-->
+												<input type="button" id="sendNum" value=" 인증번호전송 " class="sdn-btn"/>
+										</td>
+									   
+									</tr>
+									<tr>
+										<td class="td1"><img src="lib/images/login_number.jpg"/><input type="hidden" id="i_key" name="i_key" value="902324" /></td>
+										
+										<td class="td2">
+											
+											<input type="text" id="i_num" name="i_num" maxlength="6" onkeydown="checkNum();" onkeypress="checkNum();" class="input-text"></input>
+										</td>
+									  
+									</tr>
+									<tr>
+										<td class="td1"><img src="lib/images/login_name.jpg"/></td>
+										<td class="td2">
+											<input type="text" id="Name" name="Name" class="input-text" />&nbsp;
+											 <input type="submit" id="login_next" name="Next"  class="next-btn" value="로그인"/>
+										</td>
+									</tr>
+									<tr height=20px><td colspan=2></td></tr>
+								</table>
+							</form>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+
+			</TD>
+		</TR>
+		</table>
+<br>
+
+
+
+<!---------------- 본 문 시작 ----------------------->
+
+</div>
+</s_t3>	
+
+
+
+
+<Center>
+<table width=960 border=0 cellpadding=0 cellspacing=0 bgcolor=#FFFFFF>
+<tr height=40>
+	<td width=110 align=right>
+		<a href="http://blog.avastkorea.com" title="블로그" target="sns"><IMG width=30 SRC="/images/shop_images/shop_blog-icon.jpg" border=0 alt="avast! 블로그"></a>  
+		<a href="http://cafe.naver.com/avastkorea"	title="카페"  target="sns"><IMG width=30 SRC="/images/shop_images/shop_cafe-icon.jpg" border=0 alt="avast! 카페"></a>  
+		<a href="http://www.facebook.com/avast0"	title="페이스북"  target="sns"><IMG width=30 SRC="/images/shop_images/shop_facebook-icon.jpg" border=0 alt="avast! 페이스북"></a>
+		<a href="http://twitter.com/avastkorea"		title="트위터"  target="sns"><IMG width=30 SRC="/images/shop_images/shop_twitter-icon.jpg" border=0 alt="avast! 트위터"></a> 
+		<a href="http://www.youtube.com/avastkorea"		title="avast! 유투브"  target="sns"><img src="/images/shop_images/shop_youtube-icon.jpg" border=0 height=30></a>
+		<!-- <a href="https://plus.google.com/118349175655520578146/posts?hl=ko"	title="avast! 구글+"  target="sns"><IMG width=30 SRC="/images/sns/google.gif" border=0 alt="avast! 구글+"></a> -->
+	</td>
+</tr>
+</table>
+</center>
+
+<!---
+<TABLE bgcolor=#c0c0c0 border=0 cellpadding=0 cellspacing=0 width="100%" style="FONT-SIZE: 9pt; COLOR:#000000; FONT-FAMILY: Verdana">
+<TR>
+	<TD align=center>
+		<table width=960 border=0 cellpadding=0 cellspacing=0>
+		<tr>
+			<td>
+				<br>
+		<center>
+		<a href="http://shop.avastkorea.com/order_lg/payreq.asp?a_IS=3&a_MAINT=3"><img src="http://shop.avastkorea.com/images/banner/buy_is33.png" border=0></a>
+		</center><br>
+			</td>
+		</tr>
+		</table>
+	</TD>
+</TR>
+</TABLE>
+--->
+
+
+<TABLE bgcolor=#555555 border=0 cellpadding=0 cellspacing=0 width="100%" style="FONT-SIZE: 9pt; COLOR:#000000; FONT-FAMILY: Verdana">
+<TR>
+	<TD align=center>
+
+		<table width=960 border=0 cellpadding=0 cellspacing=0 bgcolor=#555555>
+		<tr height=40>
+			<TD width=200></TD>
+			<TD align=center>
+				<div style="font-family: 맑은 고딕; font-size:11px; color:#FFFFFF;">
+				 <a style="FONT-SIZE: 9pt; COLOR:#FFFFFF; FONT-FAMILY: 맑은 고딕, Verdana" href="/login/my_news_unsubscribe.asp">뉴스수신해지</a> |
+				 <a style="FONT-SIZE: 9pt; COLOR:#FFFFFF; FONT-FAMILY: 맑은 고딕, Verdana" href="http://www.avastkorea.com/company/agreement.asp">사용약관</a> |
+				 <a style="FONT-SIZE: 9pt; COLOR:#FFFFFF; FONT-FAMILY: 맑은 고딕, Verdana" href="http://www.avastkorea.com/company/privacy.asp">개인정보취급방침</a> |
+				 <a style="FONT-SIZE: 9pt; COLOR:#FFFFFF; FONT-FAMILY: 맑은 고딕, Verdana" href="http://www.avastkorea.com/company/contacts.asp">연락처</a> |
+				 <a style="FONT-SIZE: 9pt; COLOR:#FFFFFF; FONT-FAMILY: 맑은 고딕, Verdana" href="http://www.avastkorea.com/partners/">파트너</a> |
+				 <a style="FONT-SIZE: 9pt; COLOR:#FFFFFF; FONT-FAMILY: 맑은 고딕, Verdana" href="http://shop.avastkorea.com/">쇼핑몰</a>
+				</div>
+			</td>
+			<TD width=200 align=right>
+			
+				<div id="Layer_family" style="font-family: 맑은 고딕;">
+				<!--position:absolute; left: 10px; z-index:1; top:5px;"-->
+				<select name="select" onChange='if(this.selectedIndex) { this.blur(); window.open(options[selectedIndex].value); }' style="font-family: 맑은 고딕;width:230px;">
+				<option value="" selected>패밀리 사이트 바로가기</option>
+				<option value="http://www.icewarp.co.kr">메일솔루션 | IceWarp 메일서버</option>
+				<option value="http://www.spamblock.co.kr">메일솔루션 | 스팸블록 스팸메일차단</option>
+				<option value="http://www.malwarebytes.co.kr">보안솔루션 | 멀웨어바이트 악성코드 진단</option>
+				<option value="http://www.avastkorea.com">보안솔루션 | 어베스트 안티바이러스</option>
+				<option value="http://www.secureline.co.kr">보안솔루션 | 어베스트 시큐어라인 VPN</option>
+				</select>
+				</div>			
+				
+			</TD>
+		</TR>
+		</TABLE>
+	</td>
+</tr>
+</table>
+
+
+
+<TABLE bgcolor=#959595 border=0 cellpadding=0 cellspacing=0 width="100%" style="FONT-SIZE: 9pt; COLOR:#000000; FONT-FAMILY: Verdana">
+<TR>
+	<TD align=center>
+		<table width=960 border=0 cellpadding=0 cellspacing=0>
+		<tr>
+			<TD width=150 align=left><a href="http://www.avastkorea.com"><img src="/images/shop_images/shop_copy_logo.jpg"></a><br><br></TD>
+			<TD align=left>
+				<br>
+				<div style="font-family: 맑은 고딕, 돋음, Arial; font-size:11px; color:#FFFFFF;">
+				(주)소프트메일, 사업자번호 214-87-14889 | 통신판매업신고번호 구로제0716호<br>
+				대표이사 오봉근 |  ( 08389 ) 서울시 구로구 디지털로 272 한신IT타워 1305호<br>
+				대표전화 1661-9331 팩스 02-3486-9331<br>
+				avast! is a registered trademark of AVAST Software a.s. and is used in www.softmail.co.kr (avastkorea.com) under non-exclusive license from AVAST Software a.s. 
+				</div>
+				<br>
+				
+				<center><script type="text/javascript" src="http://widgets.amung.us/small.js"></script><script type="text/javascript">WAU_small('l5gu097i4o5e')</script></center>
+			
+			</TD>
+		</TR>
+		</TABLE>
+		<br><br><br>
+	</TD>
+</TR>
+</TABLE>
+
+
+
+</body>
+</html>

@@ -1,0 +1,220 @@
+Metadata-Version: 2.1
+Name: formasaurus
+Version: 0.10.0
+Summary: Formasaurus tells you the types of HTML forms and their fields using machine learning
+Home-page: https://github.com/scrapinghub/Formasaurus
+Author: Mikhail Korobov
+Author-email: kmike84@gmail.com
+License: MIT license
+Classifier: Development Status :: 4 - Beta
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/x-rst
+Requires-Dist: docopt>=0.4.0
+Requires-Dist: joblib>=1.2.0
+Requires-Dist: lxml>=4.5.2
+Requires-Dist: lxml-html-clean>=0.1.0
+Requires-Dist: numpy>=1.19.5
+Requires-Dist: packaging>=14.0
+Requires-Dist: parsel>=1.1.0
+Requires-Dist: platformdirs>=3.2.0
+Requires-Dist: requests>=1.0.0
+Requires-Dist: scikit-learn>=1.5.0
+Requires-Dist: scipy>=1.6.2
+Requires-Dist: sklearn-crfsuite>=0.5.0
+Requires-Dist: tldextract>=1.2.0
+Requires-Dist: tqdm>=2.0
+Requires-Dist: w3lib>=1.13.0
+Provides-Extra: annotation
+Requires-Dist: ipython[notebook]>=4.0; extra == "annotation"
+Requires-Dist: ipywidgets; extra == "annotation"
+Requires-Dist: Tornado>=4.0.0; extra == "annotation"
+
+===========
+Formasaurus
+===========
+
+.. image:: https://img.shields.io/pypi/v/Formasaurus.svg
+   :target: https://pypi.python.org/pypi/Formasaurus
+   :alt: PyPI Version
+
+.. image:: https://github.com/scrapinghub/Formasaurus/workflows/tox/badge.svg
+   :target: https://github.com/scrapinghub/Formasaurus/actions
+   :alt: Build Status
+
+.. image:: http://codecov.io/github/scrapinghub/Formasaurus/coverage.svg?branch=master
+   :target: http://codecov.io/github/scrapinghub/Formasaurus?branch=master
+   :alt: Code Coverage
+
+.. image:: https://readthedocs.org/projects/formasaurus/badge/?version=latest
+   :target: http://formasaurus.readthedocs.org/en/latest/?badge=latest
+   :alt: Documentation
+
+.. description starts
+
+Formasaurus is a Python package that tells you the type of an HTML form
+and its fields using machine learning.
+
+It can detect if a form is a login, search, registration, password recovery,
+"join mailing list", contact, order form or something else, which field
+is a password field and which is a search query, etc.
+
+License is MIT.
+
+.. description ends
+
+Check `docs <http://formasaurus.readthedocs.org/>`_ for more.
+
+
+Changes
+=======
+
+0.10.0 (2024-11-07)
+-------------------
+
+* Dropped official support for Python 3.8.
+
+* The minimum supported versions of some dependencies have changed:
+
+  * ``lxml``: ``4.4.1`` → ``4.5.2``
+  * ``scikit-learn``: ``0.24.0`` → ``1.5.0``
+  * ``scipy``: ``1.5.0`` → ``1.6.2``
+
+* New dependencies have been added:
+
+  * ``numpy`` ≥ ``1.19.5``
+  * ``packaging`` ≥ ``14.0``
+  * ``parsel`` ≥ ``1.1.0``
+  * ``platformdirs`` ≥ ``3.2.0``
+
+* The ``formasaurus.utils.dependencies_string()`` function is now deprecated.
+
+* Added a new function, ``build_submission``, to make Formasaurus easier to
+  use.
+
+* Added a built-in model, so that you can use Formasaurus right away without
+  the need to first train a model on the built-in data.
+
+* Changed the model serialization format, to minimize the chance of breakage
+  due to new versions of dependencies.
+
+  As a result, when specifying a model path, it is no longer the path to a
+  single file, but the base path for multiple files. For example, if ``model``
+  is specified as file path, 2 files are created, ``model-field.joblib`` and
+  ``model-form.json``.
+
+* When building a model, if a file path is not specified, the file path used by
+  default is now guaranteed to be user-writable.
+
+* Removed the need to specify the ``[with-deps]`` or ``[with_deps]`` extra when
+  installing <install.
+
+* Improved the docs of ``formasaurus.classifiers.extract_forms()``.
+
+0.9.0 (2024-06-19)
+------------------
+
+* Dropped official support for Python 3.7 and lower, and added official support
+  for Python 3.8 and higher.
+
+* Added support for the latest versions of all dependencies, and upgraded
+  minimum supported versions of dependencies as follows:
+
+  * ``docopt``: ``0.4.0``
+
+  * ``requests``: ``1.0.0``
+
+  * ``tldextract``: ``1.2.0``
+
+  * ``with-deps`` extra dependencies:
+
+    * ``joblib``: ``1.2.0``
+
+    * ``lxml``: ``4.4.1``
+
+    * ``lxml-html-clean``: ``0.1.0``
+
+    * ``scikit-learn``: ``0.18.0`` → ``0.24.0``
+
+    * ``scipy``: ``1.5.1``
+
+    * ``sklearn-crfsuite``: ``0.3.1`` → ``0.5.1``
+
+* https://github.com/scrapinghub/formasaurus is the new code repository,
+  replacing https://github.com/TeamHG-Memex/Formasaurus.
+
+* Updated the CI configuration and development tooling.
+
+0.8.1 (2018-07-02)
+------------------
+
+* Support for scikit-learn < 0.18 is dropped;
+* Formasaurus is no longer tested with Python 3.3;
+* tests are fixed to account for upstream changes; Python 3.6 build is enabled.
+
+0.8 (2016-05-24)
+----------------
+
+* more annotated data for captchas;
+* ``formasaurus init`` command which trains & caches the model.
+
+0.7.2 (2016-04-18)
+------------------
+
+* pip bug with ``pip install formasaurus[with-deps]`` is worked around;
+  it should work now as ``pip install formasaurus[with_deps]``.
+
+0.7.1 (2016-03-03)
+------------------
+
+* fixed API documentation at readthedocs.org
+
+0.7 (2016-03-03)
+----------------
+
+* more annotated data;
+* new ``form_classes`` and ``field_classes`` attributes of FormFieldClassifer;
+* more robust web page encoding detection in ``formasaurus.utils.download``;
+* bug fixes in annotation widgets;
+
+0.6 (2016-01-27)
+----------------
+
+* ``fields=False`` argument is supported in ``formasaurus.extract_forms``,
+  ``formasaurus.classify``, ``formasaurus.classify_proba`` functions and
+  in related ``FormFieldClassifier`` methods. It allows to avoid predicting
+  form field types if they are not needed.
+* ``formasaurus.classifiers.instance()`` is renamed to
+  ``formasaurus.classifiers.get_instance()``.
+* Bias is no longer regularized for form type classifier.
+
+0.5 (2015-12-19)
+----------------
+
+This is a major backwards-incompatible release.
+
+* Formasaurus now can detect field types, not only form types;
+* API is changed - check the updated documentation;
+* there are more form types detected;
+* evaluation setup is improved;
+* annotation UI is rewritten using IPython widgets;
+* more training data is added.
+
+0.2 (2015-08-10)
+----------------
+
+* Python 3 support;
+* fixed model auto-creation.
+
+0.1 (2015-07-09)
+----------------
+
+Initial release.

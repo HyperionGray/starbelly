@@ -1,0 +1,141 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1257">
+<title>F-1.LT - Slaptažodžio priminimas</title>
+<style type="text/css">
+
+<!--
+body {
+	background-color: #FFFFFF;
+	margin-left: 0px;
+	margin-top: 0px;
+	margin-right: 0px;
+	margin-bottom: 0px;
+	font-family: Arial, Helvetica, sans-serif;
+}
+.didtekstas {
+	font-size: 14pt;
+}
+.maztekstas {
+	font-size: 8pt;
+}
+.tekstas {
+	font-size: 10pt;
+}
+a, a:active, a:visited, a:hover {
+	color: black;
+}
+-->
+</style>
+<script language="Javascript"><!--
+function VF_forma(){ //v2.0
+<!--start_of_saved_settings-->
+<!--type,text,name,phone,required,true,errMsg,Neįrašėte telefono! Jis mums būtinas tam&comma; kad galėtume susisiekti su nugalėtoju.-->
+<!--type,text,name,email,required,true,isEmail,errMsg,Neįrašėte el. pašto adreso!-->
+<!--type,text,name,name,required,true,errMsg,Neįvedėte vardo!-->
+<!--type,radio-g,name,choice_3,isChecked,errMsg,Neatsakėte į trečiąjį klausimą!-->
+<!--type,radio-g,name,choice_2,isChecked,errMsg,Neatsakėte į antrąjį klausimą!-->
+<!--type,radio-g,name,choice_1,isChecked,errMsg,Neatsakėte į pirmąjį klausimą!-->
+<!--end_of_saved_settings-->
+	var theForm = document.forma;
+	var emailRE = /^([a-zA-Z0-9_.-])+@(([a-zA-Z0-9-])+.)+([a-zA-Z0-9]{2,4})+$/;
+	var rFlg_choice_3 = false;
+	var rFlg_choice_2 = false;
+	var rFlg_choice_1 = false;
+	var errMsg = "";
+	var setfocus = "";
+
+	for(var r2=0;r2<theForm['choice_3'].length;r2++){if(theForm['choice_3'][r2].checked)rFlg_choice_3=true;}
+	for(var r1=0;r1<theForm['choice_2'].length;r1++){if(theForm['choice_2'][r1].checked)rFlg_choice_2=true;}
+	for(var r0=0;r0<theForm['choice_1'].length;r0++){if(theForm['choice_1'][r0].checked)rFlg_choice_1=true;}
+
+	if (theForm['phone'].value == ""){
+		errMsg = "Neįrašėte telefono! Jis mums būtinas tam, kad galėtume susisiekti su nugalėtoju\.";
+		setfocus = "['phone']";
+	}
+	if (!emailRE.test(theForm['email'].value)){
+		errMsg = "Neįrašėte el\. pašto adreso!";
+		setfocus = "['email']";
+	}
+	if (theForm['name'].value == ""){
+		errMsg = "Neįvedėte vardo!";
+		setfocus = "['name']";
+	}
+	if (!rFlg_choice_3){
+		errMsg = "Neatsakėte į trečiąjį klausimą!";
+		setfocus = "['choice_3'][0]";
+	}
+	if (!rFlg_choice_2){
+		errMsg = "Neatsakėte į antrąjį klausimą!";
+		setfocus = "['choice_2'][0]";
+	}
+	if (!rFlg_choice_1){
+		errMsg = "Neatsakėte į pirmąjį klausimą!";
+		setfocus = "['choice_1'][0]";
+	}
+	if (errMsg != ""){
+		alert(errMsg);
+		eval("theForm" + setfocus + ".focus()");
+	}
+	else theForm.submit();
+}//-->
+</script>
+<script language="JavaScript">
+//  Based on script by the amazing taz@blastradius.com 
+
+windowWidth=450;
+windowHeight=300;
+if (parseInt(navigator.appVersion) >= 4) window.moveTo((screen.width/2)-(windowWidth/2+10),(screen.height/2)-(windowHeight/2+20));
+
+ 
+
+</script>
+
+</head>
+<body>
+<table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" valign="middle">
+<div style="margin:5px; padding: 5px; border: 1px solid #AAACAE; width: 420px; background: #F1F2F2">
+<div align="center"><span class="didtekstas">Slaptažodžio priminimas</span></div>
+    <br>
+	    <span class="tekstas">Pamiršote slaptažodį, o gal net vartotojo vardą? Ne bėda!</span><br><br>
+	<span class="tekstas">Įrašykite el. pašto adresą, kurį nurodėte registruodamasis, arba vartotojo vardą ir jums registracijos duomenys bus atsiųsti el. paštu - adresu, kurį nurodėte registruodamasis.</span><br><br>
+<form action="priminti.php" method="post" name="forma" style="margin:0;padding:0">
+<table width="100%" cellpadding="2" cellspacing="0" border="0">
+<tr>
+<td width="50%" class="tekstas">Vartotojo vardas (<span class="maztekstas">jei pamiršote tik slaptažodį</span>):</td>
+<td width="50%"><input type="text" name="name" style="width:180px" class="tekstas"></td>
+</tr>
+<tr>
+<td width="50%" class="maztekstas"><strong>&nbsp;&nbsp;&nbsp;arba</strong></td>
+<td width="50%"></td>
+</tr>
+<tr>
+<td width="50%" class="tekstas">El. paštas (<span class="maztekstas">jei pamiršote ir vartotojo vardą, ir slaptažodį</span>):</td>
+<td width="50%"><input type="text" name="email" style="width:180px" class="tekstas"></td>
+</tr>
+<tr>
+<td></td>
+<td><input type="submit" name="Submit" value="Priminti" class="tekstas"></td>
+</tr>
+</table>
+</form>
+
+
+<script language="javascript" type="text/javascript">
+<!--
+var pp_gemius_identifier = new String('15aaCKMEo_TxZs_OV26Ms4ZQzZadPE9XgmqGSixVpg3.l7');
+//-->
+</script>
+<script language="javascript" type="text/javascript" src="http://lt.hit.gemius.pl/pp_gemius.js"></script>
+
+<script language="javascript">hotlog_js="1.0";hotlog_d=document; hotlog_n=navigator;hotlog_rn=Math.random();hotlog_n_n=(hotlog_n.appName.substring(0,3)=="Mic")?0:1;hotlog_r=""+hotlog_rn+"&s=18112&r="+escape(hotlog_d.referrer)+"&pg="+escape(window.location.href);hotlog_d.cookie="hotlog=1"; hotlog_r+="&c="+(hotlog_d.cookie?"Y":"N");hotlog_d.cookie="hotlog=1; expires=Thu, 01-Jan-70 00:00:01 GMT"</script><script language="javascript1.1">hotlog_js="1.1";hotlog_r+="&j="+(navigator.javaEnabled()?"Y":"N")</script><script language="javascript1.2">hotlog_js="1.2";hotlog_s=screen;hotlog_r+="&wh="+hotlog_s.width+'x'+hotlog_s.height+"&px="+((hotlog_n_n==0)?hotlog_s.colorDepth:hotlog_s.pixelDepth)</script><script language="javascript1.3">hotlog_js="1.3"</script><script language="javascript">hotlog_r+="&js="+hotlog_js;hotlog_d.write("<img src=\"http://hit2.hotlog.ru/cgi-bin/hotlog/count?"+hotlog_r+"&\" border=0 width=1 height=1>")</script><noscript><img src="http://hit2.hotlog.ru/cgi-bin/hotlog/count?s=18112" border=0 width=1 height=1></noscript>
+
+</div>
+</td>
+</tr>
+</table>
+
+</body>
+</html>
