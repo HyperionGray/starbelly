@@ -25,6 +25,19 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from starbelly.config import get_config, get_path
 
 
+def find_executable(name):
+    '''
+    Find an executable in PATH.
+    
+    Returns the full path to the executable if found, otherwise None.
+    '''
+    for path in os.environ.get('PATH', '').split(':'):
+        full_path = os.path.join(path, name)
+        if os.path.isfile(full_path) and os.access(full_path, os.X_OK):
+            return full_path
+    return None
+
+
 r = RethinkDB()
 r.set_loop_type('trio')
 logging.basicConfig(level=logging.INFO)
@@ -333,7 +346,16 @@ async def main():
     sys.argv.pop(0)
     if len(sys.argv) > 0:
         logger.info("Exec target process...")
-        os.execvp(sys.argv[0], sys.argv)
+        
+        # Use dumb-init to properly handle signals and reap zombie processes
+        dumb_init_path = find_executable('dumb-init')
+        if dumb_init_path:
+            logger.info('Using dumb-init to manage the target process.')
+            os.execvp(dumb_init_path, ['dumb-init', '--'] + sys.argv)
+        else:
+            logger.warning('dumb-init not found in PATH. Running without init '
+                         'process - signals may not be handled correctly.')
+            os.execvp(sys.argv[0], sys.argv)
 
 
 async def upgrade_schema(conn):
