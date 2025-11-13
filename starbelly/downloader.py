@@ -207,33 +207,27 @@ class Downloader:
         :param DownloadRequest request:
         '''
         stats = self._stats
-        try:
-            response = await self._download_asyncio(request)
+        response = await self._download_asyncio(request)
 
-            # Update stats before forwarding response.
-            stats['item_count'] += 1
-            if response.exception:
-                stats['exception_count'] += 1
-            elif response.is_success:
-                stats['http_success_count'] += 1
-            else:
-                stats['http_error_count'] += 1
-            if response.status_code is not None:
-                http_status_counts = stats['http_status_counts']
-                http_status_counts[response.status_code] = \
-                    http_status_counts.get(response.status_code, 0) + 1
+        # Update stats before forwarding response.
+        stats['item_count'] += 1
+        if response.exception:
+            stats['exception_count'] += 1
+        elif response.is_success:
+            stats['http_success_count'] += 1
+        else:
+            stats['http_error_count'] += 1
+        if response.status_code is not None:
+            http_status_counts = stats['http_status_counts']
+            http_status_counts[response.status_code] = \
+                http_status_counts.get(response.status_code, 0) + 1
 
-            await self._send_channel.send(response)
-        except MimeNotAllowedError:
-            # Mime errors are raised to this level in order to abort the
-            # download, and from here they can be ignored.
-            pass
-        finally:
-            await self._rate_limiter_reset.send(request.url)
-            self._semaphore.release()
-            self._count -= 1
-            if self._policy.limits.met_item_limit(stats['item_count']):
-                raise CrawlItemLimitExceeded()
+        await self._send_channel.send(response)
+        await self._rate_limiter_reset.send(request.url)
+        self._semaphore.release()
+        self._count -= 1
+        if self._policy.limits.met_item_limit(stats['item_count']):
+            raise CrawlItemLimitExceeded()
 
     @trio_asyncio.aio_as_trio
     async def _download_asyncio(self, request, skip_mime=False):
@@ -296,11 +290,11 @@ class Downloader:
         except asyncio.TimeoutError:
             dl_response.set_exception('Timed out')
         except MimeNotAllowedError as exc:
-            # This exception re-raises so that instead of being recorded as a
-            # failed download, the download is removed from the crawl results
-            # altogether.
-            logger.error('%r Disallowed MIME "%s": %s', self, exc.mime, url)
-            raise
+            # Record MIME policy violations as exceptions so they are visible
+            # in crawl results when filtering for exceptions.
+            msg = 'Disallowed MIME type: {}'.format(exc.mime)
+            logger.error('%r %s: %s', self, msg, url)
+            dl_response.set_exception(msg)
         except (aiohttp.ClientError, aiohttp_socks.SocksError) as err:
             # Don't need a full stack trace for these common exceptions.
             msg = '{}: {}'.format(err.__class__.__name__, err)
