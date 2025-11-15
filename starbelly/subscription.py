@@ -7,6 +7,7 @@ import struct
 from uuid import UUID
 
 from rethinkdb import RethinkDB
+from rethinkdb.errors import ReqlDriverError
 import trio
 
 from .backoff import ExponentialBackoff
@@ -157,6 +158,45 @@ class SubscriptionManager:
         sub = TaskMonitorSubscription(sub_id, self._websocket, period, root_task)
         self._subscriptions[sub_id] = sub
         self._nursery.start_soon(sub.run, name="Task Monitor Subscription")
+        return sub_id
+
+    def subscribe_policy_list(self):
+        """
+        Subscribe to policy list changes.
+
+        :returns: A subscription ID.
+        :rtype: int
+        """
+        sub_id = next(self._subscription_id)
+        sub = PolicyListSubscription(sub_id, self._websocket, self._subscription_db)
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub.run, name="Policy List Subscription")
+        return sub_id
+
+    def subscribe_schedule_list(self):
+        """
+        Subscribe to schedule list changes.
+
+        :returns: A subscription ID.
+        :rtype: int
+        """
+        sub_id = next(self._subscription_id)
+        sub = ScheduleListSubscription(sub_id, self._websocket, self._subscription_db)
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub.run, name="Schedule List Subscription")
+        return sub_id
+
+    def subscribe_domain_login_list(self):
+        """
+        Subscribe to domain login list changes.
+
+        :returns: A subscription ID.
+        :rtype: int
+        """
+        sub_id = next(self._subscription_id)
+        sub = DomainLoginListSubscription(sub_id, self._websocket, self._subscription_db)
+        self._subscriptions[sub_id] = sub
+        self._nursery.start_soon(sub.run, name="Domain Login List Subscription")
         return sub_id
 
 
@@ -620,3 +660,236 @@ class TaskMonitorSubscription:
                     nodes.append((trio_child_task, pb_child_task))
 
         return message
+
+
+class PolicyListSubscription:
+    """
+    A subscription stream that emits the list of policies and sends updates
+    when policies are added, modified, or deleted.
+    """
+
+    def __init__(self, id_, websocket, subscription_db):
+        """
+        Constructor.
+
+        :param int id_: Subscription ID.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
+        :param starbelly.db.SubscriptionDb subscription_db: A database layer.
+        """
+        self._id = id_
+        self._websocket = websocket
+        self._subscription_db = subscription_db
+        self._cancel_scope = None
+
+    def __repr__(self):
+        """For debugging purposes, put the subscription ID in a string."""
+        return "<PolicyListSubscription id={}>".format(self._id)
+
+    def cancel(self):
+        """Cancel the subscription."""
+        if self._cancel_scope:
+            self._cancel_scope.cancel()
+        else:
+            raise Exception("Tried to cancel subscription that is not running.")
+
+    async def run(self):
+        """
+        Start the subscription stream.
+
+        :returns: This function runs until cancel() is called.
+        """
+        logger.info("%r Starting", self)
+        try:
+            async with trio.open_nursery() as nursery:
+                self._cancel_scope = nursery.cancel_scope
+                await self._run_stream()
+        except (trio.BrokenResourceError, trio.ClosedResourceError):
+            logger.info("%r Aborted", self)
+        except ReqlDriverError as e:
+            logger.warning("%r Database connection error: %s", self, e)
+        logger.info("%r Finished", self)
+
+    async def _run_stream(self):
+        """Run the main streaming loop."""
+        async for change in self._subscription_db.stream_policies():
+            await self._send_policy_event(change)
+
+    async def _send_policy_event(self, change):
+        """Send a policy change event to the client."""
+        message = ServerMessage()
+        message.event.subscription_id = self._id
+        
+        # Convert policy document to protobuf message
+        # This would need appropriate protobuf message definitions
+        # For now, we'll structure it similar to how policies are sent
+        policy_event = message.event.policy_event
+        
+        if change.get("old_val") is None and change.get("new_val"):
+            # New policy added
+            policy_event.event_type = 1  # ADDED
+            doc = change["new_val"]
+        elif change.get("new_val") is None and change.get("old_val"):
+            # Policy deleted
+            policy_event.event_type = 3  # DELETED
+            doc = change["old_val"]
+        else:
+            # Policy updated
+            policy_event.event_type = 2  # UPDATED
+            doc = change["new_val"]
+
+        policy_event.policy_id = doc["id"]
+        policy_event.name = doc["name"]
+        
+        await self._websocket.send_message(message.SerializeToString())
+
+
+class ScheduleListSubscription:
+    """
+    A subscription stream that emits the list of schedules and sends updates
+    when schedules are added, modified, or deleted.
+    """
+
+    def __init__(self, id_, websocket, subscription_db):
+        """
+        Constructor.
+
+        :param int id_: Subscription ID.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
+        :param starbelly.db.SubscriptionDb subscription_db: A database layer.
+        """
+        self._id = id_
+        self._websocket = websocket
+        self._subscription_db = subscription_db
+        self._cancel_scope = None
+
+    def __repr__(self):
+        """For debugging purposes, put the subscription ID in a string."""
+        return "<ScheduleListSubscription id={}>".format(self._id)
+
+    def cancel(self):
+        """Cancel the subscription."""
+        if self._cancel_scope:
+            self._cancel_scope.cancel()
+        else:
+            raise Exception("Tried to cancel subscription that is not running.")
+
+    async def run(self):
+        """
+        Start the subscription stream.
+
+        :returns: This function runs until cancel() is called.
+        """
+        logger.info("%r Starting", self)
+        try:
+            async with trio.open_nursery() as nursery:
+                self._cancel_scope = nursery.cancel_scope
+                await self._run_stream()
+        except (trio.BrokenResourceError, trio.ClosedResourceError):
+            logger.info("%r Aborted", self)
+        except ReqlDriverError as e:
+            logger.warning("%r Database connection error: %s", self, e)
+        logger.info("%r Finished", self)
+
+    async def _run_stream(self):
+        """Run the main streaming loop."""
+        async for change in self._subscription_db.stream_schedules():
+            await self._send_schedule_event(change)
+
+    async def _send_schedule_event(self, change):
+        """Send a schedule change event to the client."""
+        message = ServerMessage()
+        message.event.subscription_id = self._id
+        
+        schedule_event = message.event.schedule_event
+        
+        if change.get("old_val") is None and change.get("new_val"):
+            schedule_event.event_type = 1  # ADDED
+            doc = change["new_val"]
+        elif change.get("new_val") is None and change.get("old_val"):
+            schedule_event.event_type = 3  # DELETED
+            doc = change["old_val"]
+        else:
+            schedule_event.event_type = 2  # UPDATED
+            doc = change["new_val"]
+
+        schedule_event.schedule_id = UUID(doc["id"]).bytes
+        schedule_event.schedule_name = doc["schedule_name"]
+        
+        await self._websocket.send_message(message.SerializeToString())
+
+
+class DomainLoginListSubscription:
+    """
+    A subscription stream that emits the list of domain logins and sends updates
+    when logins are added, modified, or deleted.
+    """
+
+    def __init__(self, id_, websocket, subscription_db):
+        """
+        Constructor.
+
+        :param int id_: Subscription ID.
+        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
+            events to.
+        :param starbelly.db.SubscriptionDb subscription_db: A database layer.
+        """
+        self._id = id_
+        self._websocket = websocket
+        self._subscription_db = subscription_db
+        self._cancel_scope = None
+
+    def __repr__(self):
+        """For debugging purposes, put the subscription ID in a string."""
+        return "<DomainLoginListSubscription id={}>".format(self._id)
+
+    def cancel(self):
+        """Cancel the subscription."""
+        if self._cancel_scope:
+            self._cancel_scope.cancel()
+        else:
+            raise Exception("Tried to cancel subscription that is not running.")
+
+    async def run(self):
+        """
+        Start the subscription stream.
+
+        :returns: This function runs until cancel() is called.
+        """
+        logger.info("%r Starting", self)
+        try:
+            async with trio.open_nursery() as nursery:
+                self._cancel_scope = nursery.cancel_scope
+                await self._run_stream()
+        except (trio.BrokenResourceError, trio.ClosedResourceError):
+            logger.info("%r Aborted", self)
+        except ReqlDriverError as e:
+            logger.warning("%r Database connection error: %s", self, e)
+        logger.info("%r Finished", self)
+
+    async def _run_stream(self):
+        """Run the main streaming loop."""
+        async for change in self._subscription_db.stream_domain_logins():
+            await self._send_domain_login_event(change)
+
+    async def _send_domain_login_event(self, change):
+        """Send a domain login change event to the client."""
+        message = ServerMessage()
+        message.event.subscription_id = self._id
+        
+        login_event = message.event.domain_login_event
+        
+        if change.get("old_val") is None and change.get("new_val"):
+            login_event.event_type = 1  # ADDED
+            doc = change["new_val"]
+        elif change.get("new_val") is None and change.get("old_val"):
+            login_event.event_type = 3  # DELETED
+            doc = change["old_val"]
+        else:
+            login_event.event_type = 2  # UPDATED
+            doc = change["new_val"]
+
+        login_event.domain = doc["domain"]
+        
+        await self._websocket.send_message(message.SerializeToString())

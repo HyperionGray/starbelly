@@ -46,6 +46,27 @@ async def subscribe_task_monitor(command, response, subscription_manager):
 
 
 @api_handler
+async def subscribe_policy_list(response, subscription_manager):
+    ''' Handle the subscribe policy list command. '''
+    sub_id = subscription_manager.subscribe_policy_list()
+    response.new_subscription.subscription_id = sub_id
+
+
+@api_handler
+async def subscribe_schedule_list(response, subscription_manager):
+    ''' Handle the subscribe schedule list command. '''
+    sub_id = subscription_manager.subscribe_schedule_list()
+    response.new_subscription.subscription_id = sub_id
+
+
+@api_handler
+async def subscribe_domain_login_list(response, subscription_manager):
+    ''' Handle the subscribe domain login list command. '''
+    sub_id = subscription_manager.subscribe_domain_login_list()
+    response.new_subscription.subscription_id = sub_id
+
+
+@api_handler
 async def unsubscribe(command, subscription_manager):
     ''' Handle an unsubscribe command. '''
     sub_id = command.subscription_id
