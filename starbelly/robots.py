@@ -8,6 +8,7 @@ from yarl import URL
 import trio
 
 from .downloader import DownloadRequest
+from .sitemap import parse_sitemap
 
 
 r = RethinkDB()
@@ -84,6 +85,111 @@ class RobotsTxtManager:
         if policy.robots_txt.usage == 'OBEY':
             return robots_decision
         return not robots_decision
+
+    async def get_sitemap_urls(self, url, policy, downloader):
+        '''
+        Get sitemap URLs from the robots.txt file for the given URL's domain.
+
+        This fetches the applicable robots.txt if we don't have a recent copy
+        of it cached. If the policy has read_sitemaps disabled, returns an empty
+        list.
+
+        :param str url: A URL whose domain's robots.txt should be checked for
+            sitemaps.
+        :param Policy policy: The crawl policy.
+        :param Downloader downloader: The downloader to fetch robots.txt if needed.
+        :returns: List of sitemap URLs found in robots.txt
+        :rtype: list[str]
+        '''
+        # Check if sitemap reading is enabled in policy
+        if not policy.robots_txt.read_sitemaps:
+            return []
+
+        # Don't fetch robots.txt if policy is set to ignore it
+        if policy.robots_txt.usage == 'IGNORE':
+            return []
+
+        robots_url = str(URL(url).with_path('robots.txt')
+                                 .with_query(None)
+                                 .with_fragment(None))
+
+        # Check if cache has a current copy of robots.txt.
+        try:
+            robots = self._cache[robots_url]
+            if robots.is_older_than(self._max_age):
+                del self._cache[robots_url]
+                robots = None
+            else:
+                self._cache.move_to_end(robots_url)
+        except KeyError:
+            robots = None
+
+        # Do we need to fetch robots into cache?
+        if robots is None:
+            try:
+                # If another task is fetching it, then just wait for that task.
+                await self._events[robots_url].wait()
+                robots = self._cache[robots_url]
+            except KeyError:
+                # Create a new task to fetch it.
+                self._events[robots_url] = trio.Event()
+                robots = await self._get_robots(robots_url, downloader)
+                event = self._events.pop(robots_url)
+                event.set()
+
+        # Get sitemap URLs from robots.txt
+        return robots.get_sitemaps()
+
+    async def fetch_sitemap_urls(self, sitemap_url, downloader):
+        '''
+        Fetch a sitemap file and extract URLs from it.
+
+        This handles both regular sitemaps and sitemap index files. For sitemap
+        index files, it recursively fetches nested sitemaps.
+
+        :param str sitemap_url: The URL of the sitemap to fetch.
+        :param Downloader downloader: The downloader to fetch the sitemap.
+        :returns: List of URLs found in the sitemap (and nested sitemaps if any).
+        :rtype: list[str]
+        '''
+        logger.info('Fetching sitemap: %s', sitemap_url)
+        request = DownloadRequest(frontier_id=None, job_id=None, method='GET',
+            url=sitemap_url, form_data=None, cost=0)
+        
+        try:
+            response = await downloader.download(request, skip_mime=True)
+            
+            if response.status_code != 200 or response.body is None:
+                logger.warning('Failed to fetch sitemap %s: status=%d',
+                    sitemap_url, response.status_code)
+                return []
+            
+            # Parse the sitemap
+            urls = parse_sitemap(response.body)
+            
+            # Check if this is a sitemap index (URLs point to other sitemaps)
+            # by checking if the first URL ends with .xml
+            if urls and any(url.endswith('.xml') or url.endswith('.xml.gz') 
+                           for url in urls[:3]):
+                # This might be a sitemap index, recursively fetch nested sitemaps
+                all_urls = []
+                for nested_sitemap_url in urls:
+                    if nested_sitemap_url.endswith('.xml') or \
+                       nested_sitemap_url.endswith('.xml.gz'):
+                        nested_urls = await self.fetch_sitemap_urls(
+                            nested_sitemap_url, downloader)
+                        all_urls.extend(nested_urls)
+                    else:
+                        # This is a regular URL
+                        all_urls.append(nested_sitemap_url)
+                return all_urls
+            else:
+                return urls
+                
+        except Exception as e:
+            logger.error('Error fetching/parsing sitemap %s: %s', 
+                        sitemap_url, e)
+            return []
 
     async def _get_robots(self, robots_url, downloader):
         '''
@@ -238,3 +344,11 @@ class RobotsTxt:
         :rtype: bool
         '''
         return (datetime.now(timezone.utc) - self._updated_at).seconds >= age
+
+    def get_sitemaps(self):
+        '''
+        Return list of sitemap URLs from this robots.txt file.
+
+        :rtype: list[str]
+        '''
+        return self._robots.sitemaps

@@ -267,3 +267,139 @@ async def test_cache_eviction(asyncio_loop, nursery, autojump_clock):
     assert dl.download.call_count == 3
     assert await rtm.is_allowed('https://test1.example/foo/', policy, dl)
     assert dl.download.call_count == 4
+
+
+def make_policy_with_sitemaps(usage, user_agent, read_sitemaps=True):
+    ''' Make a sample policy with sitemap support. '''
+    dt = datetime(2018,12,31,13,47,00)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': dt,
+        'updated_at': dt,
+        'authentication': {
+            'enabled': False,
+        },
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'save': True},
+        ],
+        'proxy_rules': [],
+        'robots_txt': {
+            'usage': usage,
+            'read_sitemaps': read_sitemaps,
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': [],
+        },
+        'url_rules': [
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': user_agent}
+        ]
+    }
+    return Policy(doc, '1.0.0', ['https://seeds.example'])
+
+
+async def download_with_sitemaps(request, **kwargs):
+    ''' A mock download function that returns robots.txt with sitemaps. '''
+    response = DownloadResponse.from_request(request)
+    response.content_type = 'text/plain'
+    if 'robots.txt' in request.url:
+        response.body = \
+            b'User-agent: *\n' \
+            b'Disallow: /private/\n' \
+            b'\n' \
+            b'Sitemap: https://www.example/sitemap1.xml\n' \
+            b'Sitemap: https://www.example/sitemap2.xml\n'
+    elif 'sitemap1.xml' in request.url:
+        response.body = \
+            b'<?xml version="1.0" encoding="UTF-8"?>\n' \
+            b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' \
+            b'  <url><loc>https://www.example/page1</loc></url>\n' \
+            b'  <url><loc>https://www.example/page2</loc></url>\n' \
+            b'</urlset>'
+    elif 'sitemap2.xml' in request.url:
+        response.body = \
+            b'<?xml version="1.0" encoding="UTF-8"?>\n' \
+            b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' \
+            b'  <url><loc>https://www.example/page3</loc></url>\n' \
+            b'</urlset>'
+    response.status_code = 200
+    return response
+
+
+async def test_get_sitemap_urls(asyncio_loop, nursery):
+    ''' The robots.txt manager should extract sitemap URLs from robots.txt. '''
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_sitemaps)
+    rtm = RobotsTxtManager(db_pool)
+    rtm._get_robots_from_db = AsyncMock()
+    rtm._save_robots_to_db = AsyncMock()
+
+    policy = make_policy_with_sitemaps(usage='OBEY', user_agent='TestAgent1',
+                                        read_sitemaps=True)
+    sitemap_urls = await rtm.get_sitemap_urls('https://www.example/index.html',
+                                               policy, dl)
+    
+    assert len(sitemap_urls) == 2
+    assert 'https://www.example/sitemap1.xml' in sitemap_urls
+    assert 'https://www.example/sitemap2.xml' in sitemap_urls
+
+
+async def test_get_sitemap_urls_disabled(asyncio_loop, nursery):
+    ''' When read_sitemaps is False, no sitemaps should be returned. '''
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_sitemaps)
+    rtm = RobotsTxtManager(db_pool)
+    rtm._get_robots_from_db = AsyncMock()
+    rtm._save_robots_to_db = AsyncMock()
+
+    policy = make_policy_with_sitemaps(usage='OBEY', user_agent='TestAgent1',
+                                        read_sitemaps=False)
+    sitemap_urls = await rtm.get_sitemap_urls('https://www.example/index.html',
+                                               policy, dl)
+    
+    assert len(sitemap_urls) == 0
+    # Should not even fetch robots.txt when disabled
+    assert not dl.download.called
+
+
+async def test_fetch_sitemap_urls(asyncio_loop, nursery):
+    ''' The robots.txt manager should fetch and parse sitemap files. '''
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_sitemaps)
+    rtm = RobotsTxtManager(db_pool)
+
+    urls = await rtm.fetch_sitemap_urls('https://www.example/sitemap1.xml', dl)
+    
+    assert len(urls) == 2
+    assert 'https://www.example/page1' in urls
+    assert 'https://www.example/page2' in urls
+
+
+async def test_robots_txt_get_sitemaps():
+    ''' The RobotsTxt class should expose sitemap URLs. '''
+    robots_doc = {
+        'file': b'User-agent: *\n' \
+                b'Disallow: /private/\n' \
+                b'\n' \
+                b'Sitemap: https://example.com/sitemap.xml\n' \
+                b'Sitemap: https://example.com/sitemap2.xml\n',
+        'updated_at': datetime.now(timezone.utc),
+        'url': 'https://www.example/robots.txt',
+    }
+    
+    robots = RobotsTxt(robots_doc)
+    sitemaps = robots.get_sitemaps()
+    
+    assert len(sitemaps) == 2
+    assert 'https://example.com/sitemap.xml' in sitemaps
+    assert 'https://example.com/sitemap2.xml' in sitemaps

@@ -496,6 +496,48 @@ def test_policy_robots_invalid_usage():
         robots = PolicyRobotsTxt(doc={})
 
 
+def test_policy_robots_read_sitemaps():
+    ''' Test that read_sitemaps field is properly initialized. '''
+    robots1 = PolicyRobotsTxt({'usage': 'OBEY', 'read_sitemaps': True})
+    assert robots1.usage == 'OBEY'
+    assert robots1.read_sitemaps
+
+    robots2 = PolicyRobotsTxt({'usage': 'IGNORE', 'read_sitemaps': False})
+    assert robots2.usage == 'IGNORE'
+    assert not robots2.read_sitemaps
+
+    # Default should be False
+    robots3 = PolicyRobotsTxt({'usage': 'INVERT'})
+    assert robots3.usage == 'INVERT'
+    assert not robots3.read_sitemaps
+
+
+def test_policy_robots_doc_to_pb_with_sitemaps():
+    ''' Test conversion from doc to protobuf with read_sitemaps. '''
+    doc = {
+        'usage': 'OBEY',
+        'read_sitemaps': True,
+    }
+    pb = starbelly.starbelly_pb2.PolicyRobotsTxt()
+    PolicyRobotsTxt.convert_doc_to_pb(doc, pb)
+    
+    assert pb.usage == USAGE_ENUM.Value('OBEY')
+    assert pb.read_sitemaps
+
+
+def test_policy_robots_pb_to_doc_with_sitemaps():
+    ''' Test conversion from protobuf to doc with read_sitemaps. '''
+    pb = starbelly.starbelly_pb2.PolicyRobotsTxt()
+    pb.usage = USAGE_ENUM.Value('IGNORE')
+    pb.read_sitemaps = True
+    
+    doc = {}
+    PolicyRobotsTxt.convert_pb_to_doc(pb, doc)
+    
+    assert doc['usage'] == 'IGNORE'
+    assert doc['read_sitemaps']
+
+
 def test_policy_url_normalization_normalize():
     ''' Normalize a URL. '''
     url_normalization = PolicyUrlNormalization({
