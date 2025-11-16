@@ -534,6 +534,8 @@ class PolicyRobotsTxt:
         :type pb: starbelly.starbelly_pb2.PolicyRobotsTxt
         '''
         pb.usage = USAGE_ENUM.Value(doc['usage'])
+        if 'read_sitemaps' in doc:
+            pb.read_sitemaps = doc['read_sitemaps']
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
@@ -547,6 +549,10 @@ class PolicyRobotsTxt:
         '''
         if pb.HasField('usage'):
             doc['usage'] = USAGE_ENUM.Name(pb.usage)
+        if pb.HasField('read_sitemaps'):
+            doc['read_sitemaps'] = pb.read_sitemaps
+        else:
+            doc['read_sitemaps'] = False
 
     def __init__(self, doc):
         '''
@@ -557,11 +563,17 @@ class PolicyRobotsTxt:
         if 'usage' not in doc:
             _invalid('Robots.txt usage is required')
         self._usage = doc['usage']
+        self._read_sitemaps = doc.get('read_sitemaps', False)
 
     @property
     def usage(self):
         ''' OBEY, IGNORE, or INVERT '''
         return self._usage
+
+    @property
+    def read_sitemaps(self):
+        ''' Whether to read and crawl sitemaps from robots.txt '''
+        return self._read_sitemaps
 
 
 class PolicyUrlNormalization:
