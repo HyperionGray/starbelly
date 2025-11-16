@@ -1107,3 +1107,55 @@ class SubscriptionDb:
             async with cursor:
                 async for item in cursor:
                     yield item
+
+    async def stream_policies(self):
+        '''
+        Stream policy changes using RethinkDB changefeed.
+
+        :returns: An async generator that yields policy change documents.
+        '''
+        query = r.table('policy').changes(include_initial=True)
+        
+        async with self._db_pool.connection() as conn:
+            cursor = await query.run(conn)
+            try:
+                async with cursor:
+                    async for change in cursor:
+                        yield change
+            finally:
+                # Ensure cursor is properly closed
+                pass
+
+    async def stream_schedules(self):
+        '''
+        Stream schedule changes using RethinkDB changefeed.
+
+        :returns: An async generator that yields schedule change documents.
+        '''
+        query = r.table('schedule').changes(include_initial=True)
+        
+        async with self._db_pool.connection() as conn:
+            cursor = await query.run(conn)
+            try:
+                async with cursor:
+                    async for change in cursor:
+                        yield change
+            finally:
+                pass
+
+    async def stream_domain_logins(self):
+        '''
+        Stream domain login changes using RethinkDB changefeed.
+
+        :returns: An async generator that yields domain login change documents.
+        '''
+        query = r.table('domain_login').changes(include_initial=True)
+        
+        async with self._db_pool.connection() as conn:
+            cursor = await query.run(conn)
+            try:
+                async with cursor:
+                    async for change in cursor:
+                        yield change
+            finally:
+                pass
