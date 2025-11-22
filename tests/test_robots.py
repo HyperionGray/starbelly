@@ -12,6 +12,7 @@ import trio
 from . import asyncio_loop, AsyncMock
 from starbelly.downloader import DownloadResponse
 from starbelly.policy import Policy
+from starbelly.rate_limiter import get_domain_token
 from starbelly.robots import RobotsTxt, RobotsTxtManager
 
 
@@ -267,3 +268,182 @@ async def test_cache_eviction(asyncio_loop, nursery, autojump_clock):
     assert dl.download.call_count == 3
     assert await rtm.is_allowed('https://test1.example/foo/', policy, dl)
     assert dl.download.call_count == 4
+
+
+async def test_crawl_delay_obey(asyncio_loop, nursery):
+    ''' When policy says to obey crawl delay, it should be applied to the
+    rate limiter. '''
+    async def download_with_delay(request, **kwargs):
+        response = DownloadResponse.from_request(request)
+        response.content_type = 'text/plain'
+        response.body = \
+            b'User-agent: TestAgent1\n' \
+            b'Crawl-delay: 5\n' \
+            b'Disallow: /bar/\n'
+        response.status_code = 200
+        return response
+
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_delay)
+    rate_limiter = Mock()
+    rtm = RobotsTxtManager(db_pool, rate_limiter)
+    rtm._get_robots_from_db = AsyncMock()
+    rtm._save_robots_to_db = AsyncMock()
+
+    dt = datetime(2018,12,31,13,47,00)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': dt,
+        'updated_at': dt,
+        'authentication': {
+            'enabled': False,
+        },
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'save': True},
+        ],
+        'proxy_rules': [],
+        'robots_txt': {
+            'usage': 'OBEY',
+            'obey_crawl_delay': True,
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': [],
+        },
+        'url_rules': [
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'TestAgent1'}
+        ]
+    }
+    policy = Policy(doc, '1.0.0', ['https://seeds.example'])
+
+    assert await rtm.is_allowed('https://www.example/index.html', policy, dl)
+    
+    # Check that rate limiter was called with correct domain and delay
+    rate_limiter.set_rate_limit.assert_called_once()
+    call_args = rate_limiter.set_rate_limit.call_args
+    token, delay = call_args[0]
+    assert token == get_domain_token('www.example')
+    assert delay == 5.0
+
+
+async def test_crawl_delay_ignore(asyncio_loop, nursery):
+    ''' When policy says not to obey crawl delay, it should not be applied. '''
+    async def download_with_delay(request, **kwargs):
+        response = DownloadResponse.from_request(request)
+        response.content_type = 'text/plain'
+        response.body = \
+            b'User-agent: TestAgent1\n' \
+            b'Crawl-delay: 5\n' \
+            b'Disallow: /bar/\n'
+        response.status_code = 200
+        return response
+
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_delay)
+    rate_limiter = Mock()
+    rtm = RobotsTxtManager(db_pool, rate_limiter)
+    rtm._get_robots_from_db = AsyncMock()
+    rtm._save_robots_to_db = AsyncMock()
+
+    dt = datetime(2018,12,31,13,47,00)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': dt,
+        'updated_at': dt,
+        'authentication': {
+            'enabled': False,
+        },
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'save': True},
+        ],
+        'proxy_rules': [],
+        'robots_txt': {
+            'usage': 'OBEY',
+            'obey_crawl_delay': False,
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': [],
+        },
+        'url_rules': [
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'TestAgent1'}
+        ]
+    }
+    policy = Policy(doc, '1.0.0', ['https://seeds.example'])
+
+    assert await rtm.is_allowed('https://www.example/index.html', policy, dl)
+    
+    # Check that rate limiter was NOT called
+    rate_limiter.set_rate_limit.assert_not_called()
+
+
+async def test_crawl_delay_no_rate_limiter(asyncio_loop, nursery):
+    ''' When no rate limiter is provided, crawl delay should not cause errors. '''
+    async def download_with_delay(request, **kwargs):
+        response = DownloadResponse.from_request(request)
+        response.content_type = 'text/plain'
+        response.body = \
+            b'User-agent: TestAgent1\n' \
+            b'Crawl-delay: 5\n' \
+            b'Disallow: /bar/\n'
+        response.status_code = 200
+        return response
+
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_delay)
+    rtm = RobotsTxtManager(db_pool, rate_limiter=None)
+    rtm._get_robots_from_db = AsyncMock()
+    rtm._save_robots_to_db = AsyncMock()
+
+    dt = datetime(2018,12,31,13,47,00)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': dt,
+        'updated_at': dt,
+        'authentication': {
+            'enabled': False,
+        },
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'save': True},
+        ],
+        'proxy_rules': [],
+        'robots_txt': {
+            'usage': 'OBEY',
+            'obey_crawl_delay': True,
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': [],
+        },
+        'url_rules': [
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'TestAgent1'}
+        ]
+    }
+    policy = Policy(doc, '1.0.0', ['https://seeds.example'])
+
+    # Should not raise an error even though rate_limiter is None
+    assert await rtm.is_allowed('https://www.example/index.html', policy, dl)
