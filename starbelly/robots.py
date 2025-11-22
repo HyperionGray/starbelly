@@ -276,3 +276,11 @@ class RobotsTxt:
         :rtype: bool
         '''
         return (datetime.now(timezone.utc) - self._updated_at).seconds >= age
+
+    def get_sitemaps(self):
+        '''
+        Return list of sitemap URLs from this robots.txt file.
+
+        :rtype: list[str]
+        '''
+        return self._robots.sitemaps

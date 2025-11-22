@@ -561,6 +561,7 @@ class PolicyRobotsTxt:
         if 'usage' not in doc:
             _invalid('Robots.txt usage is required')
         self._usage = doc['usage']
+        self._read_sitemaps = doc.get('read_sitemaps', False)
         self._obey_crawl_delay = doc.get('obey_crawl_delay', False)
 
     @property
@@ -569,6 +570,9 @@ class PolicyRobotsTxt:
         return self._usage
 
     @property
+    def read_sitemaps(self):
+        ''' Whether to read and crawl sitemaps from robots.txt '''
+        return self._read_sitemaps
     def obey_crawl_delay(self):
         ''' Whether to obey crawl delay from robots.txt '''
         return self._obey_crawl_delay
