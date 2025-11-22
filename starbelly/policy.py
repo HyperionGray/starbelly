@@ -534,8 +534,8 @@ class PolicyRobotsTxt:
         :type pb: starbelly.starbelly_pb2.PolicyRobotsTxt
         '''
         pb.usage = USAGE_ENUM.Value(doc['usage'])
-        if 'read_sitemaps' in doc:
-            pb.read_sitemaps = doc['read_sitemaps']
+        if 'obey_crawl_delay' in doc:
+            pb.obey_crawl_delay = doc['obey_crawl_delay']
 
     @staticmethod
     def convert_pb_to_doc(pb, doc):
@@ -549,10 +549,8 @@ class PolicyRobotsTxt:
         '''
         if pb.HasField('usage'):
             doc['usage'] = USAGE_ENUM.Name(pb.usage)
-        if pb.HasField('read_sitemaps'):
-            doc['read_sitemaps'] = pb.read_sitemaps
-        else:
-            doc['read_sitemaps'] = False
+        if pb.HasField('obey_crawl_delay'):
+            doc['obey_crawl_delay'] = pb.obey_crawl_delay
 
     def __init__(self, doc):
         '''
@@ -564,6 +562,7 @@ class PolicyRobotsTxt:
             _invalid('Robots.txt usage is required')
         self._usage = doc['usage']
         self._read_sitemaps = doc.get('read_sitemaps', False)
+        self._obey_crawl_delay = doc.get('obey_crawl_delay', False)
 
     @property
     def usage(self):
@@ -574,6 +573,9 @@ class PolicyRobotsTxt:
     def read_sitemaps(self):
         ''' Whether to read and crawl sitemaps from robots.txt '''
         return self._read_sitemaps
+    def obey_crawl_delay(self):
+        ''' Whether to obey crawl delay from robots.txt '''
+        return self._obey_crawl_delay
 
 
 class PolicyUrlNormalization:

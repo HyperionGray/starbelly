@@ -8,7 +8,7 @@ from yarl import URL
 import trio
 
 from .downloader import DownloadRequest
-from .sitemap import parse_sitemap
+from .rate_limiter import get_domain_token
 
 
 r = RethinkDB()
@@ -17,17 +17,20 @@ logger = logging.getLogger(__name__)
 
 class RobotsTxtManager:
     ''' Store and manage robots.txt files. '''
-    def __init__(self, db_pool, max_age=24*60*60, max_cache=1e3):
+    def __init__(self, db_pool, rate_limiter=None, max_age=24*60*60, max_cache=1e3):
         '''
         Constructor.
 
         :param db_pool: A DB connection pool.
+        :param rate_limiter: A rate limiter for applying crawl delays. Optional.
+        :type rate_limiter: starbelly.rate_limiter.RateLimiter
         :param int max_age: The maximum age before a robots.txt is downloaded
             again.
         :param int max_cache: The maximum number of robots.txt files to cache
             in memory.
         '''
         self._db_pool = db_pool
+        self._rate_limiter = rate_limiter
         self._events = dict()
         self._cache = OrderedDict()
         self._max_age = max_age
@@ -78,6 +81,8 @@ class RobotsTxtManager:
                 robots = await self._get_robots(robots_url, downloader)
                 event = self._events.pop(robots_url)
                 event.set()
+                # Apply crawl delay if policy says to obey it and we have a rate limiter
+                self._apply_crawl_delay(url, robots, policy)
 
         # Note: we only check the first user agent.
         user_agent = policy.user_agents.get_first_user_agent()
@@ -86,110 +91,27 @@ class RobotsTxtManager:
             return robots_decision
         return not robots_decision
 
-    async def get_sitemap_urls(self, url, policy, downloader):
+    def _apply_crawl_delay(self, url, robots, policy):
         '''
-        Get sitemap URLs from the robots.txt file for the given URL's domain.
+        Apply crawl delay from robots.txt to the rate limiter if the policy
+        allows it.
 
-        This fetches the applicable robots.txt if we don't have a recent copy
-        of it cached. If the policy has read_sitemaps disabled, returns an empty
-        list.
-
-        :param str url: A URL whose domain's robots.txt should be checked for
-            sitemaps.
-        :param Policy policy: The crawl policy.
-        :param Downloader downloader: The downloader to fetch robots.txt if needed.
-        :returns: List of sitemap URLs found in robots.txt
-        :rtype: list[str]
+        :param str url: The URL being checked (used to determine domain).
+        :param RobotsTxt robots: The robots.txt object.
+        :param Policy policy: The policy being used.
         '''
-        # Check if sitemap reading is enabled in policy
-        if not policy.robots_txt.read_sitemaps:
-            return []
+        if not policy.robots_txt.obey_crawl_delay or not self._rate_limiter:
+            return
 
-        # Don't fetch robots.txt if policy is set to ignore it
-        if policy.robots_txt.usage == 'IGNORE':
-            return []
-
-        robots_url = str(URL(url).with_path('robots.txt')
-                                 .with_query(None)
-                                 .with_fragment(None))
-
-        # Check if cache has a current copy of robots.txt.
-        try:
-            robots = self._cache[robots_url]
-            if robots.is_older_than(self._max_age):
-                del self._cache[robots_url]
-                robots = None
-            else:
-                self._cache.move_to_end(robots_url)
-        except KeyError:
-            robots = None
-
-        # Do we need to fetch robots into cache?
-        if robots is None:
-            try:
-                # If another task is fetching it, then just wait for that task.
-                await self._events[robots_url].wait()
-                robots = self._cache[robots_url]
-            except KeyError:
-                # Create a new task to fetch it.
-                self._events[robots_url] = trio.Event()
-                robots = await self._get_robots(robots_url, downloader)
-                event = self._events.pop(robots_url)
-                event.set()
-
-        # Get sitemap URLs from robots.txt
-        return robots.get_sitemaps()
-
-    async def fetch_sitemap_urls(self, sitemap_url, downloader):
-        '''
-        Fetch a sitemap file and extract URLs from it.
-
-        This handles both regular sitemaps and sitemap index files. For sitemap
-        index files, it recursively fetches nested sitemaps.
-
-        :param str sitemap_url: The URL of the sitemap to fetch.
-        :param Downloader downloader: The downloader to fetch the sitemap.
-        :returns: List of URLs found in the sitemap (and nested sitemaps if any).
-        :rtype: list[str]
-        '''
-        logger.info('Fetching sitemap: %s', sitemap_url)
-        request = DownloadRequest(frontier_id=None, job_id=None, method='GET',
-            url=sitemap_url, form_data=None, cost=0)
-        
-        try:
-            response = await downloader.download(request, skip_mime=True)
-            
-            if response.status_code != 200 or response.body is None:
-                logger.warning('Failed to fetch sitemap %s: status=%d',
-                    sitemap_url, response.status_code)
-                return []
-            
-            # Parse the sitemap
-            urls = parse_sitemap(response.body)
-            
-            # Check if this is a sitemap index (URLs point to other sitemaps)
-            # by checking if the first URL ends with .xml
-            if urls and any(url.endswith('.xml') or url.endswith('.xml.gz') 
-                           for url in urls[:3]):
-                # This might be a sitemap index, recursively fetch nested sitemaps
-                all_urls = []
-                for nested_sitemap_url in urls:
-                    if nested_sitemap_url.endswith('.xml') or \
-                       nested_sitemap_url.endswith('.xml.gz'):
-                        nested_urls = await self.fetch_sitemap_urls(
-                            nested_sitemap_url, downloader)
-                        all_urls.extend(nested_urls)
-                    else:
-                        # This is a regular URL
-                        all_urls.append(nested_sitemap_url)
-                return all_urls
-            else:
-                return urls
-                
-        except Exception as e:
-            logger.error('Error fetching/parsing sitemap %s: %s', 
-                        sitemap_url, e)
-            return []
+        user_agent = policy.user_agents.get_first_user_agent()
+        crawl_delay = robots.get_crawl_delay(user_agent)
+        if crawl_delay is not None:
+            parsed_url = URL(url)
+            domain = parsed_url.host
+            token = get_domain_token(domain)
+            logger.info('Setting rate limit for %s: %f seconds (from robots.txt)',
+                domain, crawl_delay)
+            self._rate_limiter.set_rate_limit(token, crawl_delay)
 
     async def _get_robots(self, robots_url, downloader):
         '''
@@ -335,6 +257,16 @@ class RobotsTxt:
         :rtype: bool
         '''
         return self._robots.is_allowed(user_agent, url)
+
+    def get_crawl_delay(self, user_agent):
+        '''
+        Return the crawl delay specified for ``user_agent`` in this robots.txt.
+
+        :param str user_agent: The user agent to check crawl delay for.
+        :returns: The crawl delay in seconds, or None if not specified.
+        :rtype: float or None
+        '''
+        return self._robots.get_crawl_delay(user_agent)
 
     def is_older_than(self, age):
         '''

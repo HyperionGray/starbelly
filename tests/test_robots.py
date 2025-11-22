@@ -12,6 +12,7 @@ import trio
 from . import asyncio_loop, AsyncMock
 from starbelly.downloader import DownloadResponse
 from starbelly.policy import Policy
+from starbelly.rate_limiter import get_domain_token
 from starbelly.robots import RobotsTxt, RobotsTxtManager
 
 
@@ -269,8 +270,27 @@ async def test_cache_eviction(asyncio_loop, nursery, autojump_clock):
     assert dl.download.call_count == 4
 
 
-def make_policy_with_sitemaps(usage, user_agent, read_sitemaps=True):
-    ''' Make a sample policy with sitemap support. '''
+async def test_crawl_delay_obey(asyncio_loop, nursery):
+    ''' When policy says to obey crawl delay, it should be applied to the
+    rate limiter. '''
+    async def download_with_delay(request, **kwargs):
+        response = DownloadResponse.from_request(request)
+        response.content_type = 'text/plain'
+        response.body = \
+            b'User-agent: TestAgent1\n' \
+            b'Crawl-delay: 5\n' \
+            b'Disallow: /bar/\n'
+        response.status_code = 200
+        return response
+
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_delay)
+    rate_limiter = Mock()
+    rtm = RobotsTxtManager(db_pool, rate_limiter)
+    rtm._get_robots_from_db = AsyncMock()
+    rtm._save_robots_to_db = AsyncMock()
+
     dt = datetime(2018,12,31,13,47,00)
     doc = {
         'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
@@ -288,8 +308,8 @@ def make_policy_with_sitemaps(usage, user_agent, read_sitemaps=True):
         ],
         'proxy_rules': [],
         'robots_txt': {
-            'usage': usage,
-            'read_sitemaps': read_sitemaps,
+            'usage': 'OBEY',
+            'obey_crawl_delay': True,
         },
         'url_normalization': {
             'enabled': True,
@@ -299,107 +319,131 @@ def make_policy_with_sitemaps(usage, user_agent, read_sitemaps=True):
             {'action': 'MULTIPLY', 'amount': 0},
         ],
         'user_agents': [
-            {'name': user_agent}
+            {'name': 'TestAgent1'}
         ]
     }
-    return Policy(doc, '1.0.0', ['https://seeds.example'])
+    policy = Policy(doc, '1.0.0', ['https://seeds.example'])
+
+    assert await rtm.is_allowed('https://www.example/index.html', policy, dl)
+    
+    # Check that rate limiter was called with correct domain and delay
+    rate_limiter.set_rate_limit.assert_called_once()
+    call_args = rate_limiter.set_rate_limit.call_args
+    token, delay = call_args[0]
+    assert token == get_domain_token('www.example')
+    assert delay == 5.0
 
 
-async def download_with_sitemaps(request, **kwargs):
-    ''' A mock download function that returns robots.txt with sitemaps. '''
-    response = DownloadResponse.from_request(request)
-    response.content_type = 'text/plain'
-    if 'robots.txt' in request.url:
+async def test_crawl_delay_ignore(asyncio_loop, nursery):
+    ''' When policy says not to obey crawl delay, it should not be applied. '''
+    async def download_with_delay(request, **kwargs):
+        response = DownloadResponse.from_request(request)
+        response.content_type = 'text/plain'
         response.body = \
-            b'User-agent: *\n' \
-            b'Disallow: /private/\n' \
-            b'\n' \
-            b'Sitemap: https://www.example/sitemap1.xml\n' \
-            b'Sitemap: https://www.example/sitemap2.xml\n'
-    elif 'sitemap1.xml' in request.url:
-        response.body = \
-            b'<?xml version="1.0" encoding="UTF-8"?>\n' \
-            b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' \
-            b'  <url><loc>https://www.example/page1</loc></url>\n' \
-            b'  <url><loc>https://www.example/page2</loc></url>\n' \
-            b'</urlset>'
-    elif 'sitemap2.xml' in request.url:
-        response.body = \
-            b'<?xml version="1.0" encoding="UTF-8"?>\n' \
-            b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' \
-            b'  <url><loc>https://www.example/page3</loc></url>\n' \
-            b'</urlset>'
-    response.status_code = 200
-    return response
+            b'User-agent: TestAgent1\n' \
+            b'Crawl-delay: 5\n' \
+            b'Disallow: /bar/\n'
+        response.status_code = 200
+        return response
 
-
-async def test_get_sitemap_urls(asyncio_loop, nursery):
-    ''' The robots.txt manager should extract sitemap URLs from robots.txt. '''
     db_pool = Mock()
     dl = Mock()
-    dl.download = AsyncMock(side_effect=download_with_sitemaps)
-    rtm = RobotsTxtManager(db_pool)
+    dl.download = AsyncMock(side_effect=download_with_delay)
+    rate_limiter = Mock()
+    rtm = RobotsTxtManager(db_pool, rate_limiter)
     rtm._get_robots_from_db = AsyncMock()
     rtm._save_robots_to_db = AsyncMock()
 
-    policy = make_policy_with_sitemaps(usage='OBEY', user_agent='TestAgent1',
-                                        read_sitemaps=True)
-    sitemap_urls = await rtm.get_sitemap_urls('https://www.example/index.html',
-                                               policy, dl)
-    
-    assert len(sitemap_urls) == 2
-    assert 'https://www.example/sitemap1.xml' in sitemap_urls
-    assert 'https://www.example/sitemap2.xml' in sitemap_urls
-
-
-async def test_get_sitemap_urls_disabled(asyncio_loop, nursery):
-    ''' When read_sitemaps is False, no sitemaps should be returned. '''
-    db_pool = Mock()
-    dl = Mock()
-    dl.download = AsyncMock(side_effect=download_with_sitemaps)
-    rtm = RobotsTxtManager(db_pool)
-    rtm._get_robots_from_db = AsyncMock()
-    rtm._save_robots_to_db = AsyncMock()
-
-    policy = make_policy_with_sitemaps(usage='OBEY', user_agent='TestAgent1',
-                                        read_sitemaps=False)
-    sitemap_urls = await rtm.get_sitemap_urls('https://www.example/index.html',
-                                               policy, dl)
-    
-    assert len(sitemap_urls) == 0
-    # Should not even fetch robots.txt when disabled
-    assert not dl.download.called
-
-
-async def test_fetch_sitemap_urls(asyncio_loop, nursery):
-    ''' The robots.txt manager should fetch and parse sitemap files. '''
-    db_pool = Mock()
-    dl = Mock()
-    dl.download = AsyncMock(side_effect=download_with_sitemaps)
-    rtm = RobotsTxtManager(db_pool)
-
-    urls = await rtm.fetch_sitemap_urls('https://www.example/sitemap1.xml', dl)
-    
-    assert len(urls) == 2
-    assert 'https://www.example/page1' in urls
-    assert 'https://www.example/page2' in urls
-
-
-async def test_robots_txt_get_sitemaps():
-    ''' The RobotsTxt class should expose sitemap URLs. '''
-    robots_doc = {
-        'file': b'User-agent: *\n' \
-                b'Disallow: /private/\n' \
-                b'\n' \
-                b'Sitemap: https://example.com/sitemap.xml\n' \
-                b'Sitemap: https://example.com/sitemap2.xml\n',
-        'updated_at': datetime.now(timezone.utc),
-        'url': 'https://www.example/robots.txt',
+    dt = datetime(2018,12,31,13,47,00)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': dt,
+        'updated_at': dt,
+        'authentication': {
+            'enabled': False,
+        },
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'save': True},
+        ],
+        'proxy_rules': [],
+        'robots_txt': {
+            'usage': 'OBEY',
+            'obey_crawl_delay': False,
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': [],
+        },
+        'url_rules': [
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'TestAgent1'}
+        ]
     }
+    policy = Policy(doc, '1.0.0', ['https://seeds.example'])
+
+    assert await rtm.is_allowed('https://www.example/index.html', policy, dl)
     
-    robots = RobotsTxt(robots_doc)
-    sitemaps = robots.get_sitemaps()
-    
-    assert len(sitemaps) == 2
-    assert 'https://example.com/sitemap.xml' in sitemaps
-    assert 'https://example.com/sitemap2.xml' in sitemaps
+    # Check that rate limiter was NOT called
+    rate_limiter.set_rate_limit.assert_not_called()
+
+
+async def test_crawl_delay_no_rate_limiter(asyncio_loop, nursery):
+    ''' When no rate limiter is provided, crawl delay should not cause errors. '''
+    async def download_with_delay(request, **kwargs):
+        response = DownloadResponse.from_request(request)
+        response.content_type = 'text/plain'
+        response.body = \
+            b'User-agent: TestAgent1\n' \
+            b'Crawl-delay: 5\n' \
+            b'Disallow: /bar/\n'
+        response.status_code = 200
+        return response
+
+    db_pool = Mock()
+    dl = Mock()
+    dl.download = AsyncMock(side_effect=download_with_delay)
+    rtm = RobotsTxtManager(db_pool, rate_limiter=None)
+    rtm._get_robots_from_db = AsyncMock()
+    rtm._save_robots_to_db = AsyncMock()
+
+    dt = datetime(2018,12,31,13,47,00)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': dt,
+        'updated_at': dt,
+        'authentication': {
+            'enabled': False,
+        },
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'save': True},
+        ],
+        'proxy_rules': [],
+        'robots_txt': {
+            'usage': 'OBEY',
+            'obey_crawl_delay': True,
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': [],
+        },
+        'url_rules': [
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'TestAgent1'}
+        ]
+    }
+    policy = Policy(doc, '1.0.0', ['https://seeds.example'])
+
+    # Should not raise an error even though rate_limiter is None
+    assert await rtm.is_allowed('https://www.example/index.html', policy, dl)
