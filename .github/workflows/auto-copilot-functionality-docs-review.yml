@@ -211,6 +211,113 @@ jobs:
           
           cat /tmp/doc-analysis.md
 
+<<<<<<< HEAD
+      - name: Documentation Quality Analysis
+        run: |
+          echo "" >> /tmp/doc-analysis.md
+          echo "## Documentation Quality Analysis" >> /tmp/doc-analysis.md
+          echo "" >> /tmp/doc-analysis.md
+          
+          # Check README.md completeness and quality
+          echo "### 1. README.md Analysis" >> /tmp/doc-analysis.md
+          if [ -f "README.md" ]; then
+            readme_lines=$(wc -l < README.md)
+            echo "- README.md exists with $readme_lines lines" >> /tmp/doc-analysis.md
+            
+            # Check for essential sections
+            if grep -q -i "installation\|install\|setup" README.md; then
+              echo "- ✅ Installation instructions found" >> /tmp/doc-analysis.md
+            else
+              echo "- ❌ Missing installation instructions" >> /tmp/doc-analysis.md
+            fi
+            
+            if grep -q -i "usage\|example\|getting started" README.md; then
+              echo "- ✅ Usage examples found" >> /tmp/doc-analysis.md
+            else
+              echo "- ❌ Missing usage examples" >> /tmp/doc-analysis.md
+            fi
+            
+            if grep -q -i "contributing\|contribute" README.md; then
+              echo "- ✅ Contributing guidelines found" >> /tmp/doc-analysis.md
+            else
+              echo "- ❌ Missing contributing guidelines" >> /tmp/doc-analysis.md
+            fi
+            
+            if grep -q -i "license" README.md; then
+              echo "- ✅ License information found" >> /tmp/doc-analysis.md
+            else
+              echo "- ❌ Missing license information" >> /tmp/doc-analysis.md
+            fi
+          else
+            echo "- ❌ README.md not found" >> /tmp/doc-analysis.md
+          fi
+          
+          # Check for other documentation files
+          echo "" >> /tmp/doc-analysis.md
+          echo "### 2. Additional Documentation" >> /tmp/doc-analysis.md
+          
+          docs_count=$(find . -name "*.md" | wc -l)
+          echo "- Total markdown files: $docs_count" >> /tmp/doc-analysis.md
+          
+          if [ -f "CONTRIBUTING.md" ]; then
+            echo "- ✅ CONTRIBUTING.md exists" >> /tmp/doc-analysis.md
+          else
+            echo "- ❌ CONTRIBUTING.md missing" >> /tmp/doc-analysis.md
+          fi
+          
+          if [ -f "LICENSE" ] || [ -f "LICENSE.md" ] || [ -f "LICENSE.txt" ]; then
+            echo "- ✅ License file exists" >> /tmp/doc-analysis.md
+          else
+            echo "- ❌ License file missing" >> /tmp/doc-analysis.md
+          fi
+          
+          if [ -d "docs" ]; then
+            docs_files=$(find docs -name "*.md" | wc -l)
+            echo "- ✅ Documentation directory exists with $docs_files files" >> /tmp/doc-analysis.md
+          else
+            echo "- ⚠️ No dedicated docs directory" >> /tmp/doc-analysis.md
+          fi
+          
+          # Check code comments and inline documentation
+          echo "" >> /tmp/doc-analysis.md
+          echo "### 3. Code Documentation" >> /tmp/doc-analysis.md
+          
+          # Python docstrings
+          python_docstrings=$(grep -r '"""' . --include="*.py" 2>/dev/null | wc -l || echo "0")
+          echo "- Python docstrings found: $python_docstrings" >> /tmp/doc-analysis.md
+          
+          # JavaScript/TypeScript comments
+          js_comments=$(grep -r '/\*\*' . --include="*.js" --include="*.ts" 2>/dev/null | wc -l || echo "0")
+          echo "- JavaScript/TypeScript JSDoc comments: $js_comments" >> /tmp/doc-analysis.md
+          
+          # General comments
+          total_comments=$(grep -r '#\|//\|/\*' . --include="*.py" --include="*.js" --include="*.ts" --include="*.java" --include="*.go" 2>/dev/null | wc -l || echo "0")
+          echo "- Total code comments: $total_comments" >> /tmp/doc-analysis.md
+          
+          # API documentation check
+          echo "" >> /tmp/doc-analysis.md
+          echo "### 4. API Documentation" >> /tmp/doc-analysis.md
+          
+          if find . -name "*.py" -exec grep -l "flask\|fastapi\|django" {} \; | head -1 > /dev/null 2>&1; then
+            echo "- Python web framework detected - consider API documentation" >> /tmp/doc-analysis.md
+          fi
+          
+          if find . -name "*.js" -o -name "*.ts" -exec grep -l "express\|koa\|nest" {} \; | head -1 > /dev/null 2>&1; then
+            echo "- Node.js web framework detected - consider API documentation" >> /tmp/doc-analysis.md
+          fi
+          
+          # Recommendations
+          echo "" >> /tmp/doc-analysis.md
+          echo "### 5. Documentation Improvement Recommendations" >> /tmp/doc-analysis.md
+          echo "- Ensure README.md includes clear installation steps" >> /tmp/doc-analysis.md
+          echo "- Add usage examples with code snippets" >> /tmp/doc-analysis.md
+          echo "- Include troubleshooting section" >> /tmp/doc-analysis.md
+          echo "- Add API documentation if applicable" >> /tmp/doc-analysis.md
+          echo "- Consider adding architecture diagrams" >> /tmp/doc-analysis.md
+          echo "- Include changelog or release notes" >> /tmp/doc-analysis.md
+          
+          cat /tmp/doc-analysis.md
+=======
       - name: GitHub Copilot Documentation Review
         uses: austenstone/copilot-cli-action@v2
         with:
@@ -227,6 +334,7 @@ jobs:
             8. Ensure contributing guidelines are present
             
             Provide specific recommendations with file names and sections.
+>>>>>>> main
         continue-on-error: true
 
       - name: Create Documentation Review Report
