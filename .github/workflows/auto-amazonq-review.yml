@@ -1,6 +1,12 @@
 name: "AmazonQ Review after GitHub Copilot"
 
 on:
+  # Triggered on every push
+  push:
+    branches:
+      - main
+      - master
+      - develop
   # Triggered when GitHub Copilot workflows complete
   workflow_run:
     workflows:
@@ -12,6 +18,17 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      ai_model:
+        description: 'AI Model to use for review'
+        required: false
+        default: 'amazonq'
+        type: choice
+        options:
+          - amazonq
+          - codex
+          - gemini
+          - gpt5
 
 permissions:
   contents: write
