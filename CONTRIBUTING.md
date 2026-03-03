@@ -94,4 +94,4 @@ For more information, visit [starbelly.readthedocs.io](http://starbelly.readthed
 
 ## License
 
-By contributing to Starbelly, you agree that your contributions will be licensed under the MIT License.
+Starbelly is under a proprietary license. By contributing to Starbelly, you agree that your contributions will be subject to the same proprietary license. Please contact Hyperion Gray at acaceres@hyperiongray.com for licensing information.
