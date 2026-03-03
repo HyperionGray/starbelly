@@ -325,6 +325,11 @@ class CrawlManager:
         job_id = job_doc['id']
         policy = Policy(job_doc['policy'], __version__, job_doc['seeds'])
         try:
+            # SECURITY NOTE: Using pickle for deserialization. This assumes the
+            # database is in a trusted environment. If the database is compromised,
+            # malicious pickle data could execute arbitrary code.
+            # See docs/SECURITY.md for secure deployment recommendations.
+            # TODO: Consider replacing pickle with JSON serialization
             old_urls = pickle.loads(job_doc['old_urls'])
         except KeyError:
             # If old URLs are not in the job_doc, then this is a new job and

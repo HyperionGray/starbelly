@@ -8,6 +8,12 @@ Learn more at
 [![Coverage](https://img.shields.io/coveralls/github/HyperionGray/starbelly.svg?style=flat-square)](https://coveralls.io/github/HyperionGray/starbelly)
 [![Read the Docs](https://img.shields.io/readthedocs/starbelly.svg)](https://starbelly.readthedocs.io)
 
+## Security
+
+For information about security considerations and best practices for deploying Starbelly, please see [docs/SECURITY.md](docs/SECURITY.md).
+
+If you discover a security vulnerability, please email acaceres@hyperiongray.com rather than opening a public issue.
+
 
 # LICENSE
 
