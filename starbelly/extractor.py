@@ -168,7 +168,8 @@ def _extract_feed(response):
     :returns: A list of URLs.
     :rtype: list[str]
     '''
-    # Security: Limit body size to prevent DoS from parsing extremely large feeds
+    # Security: Limit body size to MAX_BODY_SIZE_FOR_PARSING to prevent DoS
+    # from parsing extremely large feeds
     if len(response.body) > MAX_BODY_SIZE_FOR_PARSING:
         logger.warning('Skipping extraction for oversized feed: %d bytes '
                       '(max: %d) url=%s', len(response.body),
@@ -188,7 +189,8 @@ def _extract_html(response):
     :returns: A list of URLs.
     :rtype: list[str]
     '''
-    # Security: Limit body size to prevent DoS from parsing extremely large documents
+    # Security: Limit body size to MAX_BODY_SIZE_FOR_PARSING to prevent DoS
+    # from parsing extremely large HTML documents
     if len(response.body) > MAX_BODY_SIZE_FOR_PARSING:
         logger.warning('Skipping extraction for oversized response: %d bytes '
                       '(max: %d) url=%s', len(response.body),

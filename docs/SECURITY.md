@@ -102,9 +102,9 @@ old_urls = set(old_urls_list)
 **Proposed Fix:**
 ```python
 # Add size limit
-MAX_BODY_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_BODY_SIZE_FOR_PARSING = 10 * 1024 * 1024  # 10MB
 
-if len(response.body) > MAX_BODY_SIZE:
+if len(response.body) > MAX_BODY_SIZE_FOR_PARSING:
     logger.warning(f'Skipping large response: {len(response.body)} bytes')
     return
 
