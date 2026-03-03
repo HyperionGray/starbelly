@@ -329,7 +329,7 @@ Channels provide **backpressure** - if consumer is slow, producer blocks. This p
 2. **Start RethinkDB** (in Docker):
    ```bash
    cd dev/
-   docker-compose up
+   docker-compose up  # or 'docker compose up' for Docker Compose v2+
    ```
 
 3. **Initialize database**:
@@ -346,6 +346,8 @@ Channels provide **backpressure** - if consumer is slow, producer blocks. This p
    ```bash
    poetry run python tools/shell.py
    ```
+
+**Note**: RethinkDB admin interface will be available at http://localhost:8080 once the Docker container is running.
 
 ### Easy Tasks (Good First Issues)
 
