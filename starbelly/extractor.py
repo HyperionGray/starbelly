@@ -2,7 +2,7 @@ import hashlib
 import logging
 
 from bs4 import BeautifulSoup
-import cchardet
+import chardet as charset_detector
 import feedparser
 import mimeparse
 import trio
@@ -11,7 +11,7 @@ import yarl
 
 
 logger = logging.getLogger(__name__)
-chardet = lambda s: cchardet.detect(s).get('encoding')
+chardet = lambda s: charset_detector.detect(s).get('encoding')
 
 
 class CrawlExtractor:
