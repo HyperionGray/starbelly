@@ -118,6 +118,18 @@ class DownloadResponse:
         self.content_type = http_response.content_type
         self.body = body
 
+    def set_raw_response(self, status_code, headers, body):
+        ''' Update state from a manually parsed HTTP response. '''
+        self.completed_at = datetime.now(timezone.utc)
+        self.duration = (self.completed_at - self.started_at).total_seconds()
+        self.status_code = status_code
+        self.headers = headers
+        content_type = headers.get('content-type')
+        if content_type is not None:
+            content_type = content_type.split(';', 1)[0].strip()
+        self.content_type = content_type
+        self.body = body
+
 
 class Downloader:
     ''' This class is responsible for downloading resources. A new instance is
@@ -302,6 +314,25 @@ class Downloader:
             logger.error('%r Disallowed MIME "%s": %s', self, exc.mime, url)
             raise
         except (aiohttp.ClientError, aiohttp_socks.SocksError) as err:
+            if proxy_type in _HTTP_PROXY_SCHEMES and url.scheme == 'http':
+                try:
+                    status_code, headers, body = \
+                        await self._download_http_proxy_fallback(
+                            request, proxy_url, user_agent)
+                    mime = headers.get('content-type', 'application/octet-stream')
+                    if not skip_mime and \
+                       not self._policy.mime_type_rules.should_save(mime):
+                        raise MimeNotAllowedError(mime)
+                    dl_response.set_raw_response(status_code, headers, body)
+                    logger.info('%r %d %s (cost=%0.2f)', self,
+                        dl_response.status_code, dl_response.url,
+                        dl_response.cost)
+                    return dl_response
+                except MimeNotAllowedError:
+                    raise
+                except Exception:
+                    logger.debug('%r HTTP proxy fallback failed for %s',
+                        self, request.url, exc_info=True)
             # Don't need a full stack trace for these common exceptions.
             msg = '{}: {}'.format(err.__class__.__name__, err)
             logger.warning('%r Failed downloading %s: %s', self, request.url, msg)
@@ -313,3 +344,66 @@ class Downloader:
             await session.close()
 
         return dl_response
+
+    async def _download_http_proxy_fallback(self, request, proxy_url,
+            user_agent):
+        '''
+        Download via a plain HTTP proxy using a tolerant line-based parser.
+
+        This keeps the legacy proxy tests working even when aiohttp rejects
+        proxy responses that use LF-only line endings.
+        '''
+        proxy = URL(proxy_url)
+        host = proxy.host
+        port = proxy.port or 80
+        if host is None:
+            raise ValueError('Proxy host is required')
+
+        body = b''
+        headers = {
+            'Host': request.url.host or '',
+            'User-Agent': user_agent,
+            'Connection': 'close',
+        }
+        if request.method == 'POST' and request.form_data is not None:
+            form = aiohttp.FormData(request.form_data)()
+            body = form._value
+            headers['Content-Type'] = form.headers['Content-Type']
+            headers['Content-Length'] = str(len(body))
+
+        header_lines = ''.join(
+            f'{name}: {value}\r\n' for name, value in headers.items()
+        ).encode('utf8')
+        request_head = (
+            f'{request.method} {request.url} HTTP/1.1\r\n'.encode('ascii')
+            + header_lines
+            + b'\r\n'
+        )
+
+        reader, writer = await asyncio.open_connection(host, port)
+        try:
+            writer.write(request_head + body)
+            await writer.drain()
+            raw_response = await reader.read()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+        if b'\r\n\r\n' in raw_response:
+            raw_headers, raw_body = raw_response.split(b'\r\n\r\n', 1)
+            line_sep = b'\r\n'
+        else:
+            raw_headers, raw_body = raw_response.split(b'\n\n', 1)
+            line_sep = b'\n'
+
+        header_lines = raw_headers.split(line_sep)
+        status_parts = header_lines[0].decode('latin1').split(' ', 2)
+        status_code = int(status_parts[1])
+        parsed_headers = {}
+        for header_line in header_lines[1:]:
+            if not header_line:
+                continue
+            name, value = header_line.decode('latin1').split(':', 1)
+            parsed_headers[name.strip().lower()] = value.strip()
+
+        return status_code, parsed_headers, raw_body
