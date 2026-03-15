@@ -12,7 +12,14 @@ import trio
 
 from .backoff import ExponentialBackoff
 from .job import FINISHED_STATES
-from .starbelly_pb2 import JobRunState, ServerMessage, SubscriptionClosed
+from .starbelly_pb2 import (
+    DomainLoginEvent,
+    JobRunState,
+    PolicyEvent,
+    ScheduleEvent,
+    ServerMessage,
+    SubscriptionClosed,
+)
 
 
 r = RethinkDB()
@@ -719,28 +726,21 @@ class PolicyListSubscription:
         """Send a policy change event to the client."""
         message = ServerMessage()
         message.event.subscription_id = self._id
-        
-        # Convert policy document to protobuf message
-        # This would need appropriate protobuf message definitions
-        # For now, we'll structure it similar to how policies are sent
         policy_event = message.event.policy_event
-        
+
         if change.get("old_val") is None and change.get("new_val"):
-            # New policy added
-            policy_event.event_type = 1  # ADDED
+            policy_event.event_type = PolicyEvent.ADDED
             doc = change["new_val"]
         elif change.get("new_val") is None and change.get("old_val"):
-            # Policy deleted
-            policy_event.event_type = 3  # DELETED
+            policy_event.event_type = PolicyEvent.DELETED
             doc = change["old_val"]
         else:
-            # Policy updated
-            policy_event.event_type = 2  # UPDATED
+            policy_event.event_type = PolicyEvent.UPDATED
             doc = change["new_val"]
 
-        policy_event.policy_id = doc["id"]
+        policy_event.policy_id = UUID(doc["id"]).bytes
         policy_event.name = doc["name"]
-        
+
         await self._websocket.send_message(message.SerializeToString())
 
 
@@ -801,22 +801,21 @@ class ScheduleListSubscription:
         """Send a schedule change event to the client."""
         message = ServerMessage()
         message.event.subscription_id = self._id
-        
         schedule_event = message.event.schedule_event
-        
+
         if change.get("old_val") is None and change.get("new_val"):
-            schedule_event.event_type = 1  # ADDED
+            schedule_event.event_type = ScheduleEvent.ADDED
             doc = change["new_val"]
         elif change.get("new_val") is None and change.get("old_val"):
-            schedule_event.event_type = 3  # DELETED
+            schedule_event.event_type = ScheduleEvent.DELETED
             doc = change["old_val"]
         else:
-            schedule_event.event_type = 2  # UPDATED
+            schedule_event.event_type = ScheduleEvent.UPDATED
             doc = change["new_val"]
 
         schedule_event.schedule_id = UUID(doc["id"]).bytes
         schedule_event.schedule_name = doc["schedule_name"]
-        
+
         await self._websocket.send_message(message.SerializeToString())
 
 
@@ -877,19 +876,18 @@ class DomainLoginListSubscription:
         """Send a domain login change event to the client."""
         message = ServerMessage()
         message.event.subscription_id = self._id
-        
         login_event = message.event.domain_login_event
-        
+
         if change.get("old_val") is None and change.get("new_val"):
-            login_event.event_type = 1  # ADDED
+            login_event.event_type = DomainLoginEvent.ADDED
             doc = change["new_val"]
         elif change.get("new_val") is None and change.get("old_val"):
-            login_event.event_type = 3  # DELETED
+            login_event.event_type = DomainLoginEvent.DELETED
             doc = change["old_val"]
         else:
-            login_event.event_type = 2  # UPDATED
+            login_event.event_type = DomainLoginEvent.UPDATED
             doc = change["new_val"]
 
         login_event.domain = doc["domain"]
-        
+
         await self._websocket.send_message(message.SerializeToString())
