@@ -389,12 +389,17 @@ class Downloader:
             writer.close()
             await writer.wait_closed()
 
+        if not raw_response:
+            raise ValueError('Empty HTTP response from proxy')
+        
         if b'\r\n\r\n' in raw_response:
             raw_headers, raw_body = raw_response.split(b'\r\n\r\n', 1)
             line_sep = b'\r\n'
-        else:
+        elif b'\n\n' in raw_response:
             raw_headers, raw_body = raw_response.split(b'\n\n', 1)
             line_sep = b'\n'
+        else:
+            raise ValueError('Invalid HTTP response: missing header separator')
 
         header_lines = raw_headers.split(line_sep)
         status_parts = header_lines[0].decode('latin1').split(' ', 2)
