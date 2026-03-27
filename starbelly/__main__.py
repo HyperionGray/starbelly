@@ -11,6 +11,7 @@ from watchdog.observers import Observer
 
 from .bootstrap import Bootstrap
 from .config import get_config, get_path
+from .version import __version__
 
 
 class ProcessWatchdog(FileSystemEventHandler):
@@ -121,9 +122,14 @@ def configure_logging(log_level, error_log):
         logger.addHandler(exc_handler)
 
 
-def get_args():
+def get_args(argv=None):
     ''' Parse command line arguments. '''
     arg_parser = argparse.ArgumentParser(description='Starbelly')
+    arg_parser.add_argument(
+        '--version',
+        action='store_true',
+        help='Show the Starbelly version and exit'
+    )
     arg_parser.add_argument(
         '--log-level',
         default='warning',
@@ -151,12 +157,21 @@ def get_args():
         '--error-log',
         help='Copy error logs to the specified file.'
     )
-    return arg_parser.parse_args()
+    return arg_parser.parse_args(argv)
+
+
+def get_version_output():
+    ''' Build the CLI version string. '''
+    return f'Starbelly {__version__}'
 
 
 def main():
     ''' Set up watchdog or run starbelly. '''
     args = get_args()
+    if args.version:
+        print(get_version_output())
+        return 0
+
     configure_logging(args.log_level, args.error_log)
     config = get_config()
 
@@ -168,7 +183,8 @@ def main():
     else:
         bootstrap = Bootstrap(config, args)
         bootstrap.run()
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

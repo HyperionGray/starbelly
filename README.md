@@ -52,6 +52,14 @@ Starbelly provides a WebSocket API for programmatic access. See the [WebSocket A
 
 Python client library: [starbelly-python-client](https://github.com/hyperiongray/starbelly-python-client)
 
+### Command Line
+
+Print the currently installed Starbelly version:
+
+```bash
+python -m starbelly --version
+```
+
 ## Documentation
 
 Complete documentation is available at [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
