@@ -1,6 +1,6 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+# NOTE: This test predates the database-layer refactor. It remains an
+# integration test because it exercises websocket flow with real RethinkDB
+# interactions across job, response, and response_body tables.
 
 from datetime import datetime, timezone
 import gzip
