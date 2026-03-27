@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Enhanced README.md with additional sections
+- Scheduler now validates schedule `time_unit` and `timing` values up front and fails with clear validation errors for invalid values.
+- Scheduler event queue processing now uses heap-safe popping to preserve chronological ordering of remaining events.
 
 ## [2.0.0-dev]
 

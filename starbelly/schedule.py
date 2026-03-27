@@ -19,6 +19,8 @@ from .starbelly_pb2 import (
 
 logger = logging.getLogger(__name__)
 r = RethinkDB()
+VALID_TIME_UNITS = {'MINUTES', 'HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS'}
+VALID_TIMINGS = {'AFTER_PREVIOUS_JOB_FINISHED', 'REGULAR_INTERVAL'}
 
 
 class ScheduleValidationError(Exception):
@@ -50,7 +52,9 @@ def compute_next_event(base, num_units, time_unit):
         day = min(base.day, calendar.monthrange(year, month)[1])
         next_ = base.replace(year=year, month=month, day=day)
     elif time_unit == 'YEARS':
-        next_ = base.replace(base.year + num_units)
+        next_ = base.replace(year=base.year + num_units)
+    else:
+        raise ScheduleValidationError('Invalid time unit: {}'.format(time_unit))
     return next_
 
 
@@ -85,6 +89,12 @@ class Schedule:
         if not self.seeds:
             raise ScheduleValidationError(
                 'Crawl schedule must have at least one seed URL.')
+        if self.time_unit not in VALID_TIME_UNITS:
+            raise ScheduleValidationError(
+                'Invalid time unit: {}'.format(self.time_unit))
+        if self.timing not in VALID_TIMINGS:
+            raise ScheduleValidationError(
+                'Invalid schedule timing: {}'.format(self.timing))
         if self.num_units <= 0:
             raise ScheduleValidationError('Time units must be positive')
         try:
@@ -430,7 +440,7 @@ class Scheduler:
                     await self._event_added.wait()
                 continue
 
-            self._events.pop(0)
+            heapq.heappop(self._events)
             logger.info('Scheduled job "%s" is ready to start.',
                 next_event.schedule.name)
             await self._start_scheduled_job(next_event)

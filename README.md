@@ -48,6 +48,11 @@ Starbelly provides a WebSocket API for programmatic access. See the [WebSocket A
 
 Python client library: [starbelly-python-client](https://github.com/hyperiongray/starbelly-python-client)
 
+## Recent Improvements
+
+- Scheduler validation now rejects invalid schedule `time_unit` and `timing` values early with explicit `ScheduleValidationError` messages.
+- Scheduler event dispatch preserves heap ordering after due events are consumed, which keeps future jobs running in chronological order.
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

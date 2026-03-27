@@ -230,6 +230,40 @@ def test_invalid_schedule():
             True,
             datetime(2017, 11, 29, 15, 19, 50),
             datetime(2018, 11, 29, 15, 19, 50),
+            'LIGHTYEARS',  # Invalid time unit
+            3,
+            'AFTER_PREVIOUS_JOB_FINISHED',
+            'Test Job @ {TIME}',
+            0,
+            ['http://seed.example'],
+            ['tag1', 'tag2'],
+            'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+        )
+
+    with pytest.raises(ScheduleValidationError):
+        Schedule(
+            '123e4567-e89b-12d3-a456-426655440001',
+            'My Schedule',
+            True,
+            datetime(2017, 11, 29, 15, 19, 50),
+            datetime(2018, 11, 29, 15, 19, 50),
+            'HOURS',
+            3,
+            'WHENEVER',  # Invalid schedule timing
+            'Test Job @ {TIME}',
+            0,
+            ['http://seed.example'],
+            ['tag1', 'tag2'],
+            'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+        )
+
+    with pytest.raises(ScheduleValidationError):
+        Schedule(
+            '123e4567-e89b-12d3-a456-426655440001',
+            'My Schedule',
+            True,
+            datetime(2017, 11, 29, 15, 19, 50),
+            datetime(2018, 11, 29, 15, 19, 50),
             'HOURS',
             3,
             'AFTER_PREVIOUS_JOB_FINISHED',
@@ -295,6 +329,33 @@ def test_schedule_time_units(autojump_clock):
 
     due6 = compute_next_event(base, 2, 'YEARS')
     assert due6 == datetime(1984, 11, 21, 3, 14, 0)
+
+
+async def test_schedule_task_preserves_heap_order_after_pop():
+    db_pool = Mock()
+    crawl_manager = Mock()
+    scheduler = Scheduler(db_pool, crawl_manager)
+
+    now = datetime.now(timezone.utc)
+    due_now = ScheduleEvent(make_schedule(1), now - timedelta(seconds=1))
+    due_late = ScheduleEvent(make_schedule(2), now + timedelta(seconds=2))
+    due_soon = ScheduleEvent(make_schedule(3), now + timedelta(seconds=1))
+    scheduler._add_event(due_now)
+    scheduler._add_event(due_late)
+    scheduler._add_event(due_soon)
+
+    class StopLoop(Exception):
+        pass
+
+    async def fake_start_scheduled_job(_):
+        raise StopLoop()
+
+    scheduler._start_scheduled_job = fake_start_scheduled_job
+
+    with pytest.raises(StopLoop):
+        await scheduler._schedule_task()
+
+    assert scheduler._events[0].due == min(e.due for e in scheduler._events)
 
 
 @pytest.mark.skip('Not sure how to handle tests that depend on trio clock and system clock')

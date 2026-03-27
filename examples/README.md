@@ -1,27 +1,19 @@
 # Starbelly Examples
 
-This directory contains example code demonstrating various Starbelly features.
+This directory contains small runnable examples for Starbelly features.
 
-## Streaming API Example
+## Scheduler validation and queue behavior
 
-The `streaming_api_example.py` file demonstrates how to use the new streaming API to subscribe to real-time data updates.
+The scheduler behavior covered by tests now includes:
 
-**Status**: Requires protobuf definitions to be completed (see ../STREAMING_API.md)
+- Early validation of invalid schedule `time_unit` and `timing` values.
+- Heap-safe queue popping when dispatching due schedule events.
 
-The streaming API allows clients to:
-- Subscribe to policy, schedule, and domain login changes
-- Receive real-time updates via WebSocket
-- Avoid polling and reduce database load
-- Process only changed data
+These are exercised in:
 
-### Running the Example
+- `tests/test_schedule.py::test_invalid_schedule`
+- `tests/test_schedule.py::test_schedule_task_preserves_heap_order_after_pop`
 
-```bash
-python3 examples/streaming_api_example.py
-```
+## Other examples
 
-Note: The full example code is commented out until protobuf definitions are added.
-
-## Other Examples
-
-Add additional examples here as they are created.
+Additional examples can be added here as they are created.
