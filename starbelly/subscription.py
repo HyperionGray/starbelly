@@ -19,6 +19,33 @@ r = RethinkDB()
 logger = logging.getLogger(__name__)
 
 
+def _iter_header_pairs(headers):
+    """
+    Yield normalized ``(key, value)`` header pairs from common input formats.
+
+    Historically, headers have been stored as a flat alternating sequence:
+    ``[key1, value1, key2, value2, ...]``. Some callers may also provide a
+    mapping. This helper supports both and safely ignores malformed trailing
+    keys with no value.
+    """
+    if not headers:
+        return
+
+    if isinstance(headers, dict):
+        for key, value in headers.items():
+            yield key, value
+        return
+
+    header_iter = iter(headers)
+    for key in header_iter:
+        try:
+            value = next(header_iter)
+        except StopIteration:
+            logger.warning("Ignoring malformed trailing header key: %r", key)
+            return
+        yield key, value
+
+
 class SyncTokenError(Exception):
     """ A sync token is syntactically invalid or was used with an incompatible
     stream type. """
@@ -374,12 +401,10 @@ class JobSyncSubscription:
             item.body = body
             item.is_compressed = is_compressed
             item.content_type = item_doc["content_type"]
-            header_iter = iter(item_doc.get("headers", []))
-            for key in header_iter:
-                value = next(header_iter)
+            for key, value in _iter_header_pairs(item_doc.get("headers")):
                 header = item.headers.add()
-                header.key = key
-                header.value = value
+                header.key = key if isinstance(key, str) else str(key)
+                header.value = value if isinstance(value, str) else str(value)
             item.status_code = item_doc["status_code"]
 
         message.event.sync_item.token = SyncTokenInt.encode(item_doc["sequence"])
@@ -387,7 +412,6 @@ class JobSyncSubscription:
 
     async def _set_initial_job_status(self):
         """ Query database for initial job status and update internal state. """
-        logger.info(dir(self._db))
         run_state = await self._db.get_job_run_state(self._job_id)
         logging.debug("%r Initial job state: %s", self, run_state)
         self._job_completed = run_state in FINISHED_STATES

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2019-XX-XX
 
+### Added
+- Job sync subscriptions now accept dictionary-style response headers and
+  safely ignore malformed trailing header keys when serializing events.
+
 ### Changed
 - Massive rewrite of Starbelly's I/O to use Trio instead of asyncio
 - Upgrade web client to Dart 2 and Angular 5

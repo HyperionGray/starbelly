@@ -14,6 +14,7 @@ from starbelly.starbelly_pb2 import JobRunState, ServerMessage
 from starbelly.subscription import (
     ExponentialBackoff,
     JobStatusSubscription,
+    JobSyncSubscription,
     ResourceMonitorSubscription,
     SyncTokenError,
     SyncTokenInt,
@@ -35,6 +36,22 @@ class MockWebsocket:
 
     async def send_message(self, message):
         await self._send.send(message)
+
+
+class _StaticSubscriptionDb:
+    """Small test double for JobSyncSubscription unit tests."""
+
+    def __init__(self, items, run_state):
+        self._items = items
+        self._run_state = run_state
+
+    async def get_job_run_state(self, job_id):
+        return self._run_state
+
+    async def get_job_sync_items(self, job_id, starting_sequence):
+        for item in self._items:
+            if item["sequence"] > starting_sequence:
+                yield item
 
 
 def test_sync_token_int():
@@ -369,3 +386,85 @@ async def test_task_monitor(autojump_clock, nursery):
         assert len(task_tree.subtasks) == 3
 
     subscription.cancel()
+
+
+async def test_job_sync_subscription_odd_headers_are_ignored(nursery):
+    """A trailing odd header key should not crash event serialization."""
+    job_id = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    websocket = MockWebsocket()
+    _, job_recv = trio.open_memory_channel(0)
+    items = [
+        {
+            "sequence": 1,
+            "completed_at": datetime(2019, 1, 1, 1, 1, 1, tzinfo=timezone.utc),
+            "cost": 1.0,
+            "duration": 1.0,
+            "is_success": True,
+            "job_id": str(job_id),
+            "started_at": datetime(2019, 1, 1, 1, 1, 0, tzinfo=timezone.utc),
+            "url": "https://example.test/",
+            "content_type": "text/plain",
+            "status_code": 200,
+            "headers": ["Server", "FakeServer", "X-Trailing"],
+            "join": {"is_compressed": False, "body": b"ok"},
+        }
+    ]
+    subscription = JobSyncSubscription(
+        id_=99,
+        websocket=websocket,
+        job_id=str(job_id),
+        subscription_db=_StaticSubscriptionDb(items=items, run_state="completed"),
+        compression_ok=True,
+        job_state_recv=job_recv,
+        sync_token=None,
+    )
+    nursery.start_soon(subscription.run)
+
+    event = ServerMessage.FromString(await websocket.get_message()).event
+    assert event.subscription_id == 99
+    item = event.sync_item.item
+    assert item.headers[0].key == "Server"
+    assert item.headers[0].value == "FakeServer"
+    assert len(item.headers) == 1
+
+    closed = ServerMessage.FromString(await websocket.get_message()).event
+    assert closed.subscription_closed.reason == 1
+
+
+async def test_job_sync_subscription_accepts_mapping_headers(nursery):
+    """Dictionary headers should be serialized as response header pairs."""
+    job_id = UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    websocket = MockWebsocket()
+    _, job_recv = trio.open_memory_channel(0)
+    items = [
+        {
+            "sequence": 3,
+            "completed_at": datetime(2019, 1, 1, 1, 1, 3, tzinfo=timezone.utc),
+            "cost": 2.0,
+            "duration": 1.0,
+            "is_success": True,
+            "job_id": str(job_id),
+            "started_at": datetime(2019, 1, 1, 1, 1, 2, tzinfo=timezone.utc),
+            "url": "https://example.test/mapping",
+            "content_type": "text/plain",
+            "status_code": 200,
+            "headers": {"Server": "DictServer", "X-Num": 42},
+            "join": {"is_compressed": False, "body": b"ok"},
+        }
+    ]
+    subscription = JobSyncSubscription(
+        id_=100,
+        websocket=websocket,
+        job_id=str(job_id),
+        subscription_db=_StaticSubscriptionDb(items=items, run_state="completed"),
+        compression_ok=True,
+        job_state_recv=job_recv,
+        sync_token=None,
+    )
+    nursery.start_soon(subscription.run)
+
+    event = ServerMessage.FromString(await websocket.get_message()).event
+    assert event.subscription_id == 100
+    headers = {h.key: h.value for h in event.sync_item.item.headers}
+    assert headers["Server"] == "DictServer"
+    assert headers["X-Num"] == "42"

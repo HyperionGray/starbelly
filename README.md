@@ -52,6 +52,13 @@ Starbelly provides a WebSocket API for programmatic access. See the [WebSocket A
 
 Python client library: [starbelly-python-client](https://github.com/hyperiongray/starbelly-python-client)
 
+Job sync payload notes:
+- Response headers are serialized from either alternating key/value lists
+  (for example `["Server", "nginx", "X-Foo", "bar"]`) or dictionary-style
+  mappings (for example `{"Server": "nginx", "X-Foo": "bar"}`).
+- If a malformed header list has a trailing key without a value, Starbelly
+  skips that trailing key instead of failing the subscription event.
+
 ## Documentation
 
 Complete documentation is available at [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
