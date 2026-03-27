@@ -366,9 +366,9 @@ class Downloader:
             'Connection': 'close',
         }
         if request.method == 'POST' and request.form_data is not None:
-            form = aiohttp.FormData(request.form_data)()
-            body = form._value
-            headers['Content-Type'] = form.headers['Content-Type']
+            from urllib.parse import urlencode
+            body = urlencode(request.form_data).encode('utf-8')
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
             headers['Content-Length'] = str(len(body))
 
         header_lines = ''.join(
