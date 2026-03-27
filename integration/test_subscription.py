@@ -1,11 +1,8 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+"""Integration tests for JobSyncSubscription with a live database."""
 
 from datetime import datetime, timezone
 import gzip
 import logging
-from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
@@ -29,7 +26,8 @@ async def job_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create("job").run(conn)
     yield r.table("job")
-    await r.table_drop("job").run(conn)
+    async with db_pool.connection() as conn:
+        await r.table_drop("job").run(conn)
 
 
 @pytest.fixture
@@ -41,7 +39,8 @@ async def response_table(db_pool):
         ).run(conn)
         await r.table("response").index_wait("job_sync").run(conn)
     yield r.table("response")
-    await r.table_drop("response").run(conn)
+    async with db_pool.connection() as conn:
+        await r.table_drop("response").run(conn)
 
 
 @pytest.fixture
@@ -49,7 +48,8 @@ async def response_body_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create("response_body").run(conn)
     yield r.table("response_body")
-    await r.table_drop("response_body").run(conn)
+    async with db_pool.connection() as conn:
+        await r.table_drop("response_body").run(conn)
 
 
 class MockWebsocket:
@@ -425,7 +425,7 @@ async def test_subscribe_to_unfinished_crawl(
     # The subscription should time out because there are no items to send:
     logger.info("Time out on next event…")
     with pytest.raises(trio.TooSlowError):
-        with trio.fail_after(1) as cancel_scope:
+        with trio.fail_after(1):
             data = await websocket.get_message()
 
     # Now add second result and mark the crawl as completed:

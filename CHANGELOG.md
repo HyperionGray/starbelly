@@ -9,9 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added comprehensive documentation files (CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md, SECURITY.md)
+- Added explicit API error handling for unsubscribe requests that reference
+  unknown subscription IDs.
 
 ### Changed
 - Enhanced README.md with additional sections
+- Cleaned up integration subscription tests by removing the TODO marker and
+  fixing fixture teardown to use valid database connections.
+- Removed stale repository artifacts (`bfg-1.15.0.jar`,
+  `.github/copilot-instructions.md~`, obsolete streaming implementation notes,
+  and placeholder streaming examples).
 
 ## [2.0.0-dev]
 

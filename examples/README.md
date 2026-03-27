@@ -1,27 +1,20 @@
 # Starbelly Examples
 
-This directory contains example code demonstrating various Starbelly features.
+This directory contains runnable examples for production-ready APIs in this
+repository.
 
-## Streaming API Example
+## Available examples
 
-The `streaming_api_example.py` file demonstrates how to use the new streaming API to subscribe to real-time data updates.
+This directory currently has no maintained standalone examples.
 
-**Status**: Requires protobuf definitions to be completed (see ../STREAMING_API.md)
+Historically, this folder contained a draft streaming API example that depended
+on protobuf fields that are not part of this repository. That draft has been
+removed to avoid confusion.
 
-The streaming API allows clients to:
-- Subscribe to policy, schedule, and domain login changes
-- Receive real-time updates via WebSocket
-- Avoid polling and reduce database load
-- Process only changed data
+## Adding a new example
 
-### Running the Example
+When adding a new example:
 
-```bash
-python3 examples/streaming_api_example.py
-```
-
-Note: The full example code is commented out until protobuf definitions are added.
-
-## Other Examples
-
-Add additional examples here as they are created.
+- keep it executable end-to-end against current code,
+- document prerequisites at the top of the file,
+- include a short "how to run" section in this README.
