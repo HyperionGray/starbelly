@@ -1,6 +1,5 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+# This integration test validates end-to-end subscription behavior against the
+# database layer and websocket protocol.
 
 from datetime import datetime, timezone
 import gzip

@@ -10,3 +10,8 @@ README.html
 .bish.sqlite
 **/.bish-index
 **/.bish.sqlite
+*~
+*.bak
+*.orig
+*.rej
+bfg-*.jar
