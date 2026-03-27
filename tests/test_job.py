@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import json
 import logging
 import pickle
 from unittest.mock import Mock
@@ -13,6 +14,8 @@ from starbelly.job import (
     RunState,
     StatsTracker,
     CrawlManager,
+    _deserialize_old_urls,
+    _serialize_old_urls,
 )
 
 
@@ -222,7 +225,9 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     assert state_event.run_state == RunState.PAUSED
     assert manager_db.pause_job.call_args[0] == job_id
     # There are two "old URLs": the seed URLs.
-    assert len(pickle.loads(manager_db.pause_job.call_args[1])) == 2
+    old_urls_json = manager_db.pause_job.call_args[1]
+    assert isinstance(old_urls_json, str)
+    assert len(json.loads(old_urls_json)) == 2
     assert stats_tracker.snapshot()[0]['run_state'] == RunState.PAUSED
 
     # Now resume and wait for the running event.
@@ -237,3 +242,31 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     assert state_event.run_state == RunState.CANCELLED
     assert manager_db.finish_job.call_args[0] == job_id
     assert manager_db.finish_job.call_args[1] == RunState.CANCELLED
+
+
+def test_old_urls_json_round_trip():
+    old_urls = {
+        b'\xad\xb6\x93\x9b\xac\x92\xd8\xfd\xc0\x8dJ\x94^\x8d\xe5~',
+        b'\xc5\xb6\x93\x9b\xac\x92\xd8\xfd\xc0\x8dJ\x94^\x8d\xe5~',
+    }
+    serialized = _serialize_old_urls(old_urls)
+    deserialized = _deserialize_old_urls(serialized)
+    assert deserialized == old_urls
+
+
+def test_old_urls_pickle_backwards_compatibility():
+    old_urls = {
+        b'\xad\xb6\x93\x9b\xac\x92\xd8\xfd\xc0\x8dJ\x94^\x8d\xe5~',
+    }
+    serialized = pickle.dumps(old_urls)
+    deserialized = _deserialize_old_urls(serialized)
+    assert deserialized == old_urls
+
+
+def test_old_urls_protocol_zero_pickle_backwards_compatibility():
+    old_urls = {
+        b'\xad\xb6\x93\x9b\xac\x92\xd8\xfd\xc0\x8dJ\x94^\x8d\xe5~',
+    }
+    serialized = pickle.dumps(old_urls, protocol=0)
+    deserialized = _deserialize_old_urls(serialized)
+    assert deserialized == old_urls

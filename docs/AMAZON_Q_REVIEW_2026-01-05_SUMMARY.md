@@ -46,27 +46,27 @@ This document summarizes the actions taken to address findings from the Amazon Q
 
 **Impact:** Minimal code change; maximum documentation impact.
 
-### 3. Pickle Deserialization Documentation
+### 3. Pickle Deserialization Migration
 
 **File:** `starbelly/job.py`  
 **Line:** 328
 
-**Change:** Added security comment documenting the pickle usage:
+**Change:** Replaced paused-job URL hash persistence from pickle to JSON with
+backward-compatible reads for existing pickled rows:
 ```python
-# SECURITY NOTE: Using pickle for deserialization. This assumes the
-# database is in a trusted environment. If the database is compromised,
-# malicious pickle data could execute arbitrary code.
-# See docs/SECURITY.md for secure deployment recommendations.
-# TODO: Consider replacing pickle with JSON serialization
+old_urls_json = json.dumps(sorted(hash_.hex() for hash_ in old_urls))
+...
+old_urls = {bytes.fromhex(hash_) for hash_ in json.loads(old_urls_json)}
+# Legacy pickled bytes are still accepted during transition.
 ```
 
 **Rationale:**
-- Pickle is used to serialize/deserialize URL sets from RethinkDB
-- Database is assumed to be in a trusted environment
-- Documentation makes the security assumption explicit
-- TODO added for future migration to safer serialization
+- Eliminates pickle usage for newly-paused jobs
+- Keeps compatibility with existing paused jobs stored as pickled bytes
+- Reduces deserialization risk without requiring a one-shot database migration
 
-**Impact:** Minimal code change; clarifies security assumptions.
+**Impact:** Runtime behavior unchanged for active crawls; paused-job state now
+uses safer serialization by default.
 
 ### 4. Response Body Size Limits
 
@@ -125,11 +125,11 @@ If you discover a security vulnerability, please email acaceres@hyperiongray.com
 **Reason:** Requires significant changes to policy system and database schema  
 **Recommendation:** Implement in future release with proper testing
 
-### 2. Pickle to JSON Migration
+### 2. Complete Pickle Sunset
 
-**Status:** Documented but not implemented  
-**Reason:** Requires data migration strategy for existing jobs  
-**Recommendation:** Plan migration path for major version upgrade
+**Status:** Partially implemented (new writes are JSON, legacy reads still supported)  
+**Reason:** Existing paused jobs may still contain pickled `old_urls` values  
+**Recommendation:** Add an optional maintenance migration to rewrite legacy rows
 
 ### 3. HTML Parsing Timeouts
 
@@ -221,7 +221,7 @@ Before merging to production:
 - [ ] Add dependency vulnerability scanning to CI/CD
 
 ### Long-term (Major Version)
-- [ ] Migrate from pickle to JSON for URL set storage
+- [ ] Remove legacy pickle-read fallback after data migration window
 - [ ] Implement certificate pinning for known domains
 - [ ] Comprehensive input validation framework
 - [ ] Security audit and penetration testing

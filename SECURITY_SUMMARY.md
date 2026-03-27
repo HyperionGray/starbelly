@@ -50,33 +50,32 @@ session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 - Assumes deployment in trusted network environment
 - Can be mitigated by network-level security controls
 
-### 2. Pickle Deserialization - DOCUMENTED ✅
+### 2. Paused-Job URL State Serialization - FIXED ✅
 
-**Status:** Documented with security assumptions  
+**Status:** FIXED with backward-compatible migration  
 **Risk Level:** MEDIUM  
-**Location:** `starbelly/job.py:328`
+**Location:** `starbelly/job.py`, `tests/test_job.py`
 
 **Action Taken:**
-- Added security comment documenting the assumption
-- Explained the trust requirement for database
-- Documented in `docs/SECURITY.md` with migration recommendations
-- Added TODO for future JSON migration
+- Replaced paused-job `old_urls` persistence with JSON serialization
+- Added backward-compatible deserialization for legacy pickled values
+- Added tests for JSON round-trip and pickle compatibility paths
+- Updated security docs to reflect implemented state
 
 **Current State:**
 ```python
-# SECURITY NOTE: Using pickle for deserialization. This assumes the
-# database is in a trusted environment. If the database is compromised,
-# malicious pickle data could execute arbitrary code.
-# See docs/SECURITY.md for secure deployment recommendations.
-# TODO: Consider replacing pickle with JSON serialization
-old_urls = pickle.loads(job_doc['old_urls'])
+def _serialize_old_urls(old_urls):
+    return json.dumps(sorted(hash_.hex() for hash_ in old_urls))
+
+def _deserialize_old_urls(old_urls):
+    # Supports JSON and legacy pickled values
+    ...
 ```
 
-**Why Not Fixed Completely:**
-- Requires data migration for existing jobs in database
-- Needs testing to ensure URL set serialization/deserialization correctness
-- Performance implications need evaluation
-- Future work planned for major version upgrade
+**Migration Behavior:**
+- New paused jobs store URL hashes as JSON
+- Existing paused jobs stored with pickle continue to load correctly
+- Legacy values naturally migrate as jobs are paused/resumed
 
 **Mitigation:**
 - Database access requires authentication
@@ -154,11 +153,15 @@ The application makes these security assumptions:
    - Network-level security controls are in place
    - TLS/SSL at network layer may compensate for disabled certificate verification
 
-3. **Development Mode Isolation**
+3. **Legacy Pause Data Compatibility**
+   - Old paused jobs may still contain pickled URL state
+   - Runtime supports both formats while jobs are naturally migrated
+
+4. **Development Mode Isolation**
    - Watchdog/development mode only used in development environments
    - Production deployments do not use development mode
 
-4. **Configuration Security**
+5. **Configuration Security**
    - Configuration files have appropriate file permissions
    - Configuration stored outside web root
    - No sensitive data in version control
@@ -321,7 +324,7 @@ The application makes these security assumptions:
 
 ### Long-term (Major Version)
 
-1. ⏳ Migrate from pickle to JSON serialization
+1. ✅ Migrate from pickle to JSON serialization for paused-job URL state
 2. ⏳ Implement certificate pinning
 3. ⏳ Comprehensive input validation framework
 4. ⏳ Security audit and penetration testing
@@ -330,7 +333,7 @@ The application makes these security assumptions:
 
 This implementation successfully addresses the Amazon Q Code Review findings with minimal, surgical changes that:
 
-✅ **Document security trade-offs** - Operators now understand SSL and pickle risks  
+✅ **Document security trade-offs** - Operators now understand SSL risks  
 ✅ **Prevent DoS attacks** - 10MB size limits protect against malicious documents  
 ✅ **Maintain compatibility** - Zero breaking changes, fully backward compatible  
 ✅ **Provide roadmap** - Clear path forward for future security enhancements  

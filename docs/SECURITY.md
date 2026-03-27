@@ -41,43 +41,29 @@ verify_ssl = self._policy.ssl_verification.get_verify_ssl(url)
 session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
-### 2. Pickle Deserialization of Database Data
+### 2. Paused Job URL State Serialization
 
-**Location:** `starbelly/job.py:328`
+**Location:** `starbelly/job.py`
 
-**Issue:** Using `pickle.loads()` to deserialize data from the database:
-```python
-old_urls = pickle.loads(job_doc['old_urls'])
-```
+**Issue (historical):** Paused-job URL state (`old_urls`) was previously loaded
+with `pickle.loads()` from database values.
 
-**Risk Level:** MEDIUM
+**Risk Level:** MEDIUM (reduced)
+
+**Current State:**
+- New paused jobs serialize URL hashes as JSON (hex-encoded values).
+- Resume logic supports both JSON and legacy pickle payloads for backward
+  compatibility.
 
 **Security Impact:**
-- If the database is compromised, attackers could execute arbitrary code
-- Pickle can deserialize malicious objects that execute code during deserialization
-- No validation of the deserialized data structure
-
-**Mitigation Factors:**
-- Data comes from RethinkDB which should be in a trusted environment
-- Database access requires authentication
-- Attack surface is limited to database compromise scenarios
+- Removes pickle usage from newly stored paused-job state.
+- Shrinks deserialization risk window to legacy paused jobs only.
+- Avoids a breaking migration for existing deployments.
 
 **Recommendations:**
-1. **Preferred:** Replace pickle with JSON serialization for URL sets
-2. **Alternative:** Use restricted unpickler with allowlist of safe classes
-3. **Minimum:** Document the security assumption that database is trusted
-
-**Proposed Fix:**
-```python
-# Replace pickle with JSON for URL storage
-# Convert set to list for JSON serialization
-old_urls_list = list(job.old_urls)
-old_urls_json = json.dumps(old_urls_list)
-
-# On load:
-old_urls_list = json.loads(job_doc['old_urls'])
-old_urls = set(old_urls_list)
-```
+1. Keep backward-compatibility loader until legacy paused jobs age out.
+2. Add an optional maintenance migration to rewrite remaining legacy records.
+3. Continue treating database access as privileged and tightly controlled.
 
 ## Medium Priority Findings
 
@@ -217,10 +203,10 @@ Some dependencies may have known vulnerabilities:
 3. Consider adding SSL verification policy option
 
 ### Short-term Actions (High Priority)
-1. Replace pickle with JSON for URL set serialization
-2. Add response size limits before parsing
-3. Add parsing timeouts
-4. Implement input validation on API endpoints
+1. Add response size limits before parsing
+2. Add parsing timeouts
+3. Implement input validation on API endpoints
+4. Add optional migration tooling for legacy paused-job pickle records
 
 ### Long-term Actions (Medium Priority)
 1. Implement configurable SSL verification per policy
