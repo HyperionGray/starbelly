@@ -13,9 +13,12 @@ from starbelly.rate_limiter import GLOBAL_RATE_LIMIT_TOKEN
 from starbelly.schedule import Schedule
 from starbelly.server import InvalidRequestException, Server
 from starbelly.server.subscription import (
+    subscribe_domain_login_list,
     subscribe_job_sync,
     subscribe_job_status,
+    subscribe_policy_list,
     subscribe_resource_monitor,
+    subscribe_schedule_list,
     subscribe_task_monitor,
     unsubscribe,
 )
@@ -480,6 +483,9 @@ async def test_subscription():
     subscription_manager.subscribe_job_status.return_value = 2
     subscription_manager.subscribe_resource_monitor.return_value = 3
     subscription_manager.subscribe_task_monitor.return_value = 4
+    subscription_manager.subscribe_policy_list.return_value = 5
+    subscription_manager.subscribe_schedule_list.return_value = 6
+    subscription_manager.subscribe_domain_login_list.return_value = 7
     stats_tracker = Mock()
     resource_monitor = Mock()
 
@@ -520,6 +526,21 @@ async def test_subscription():
     command5.subscription_id = 5
     await unsubscribe(command5, subscription_manager)
     assert subscription_manager.cancel_subscription.called
+
+    # Subscribe to policy list
+    response6 = Response()
+    await subscribe_policy_list(response6, subscription_manager)
+    assert response6.new_subscription.subscription_id == 5
+
+    # Subscribe to schedule list
+    response7 = Response()
+    await subscribe_schedule_list(response7, subscription_manager)
+    assert response7.new_subscription.subscription_id == 6
+
+    # Subscribe to domain login list
+    response8 = Response()
+    await subscribe_domain_login_list(response8, subscription_manager)
+    assert response8.new_subscription.subscription_id == 7
 
 
 @fail_after(3)

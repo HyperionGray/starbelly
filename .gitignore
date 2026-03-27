@@ -6,3 +6,8 @@
 .vscode
 __pycache__
 README.html
+.bish-index
+.bish.sqlite
+docs/.bish-index
+*.swp
+*~

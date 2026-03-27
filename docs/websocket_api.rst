@@ -224,3 +224,14 @@ https://github.com/hyperiongray/starbelly-python-client
 
 This client library will be improved over time and made more stable, but for
 now it may be used as a reference implementation.
+
+Subscription Notes
+------------------
+
+Schedule list subscriptions are available and emit ``Event.schedule_list``.
+The payload is a full snapshot (all schedules sorted by schedule name), sent
+once when the subscription starts and again whenever any schedule changes.
+
+Policy-list and domain-login-list subscriptions are currently not represented
+in this protobuf schema as event body types. If requested, the server returns
+an event with ``subscription_closed.reason = ERROR`` and a descriptive message.

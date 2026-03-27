@@ -1,6 +1,6 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+# This test was originally written before database queries were split into a
+# dedicated module. It can be converted into a unit test in the future and
+# likely grouped with test_server.py coverage.
 
 from datetime import datetime, timezone
 import gzip

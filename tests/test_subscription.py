@@ -8,13 +8,16 @@ import trio
 import trio.hazmat
 from trio_websocket import open_websocket, serve_websocket
 
-from . import assert_elapsed, assert_max_elapsed, assert_min_elapsed
+from . import AsyncMock, assert_elapsed, assert_max_elapsed, assert_min_elapsed
 from starbelly.job import StatsTracker
-from starbelly.starbelly_pb2 import JobRunState, ServerMessage
+from starbelly.starbelly_pb2 import JobRunState, ServerMessage, SubscriptionClosed
 from starbelly.subscription import (
+    DomainLoginListSubscription,
     ExponentialBackoff,
     JobStatusSubscription,
+    PolicyListSubscription,
     ResourceMonitorSubscription,
+    ScheduleListSubscription,
     SyncTokenError,
     SyncTokenInt,
     TaskMonitorSubscription,
@@ -369,3 +372,110 @@ async def test_task_monitor(autojump_clock, nursery):
         assert len(task_tree.subtasks) == 3
 
     subscription.cancel()
+
+
+async def test_schedule_list_subscription_snapshot_and_update(nursery):
+    schedule1_id = UUID('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    policy1_id = UUID('11111111-1111-1111-1111-111111111111')
+    schedule2_id = UUID('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
+    policy2_id = UUID('22222222-2222-2222-2222-222222222222')
+
+    schedule1_doc = {
+        'id': str(schedule1_id),
+        'schedule_name': 'Alpha Schedule',
+        'enabled': True,
+        'created_at': datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        'updated_at': datetime(2020, 1, 1, 0, 5, 0, tzinfo=timezone.utc),
+        'time_unit': 'MINUTES',
+        'num_units': 5,
+        'timing': 'REGULAR_INTERVAL',
+        'job_name': 'Alpha {COUNT}',
+        'job_count': 3,
+        'seeds': ['https://alpha.example'],
+        'tags': ['alpha'],
+        'policy_id': str(policy1_id),
+    }
+    schedule2_doc = {
+        'id': str(schedule2_id),
+        'schedule_name': 'Beta Schedule',
+        'enabled': False,
+        'created_at': datetime(2020, 1, 2, 0, 0, 0, tzinfo=timezone.utc),
+        'updated_at': datetime(2020, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+        'time_unit': 'HOURS',
+        'num_units': 1,
+        'timing': 'AFTER_PREVIOUS_JOB_FINISHED',
+        'job_name': 'Beta {COUNT}',
+        'job_count': 10,
+        'seeds': ['https://beta.example'],
+        'tags': ['beta'],
+        'policy_id': str(policy2_id),
+    }
+
+    async def stream_schedules():
+        yield {'old_val': None, 'new_val': schedule1_doc}
+        await trio.sleep_forever()
+
+    subscription_db = Mock()
+    subscription_db.list_schedule_docs = AsyncMock(
+        return_values=[[schedule1_doc], [schedule1_doc, schedule2_doc]]
+    )
+    subscription_db.stream_schedules = stream_schedules
+
+    websocket = MockWebsocket()
+    subscription = ScheduleListSubscription(
+        id_=17, websocket=websocket, subscription_db=subscription_db
+    )
+    assert repr(subscription) == '<ScheduleListSubscription id=17>'
+    nursery.start_soon(subscription.run)
+
+    with assert_max_elapsed(0.1):
+        data = await websocket.get_message()
+        event1 = ServerMessage.FromString(data).event
+        assert event1.subscription_id == 17
+        assert len(event1.schedule_list.schedules) == 1
+        pb1 = event1.schedule_list.schedules[0]
+        assert pb1.schedule_id == schedule1_id.bytes
+        assert pb1.schedule_name == 'Alpha Schedule'
+        assert pb1.time_unit == 1  # MINUTES
+        assert pb1.num_units == 5
+        assert pb1.enabled
+        assert pb1.policy_id == policy1_id.bytes
+
+    with assert_max_elapsed(0.1):
+        data = await websocket.get_message()
+        event2 = ServerMessage.FromString(data).event
+        assert event2.subscription_id == 17
+        assert len(event2.schedule_list.schedules) == 2
+        assert event2.schedule_list.schedules[0].schedule_name == 'Alpha Schedule'
+        assert event2.schedule_list.schedules[1].schedule_name == 'Beta Schedule'
+        assert event2.schedule_list.schedules[1].policy_id == policy2_id.bytes
+
+    subscription.cancel()
+
+
+async def test_policy_list_subscription_is_unsupported(nursery):
+    websocket = MockWebsocket()
+    subscription = PolicyListSubscription(id_=8, websocket=websocket,
+        subscription_db=Mock())
+    nursery.start_soon(subscription.run)
+
+    with assert_max_elapsed(0.1):
+        data = await websocket.get_message()
+        event = ServerMessage.FromString(data).event
+        assert event.subscription_id == 8
+        assert event.subscription_closed.reason == SubscriptionClosed.ERROR
+        assert 'not supported' in event.subscription_closed.message
+
+
+async def test_domain_login_list_subscription_is_unsupported(nursery):
+    websocket = MockWebsocket()
+    subscription = DomainLoginListSubscription(id_=9, websocket=websocket,
+        subscription_db=Mock())
+    nursery.start_soon(subscription.run)
+
+    with assert_max_elapsed(0.1):
+        data = await websocket.get_message()
+        event = ServerMessage.FromString(data).event
+        assert event.subscription_id == 9
+        assert event.subscription_closed.reason == SubscriptionClosed.ERROR
+        assert 'not supported' in event.subscription_closed.message

@@ -44,7 +44,7 @@ In a typical dev environment, you will need to run the following components:
 
 To set up this environment, you will need the following prerequisites:
 
-* `Docker <https://www.docker.com/>`__
+* `Podman <https://podman.io/>`__ (or Docker-compatible runtime)
 * `Poetry <https://python-poetry.org/>`__
 * `Chromium <https://www.chromium.org/>`__ or Chrome (optional, but they are the only
   officially supported browsers for Dart development)
@@ -72,10 +72,10 @@ Before the first run, create a self-signed certificate:
 2. Go into the ``starbelly/dev/`` directory and run ``poetry run python gencert.py
    localhost`` to create a self-signed certificate.
 
-Run the Docker containers:
+Run the container services:
 
-1. Go to the ``starbelly/dev/`` directory and run ``docker-compose up`` to start
-   the Docker containers.
+1. Go to the ``starbelly/dev/`` directory and run ``podman-compose up`` (or
+   ``docker-compose up`` if using compatibility mode) to start the containers.
 
 In a second terminal, run the Starbelly server:
 
@@ -134,6 +134,15 @@ you wish to perform. In the examples below, if a command prompt is prefixed with
 a container name, then that indicates that the command must be run inside a
 specific Docker container. For example, if you see this:
 
+Subscription Notes
+------------------
+
+The websocket ``Event`` protobuf currently supports live snapshots for
+``schedule_list`` subscriptions. Policy-list and domain-login-list subscription
+handlers are registered for API compatibility, but they close immediately with
+``SubscriptionClosed.ERROR`` because there is no corresponding event payload in
+the protobuf schema.
+
 .. code::
 
     starbelly-dev-app:/starbelly# ls /usr/local/etc
@@ -144,7 +153,7 @@ To obtain a shell inside that container, run:
 
 .. code::
 
-    $ docker exec -it starbelly-dev-app /bin/bash
+    $ podman exec -it starbelly-dev-app /bin/bash
     starbelly-dev-app#
 
 You can use the same technique to get a shell inside the ``starbelly-dev-db`` or

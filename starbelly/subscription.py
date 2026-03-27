@@ -12,6 +12,7 @@ import trio
 
 from .backoff import ExponentialBackoff
 from .job import FINISHED_STATES
+from .schedule import Schedule
 from .starbelly_pb2 import JobRunState, ServerMessage, SubscriptionClosed
 
 
@@ -387,7 +388,6 @@ class JobSyncSubscription:
 
     async def _set_initial_job_status(self):
         """ Query database for initial job status and update internal state. """
-        logger.info(dir(self._db))
         run_state = await self._db.get_job_run_state(self._job_id)
         logging.debug("%r Initial job state: %s", self, run_state)
         self._job_completed = run_state in FINISHED_STATES
@@ -663,22 +663,12 @@ class TaskMonitorSubscription:
 
 
 class PolicyListSubscription:
-    """
-    A subscription stream that emits the list of policies and sends updates
-    when policies are added, modified, or deleted.
-    """
+    """A placeholder for a protobuf event type that does not exist."""
 
     def __init__(self, id_, websocket, subscription_db):
-        """
-        Constructor.
-
-        :param int id_: Subscription ID.
-        :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
-            events to.
-        :param starbelly.db.SubscriptionDb subscription_db: A database layer.
-        """
         self._id = id_
         self._websocket = websocket
+        # Stored for API compatibility and future implementation.
         self._subscription_db = subscription_db
         self._cancel_scope = None
 
@@ -694,53 +684,24 @@ class PolicyListSubscription:
             raise Exception("Tried to cancel subscription that is not running.")
 
     async def run(self):
-        """
-        Start the subscription stream.
-
-        :returns: This function runs until cancel() is called.
-        """
+        """Send one error event because protobuf has no policy-list event."""
         logger.info("%r Starting", self)
         try:
-            async with trio.open_nursery() as nursery:
-                self._cancel_scope = nursery.cancel_scope
-                await self._run_stream()
+            with trio.CancelScope() as cancel_scope:
+                self._cancel_scope = cancel_scope
+                await self._send_unsupported_event()
         except (trio.BrokenResourceError, trio.ClosedResourceError):
             logger.info("%r Aborted", self)
-        except ReqlDriverError as e:
-            logger.warning("%r Database connection error: %s", self, e)
         logger.info("%r Finished", self)
 
-    async def _run_stream(self):
-        """Run the main streaming loop."""
-        async for change in self._subscription_db.stream_policies():
-            await self._send_policy_event(change)
-
-    async def _send_policy_event(self, change):
-        """Send a policy change event to the client."""
+    async def _send_unsupported_event(self):
+        """Inform clients this subscription is not currently implemented."""
         message = ServerMessage()
         message.event.subscription_id = self._id
-        
-        # Convert policy document to protobuf message
-        # This would need appropriate protobuf message definitions
-        # For now, we'll structure it similar to how policies are sent
-        policy_event = message.event.policy_event
-        
-        if change.get("old_val") is None and change.get("new_val"):
-            # New policy added
-            policy_event.event_type = 1  # ADDED
-            doc = change["new_val"]
-        elif change.get("new_val") is None and change.get("old_val"):
-            # Policy deleted
-            policy_event.event_type = 3  # DELETED
-            doc = change["old_val"]
-        else:
-            # Policy updated
-            policy_event.event_type = 2  # UPDATED
-            doc = change["new_val"]
-
-        policy_event.policy_id = doc["id"]
-        policy_event.name = doc["name"]
-        
+        message.event.subscription_closed.reason = SubscriptionClosed.ERROR
+        message.event.subscription_closed.message = (
+            "Policy list subscriptions are not supported by this protobuf schema."
+        )
         await self._websocket.send_message(message.SerializeToString())
 
 
@@ -785,6 +746,7 @@ class ScheduleListSubscription:
         try:
             async with trio.open_nursery() as nursery:
                 self._cancel_scope = nursery.cancel_scope
+                await self._send_schedule_list()
                 await self._run_stream()
         except (trio.BrokenResourceError, trio.ClosedResourceError):
             logger.info("%r Aborted", self)
@@ -793,38 +755,23 @@ class ScheduleListSubscription:
         logger.info("%r Finished", self)
 
     async def _run_stream(self):
-        """Run the main streaming loop."""
-        async for change in self._subscription_db.stream_schedules():
-            await self._send_schedule_event(change)
+        """Send a full schedule snapshot whenever the table changes."""
+        async for _ in self._subscription_db.stream_schedules():
+            await self._send_schedule_list()
 
-    async def _send_schedule_event(self, change):
-        """Send a schedule change event to the client."""
+    async def _send_schedule_list(self):
+        """Send a complete schedule list snapshot."""
         message = ServerMessage()
         message.event.subscription_id = self._id
-        
-        schedule_event = message.event.schedule_event
-        
-        if change.get("old_val") is None and change.get("new_val"):
-            schedule_event.event_type = 1  # ADDED
-            doc = change["new_val"]
-        elif change.get("new_val") is None and change.get("old_val"):
-            schedule_event.event_type = 3  # DELETED
-            doc = change["old_val"]
-        else:
-            schedule_event.event_type = 2  # UPDATED
-            doc = change["new_val"]
-
-        schedule_event.schedule_id = UUID(doc["id"]).bytes
-        schedule_event.schedule_name = doc["schedule_name"]
-        
+        docs = await self._subscription_db.list_schedule_docs()
+        for doc in docs:
+            pb_schedule = message.event.schedule_list.schedules.add()
+            Schedule.from_doc(doc).to_pb(pb_schedule)
         await self._websocket.send_message(message.SerializeToString())
 
 
 class DomainLoginListSubscription:
-    """
-    A subscription stream that emits the list of domain logins and sends updates
-    when logins are added, modified, or deleted.
-    """
+    """A placeholder for a protobuf event type that does not exist."""
 
     def __init__(self, id_, websocket, subscription_db):
         """
@@ -852,44 +799,22 @@ class DomainLoginListSubscription:
             raise Exception("Tried to cancel subscription that is not running.")
 
     async def run(self):
-        """
-        Start the subscription stream.
-
-        :returns: This function runs until cancel() is called.
-        """
+        """Send one error event because protobuf has no domain-login event."""
         logger.info("%r Starting", self)
         try:
-            async with trio.open_nursery() as nursery:
-                self._cancel_scope = nursery.cancel_scope
-                await self._run_stream()
+            with trio.CancelScope() as cancel_scope:
+                self._cancel_scope = cancel_scope
+                await self._send_unsupported_event()
         except (trio.BrokenResourceError, trio.ClosedResourceError):
             logger.info("%r Aborted", self)
-        except ReqlDriverError as e:
-            logger.warning("%r Database connection error: %s", self, e)
         logger.info("%r Finished", self)
 
-    async def _run_stream(self):
-        """Run the main streaming loop."""
-        async for change in self._subscription_db.stream_domain_logins():
-            await self._send_domain_login_event(change)
-
-    async def _send_domain_login_event(self, change):
-        """Send a domain login change event to the client."""
+    async def _send_unsupported_event(self):
+        """Inform clients this subscription is not currently implemented."""
         message = ServerMessage()
         message.event.subscription_id = self._id
-        
-        login_event = message.event.domain_login_event
-        
-        if change.get("old_val") is None and change.get("new_val"):
-            login_event.event_type = 1  # ADDED
-            doc = change["new_val"]
-        elif change.get("new_val") is None and change.get("old_val"):
-            login_event.event_type = 3  # DELETED
-            doc = change["old_val"]
-        else:
-            login_event.event_type = 2  # UPDATED
-            doc = change["new_val"]
-
-        login_event.domain = doc["domain"]
-        
+        message.event.subscription_closed.reason = SubscriptionClosed.ERROR
+        message.event.subscription_closed.message = (
+            "Domain login list subscriptions are not supported by this protobuf schema."
+        )
         await self._websocket.send_message(message.SerializeToString())

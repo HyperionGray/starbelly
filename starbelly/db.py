@@ -1126,13 +1126,29 @@ class SubscriptionDb:
                 # Ensure cursor is properly closed
                 pass
 
+    async def list_schedule_docs(self):
+        '''
+        List all schedules in stable order for subscription snapshots.
+
+        :returns: A list of schedule documents sorted by schedule_name.
+        :rtype: list
+        '''
+        docs = list()
+        query = r.table('schedule').order_by(index='schedule_name')
+        async with self._db_pool.connection() as conn:
+            cursor = await query.run(conn)
+            async with cursor:
+                async for doc in cursor:
+                    docs.append(doc)
+        return docs
+
     async def stream_schedules(self):
         '''
         Stream schedule changes using RethinkDB changefeed.
 
         :returns: An async generator that yields schedule change documents.
         '''
-        query = r.table('schedule').changes(include_initial=True)
+        query = r.table('schedule').changes()
         
         async with self._db_pool.connection() as conn:
             cursor = await query.run(conn)

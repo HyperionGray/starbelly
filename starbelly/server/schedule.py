@@ -82,10 +82,8 @@ async def set_schedule(command, response, scheduler, server_db):
     scheduler.remove_schedule(schedule_id)
     if command.schedule.enabled:
         schedule_doc = await server_db.get_schedule(schedule_id)
-        job_docs = await server_db.list_schedule_jobs(schedule_id, limit=1,
-            offset=0)
-        try:
-            latest_job_doc = job_docs[0]
-        except IndexError:
-            latest_job_doc = None
+        _, job_docs = await server_db.list_schedule_jobs(
+            schedule_id, limit=1, offset=0
+        )
+        latest_job_doc = job_docs[0] if job_docs else None
         scheduler.add_schedule(schedule_doc, latest_job_doc)

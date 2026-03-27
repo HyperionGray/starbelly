@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added comprehensive documentation files (CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md, SECURITY.md)
+- Added real-time schedule list subscription snapshots via `Event.schedule_list`
 
 ### Changed
 - Enhanced README.md with additional sections
+- Fixed subscription handlers for policy and domain-login list requests to fail gracefully with `SubscriptionClosed.ERROR` instead of raising server exceptions
+- Fixed schedule edit flow in server handler by correctly selecting the latest schedule job document
 
 ## [2.0.0-dev]
 
