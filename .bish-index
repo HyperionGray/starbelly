@@ -4,7 +4,6 @@
 ./tools/__init__.py
 ./tools/shell.py
 ./tools/container_init.py
-./examples/streaming_api_example.py
 ./examples/README.md
 ./starbelly/__main__.py
 ./starbelly/login.py
@@ -28,8 +27,6 @@
 ./starbelly/frontier.py
 ./starbelly/schedule.py
 ./starbelly/storage.py
-./IMPLEMENTATION_SUMMARY.md
-./STREAMING_API.md
 ./AGENTS.md
 ./README.md
 ./integration/test_subscription.py
