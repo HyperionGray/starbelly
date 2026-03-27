@@ -34,6 +34,20 @@ After installation, navigate to your server's address in a web browser. The defa
 
 For detailed usage instructions, see the [documentation](https://starbelly.readthedocs.io/en/latest/first_crawl.html).
 
+### Command line
+
+Run the server with:
+
+```bash
+python -m starbelly
+```
+
+Print the installed version:
+
+```bash
+python -m starbelly --version
+```
+
 ## Documentation
 
 Complete documentation is available at [starbelly.readthedocs.io](https://starbelly.readthedocs.io/en/latest/).

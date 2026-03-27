@@ -1,6 +1,4 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+'''Integration tests for subscription behavior against a live database.'''
 
 from datetime import datetime, timezone
 import gzip
