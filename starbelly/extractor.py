@@ -205,7 +205,7 @@ def _extract_html(response):
             parsed_href = yarl.URL(href)
         except Exception:
             logger.warning('Rejecting malformed URL base=%s url=%s',
-                str(response.url), href)
+                str(response.url), href, exc_info=True)
             continue
 
         absolute_href = base_url.join(parsed_href)
