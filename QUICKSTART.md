@@ -25,6 +25,22 @@ The script will:
 2. install Python 3.9
 3. create a project-local Poetry environment in `.venv`
 4. install the project dependencies
+5. validate the environment with `./bin/check-env.sh`
+
+## Verify the environment manually
+
+Run:
+
+```bash
+./bin/check-env.sh
+```
+
+This command validates:
+
+- `uv` and `poetry` availability
+- required Python version from `.python-version`
+- Poetry environment location (`.venv`)
+- consistency of `pyproject.toml` and `poetry.lock`
 
 ## Use the environment
 

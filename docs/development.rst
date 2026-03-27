@@ -150,6 +150,26 @@ To obtain a shell inside that container, run:
 You can use the same technique to get a shell inside the ``starbelly-dev-db`` or
 ``starbelly-dev-web`` containers.
 
+Validate Local Python Environment
+---------------------------------
+
+For local repository development, Starbelly includes helper scripts in ``bin/``
+to set up and verify the Python toolchain.
+
+.. code::
+
+    $ ./bin/setup-env.sh
+    $ ./bin/check-env.sh
+
+``check-env.sh`` validates that:
+
+* ``uv`` and ``poetry`` are installed and runnable
+* the Python version in use matches ``.python-version``
+* Poetry is using the project-local ``.venv`` path
+* ``pyproject.toml`` and ``poetry.lock`` are in sync
+
+You can also run the same checks through ``make check-env``.
+
 Build Documentation
 -------------------
 

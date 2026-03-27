@@ -25,6 +25,7 @@ main() {
     cd "$ROOT_DIR"
     "$POETRY_BIN" env use "$python_bin"
     "$POETRY_BIN" install
+    "$ROOT_DIR/bin/check-env.sh"
 
     echo
     echo "Environment ready."

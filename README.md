@@ -5,6 +5,11 @@ Learn more at
 [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
 
 For local development setup, see [QUICKSTART.md](QUICKSTART.md).
+After setup, verify your toolchain and virtual environment with:
+
+```bash
+./bin/check-env.sh
+```
 
 [![Build Status](https://img.shields.io/travis/com/HyperionGray/starbelly.svg?style=flat-square)](https://travis-ci.org/HyperionGray/starbelly)
 [![Coverage](https://img.shields.io/coveralls/github/HyperionGray/starbelly.svg?style=flat-square)](https://coveralls.io/github/HyperionGray/starbelly)
