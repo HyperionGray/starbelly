@@ -4,7 +4,7 @@ Starbelly is a user-friendly web crawler that is easy to deploy and configure.
 Learn more at
 [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
 
-[![Build Status](https://img.shields.io/travis/com/HyperionGray/starbelly.svg?style=flat-square)](https://travis-ci.org/HyperionGray/starbelly)
+[![CI](https://img.shields.io/github/actions/workflow/status/HyperionGray/starbelly/ci.yml?branch=master&label=ci&style=flat-square)](https://github.com/HyperionGray/starbelly/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/coveralls/github/HyperionGray/starbelly.svg?style=flat-square)](https://coveralls.io/github/HyperionGray/starbelly)
 [![Read the Docs](https://img.shields.io/readthedocs/starbelly.svg)](https://starbelly.readthedocs.io)
 

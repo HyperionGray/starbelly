@@ -32,6 +32,10 @@ jobs:
         run: |
           poetry install --no-interaction
 
+      - name: Run repository hygiene checks
+        run: |
+          poetry run make hygiene
+
       - name: Run tests
         run: |
           poetry run pytest -q

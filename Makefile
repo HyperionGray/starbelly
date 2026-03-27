@@ -6,5 +6,8 @@
 docs:
 	$(MAKE) -C docs html
 
+hygiene:
+	python tools/repo_hygiene.py
+
 test:
 	pytest tests/ --cov=starbelly --cov-report=term-missing
