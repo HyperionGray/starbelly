@@ -3,6 +3,7 @@
 .coverage.*
 .ipynb_checkpoints
 .pytest_cache
+.venv/
 .vscode
 __pycache__
 README.html
