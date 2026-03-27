@@ -1,6 +1,6 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+# Integration coverage note:
+# This module validates end-to-end subscription behavior against a real database.
+# Unit-level behavior is additionally covered under tests/test_subscription.py.
 
 from datetime import datetime, timezone
 import gzip
