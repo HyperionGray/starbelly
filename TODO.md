@@ -1,0 +1,3 @@
+- [ ] Complete protobuf schema additions for streaming list events (policy, schedule, domain_login) and regenerate `starbelly/starbelly_pb2.py`.
+- [ ] Add integration tests covering add/update/delete events for streaming list subscriptions after protobuf messages exist.
+- [ ] Wire UI consumers to use streaming list subscriptions instead of polling where applicable.

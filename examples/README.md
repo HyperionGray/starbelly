@@ -6,7 +6,8 @@ This directory contains example code demonstrating various Starbelly features.
 
 The `streaming_api_example.py` file demonstrates how to use the new streaming API to subscribe to real-time data updates.
 
-**Status**: Requires protobuf definitions to be completed (see ../STREAMING_API.md)
+**Status**: Requires protobuf definitions to be completed
+(see ../docs/notes/STREAMING_API.md)
 
 The streaming API allows clients to:
 - Subscribe to policy, schedule, and domain login changes

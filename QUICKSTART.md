@@ -16,7 +16,7 @@
 Run:
 
 ```bash
-./bin/setup-env.sh
+./bin/setup-env.sh --init-local-config
 ```
 
 The script will:
@@ -25,6 +25,19 @@ The script will:
 2. install Python 3.9
 3. create a project-local Poetry environment in `.venv`
 4. install the project dependencies
+5. create `conf/local.ini` from `conf/local.ini.template` when missing
+
+Validate your machine state without installing anything:
+
+```bash
+./bin/setup-env.sh --check
+```
+
+Show script options:
+
+```bash
+./bin/setup-env.sh --help
+```
 
 ## Use the environment
 
@@ -50,3 +63,4 @@ poetry run make docs
 
 - The original dependency URLs for `formasaurus` and `rethinkdb` are no longer usable, so the project now installs from public package sources.
 - The project currently installs and runs against Python 3.9 for reproducible setup on current machines.
+- `--python-version <ver>` can be used to temporarily test another interpreter that still satisfies project constraints.

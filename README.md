@@ -5,6 +5,12 @@ Learn more at
 [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
 
 For local development setup, see [QUICKSTART.md](QUICKSTART.md).
+The environment bootstrap helper is `bin/setup-env.sh` and supports:
+
+- `./bin/setup-env.sh --init-local-config` to install tooling/deps and create
+  `conf/local.ini` if needed
+- `./bin/setup-env.sh --check` to validate required local setup without
+  changing anything
 
 [![Build Status](https://img.shields.io/travis/com/HyperionGray/starbelly.svg?style=flat-square)](https://travis-ci.org/HyperionGray/starbelly)
 [![Coverage](https://img.shields.io/coveralls/github/HyperionGray/starbelly.svg?style=flat-square)](https://coveralls.io/github/HyperionGray/starbelly)
