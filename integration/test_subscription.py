@@ -1,6 +1,6 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+# This module keeps end-to-end subscription coverage that exercises RethinkDB
+# tables, protobuf payload construction, and resumable sync behavior. Unit tests
+# in tests/test_subscription.py cover focused class behavior.
 
 from datetime import datetime, timezone
 import gzip

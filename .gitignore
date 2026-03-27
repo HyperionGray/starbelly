@@ -1,6 +1,7 @@
 *.egg-info
 .coverage
 .coverage.*
+*~
 .ipynb_checkpoints
 .pytest_cache
 .venv/
