@@ -252,7 +252,7 @@ class Connection:
             logger.error('Request ERROR %s %s (%s)', command_name,
                 self._client, error_message)
             message.response.error_message = error_message
-        except:
+        except Exception:
             logger.error('Exception while handling request:\n%r\n%s',
                 request, traceback.format_exc())
             message.response.error_message = 'A server exception occurred'
