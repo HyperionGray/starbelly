@@ -15,6 +15,8 @@ from starbelly.subscription import (
     ExponentialBackoff,
     JobStatusSubscription,
     ResourceMonitorSubscription,
+    SubscriptionManager,
+    SubscriptionNotFoundError,
     SyncTokenError,
     SyncTokenInt,
     TaskMonitorSubscription,
@@ -53,6 +55,16 @@ def test_decode_malformed():
     token = b'\x01\x00\x00'
     with pytest.raises(SyncTokenError):
         assert SyncTokenInt.decode(token)
+
+
+def test_cancel_unknown_subscription():
+    manager = SubscriptionManager(
+        subscription_db=Mock(),
+        nursery=Mock(),
+        websocket=Mock(),
+    )
+    with pytest.raises(SubscriptionNotFoundError):
+        manager.cancel_subscription(12345)
 
 
 async def test_job_state_subscription(autojump_clock, nursery):

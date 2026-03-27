@@ -2,7 +2,9 @@ from uuid import UUID
 
 import trio.hazmat
 
-from . import api_handler
+from starbelly.subscription import SubscriptionNotFoundError
+
+from . import api_handler, InvalidRequestException
 
 
 @api_handler
@@ -70,4 +72,7 @@ async def subscribe_domain_login_list(response, subscription_manager):
 async def unsubscribe(command, subscription_manager):
     ''' Handle an unsubscribe command. '''
     sub_id = command.subscription_id
-    subscription_manager.cancel_subscription(sub_id)
+    try:
+        subscription_manager.cancel_subscription(sub_id)
+    except SubscriptionNotFoundError as exc:
+        raise InvalidRequestException(str(exc)) from None

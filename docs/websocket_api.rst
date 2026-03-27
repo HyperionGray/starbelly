@@ -71,6 +71,10 @@ subscription ID. The client can close the subscription by sending another
 request. The server will stop sending event messages and will send a response
 indicating that the subscription has been cancelled.
 
+If the client sends an ``unsubscribe`` request for an unknown subscription ID,
+the server returns an unsuccessful response with an explanatory
+``error_message`` instead of raising an internal server exception.
+
 Protobuf is a binary serialization format that supports common data types like
 integers, strings, lists, and maps. It is similar in purpose to JSON, but
 protobuf is more efficient in terms of encoding overhead and serialization

@@ -19,6 +19,14 @@ r = RethinkDB()
 logger = logging.getLogger(__name__)
 
 
+class SubscriptionNotFoundError(Exception):
+    """Raised when a subscription ID is not active."""
+
+    def __init__(self, subscription_id):
+        super().__init__("Unknown subscription_id: {}".format(subscription_id))
+        self.subscription_id = subscription_id
+
+
 class SyncTokenError(Exception):
     """ A sync token is syntactically invalid or was used with an incompatible
     stream type. """
@@ -82,7 +90,11 @@ class SubscriptionManager:
         """
         Cancel a subscription.
         """
-        self._subscriptions.pop(subscription_id).cancel()
+        try:
+            sub = self._subscriptions.pop(subscription_id)
+        except KeyError:
+            raise SubscriptionNotFoundError(subscription_id)
+        sub.cancel()
 
     def subscribe_job_sync(self, job_id, compression_ok, job_state_recv, sync_token):
         """
