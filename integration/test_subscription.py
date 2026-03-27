@@ -1,6 +1,6 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+# NOTE: This exercises end-to-end sync behavior with realistic database access.
+# It intentionally remains an integration test (rather than a unit test) because
+# it verifies sequence/token behavior across storage and subscription layers.
 
 from datetime import datetime, timezone
 import gzip

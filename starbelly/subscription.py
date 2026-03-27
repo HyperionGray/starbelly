@@ -387,7 +387,6 @@ class JobSyncSubscription:
 
     async def _set_initial_job_status(self):
         """ Query database for initial job status and update internal state. """
-        logger.info(dir(self._db))
         run_state = await self._db.get_job_run_state(self._job_id)
         logging.debug("%r Initial job state: %s", self, run_state)
         self._job_completed = run_state in FINISHED_STATES
