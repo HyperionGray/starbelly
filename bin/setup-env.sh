@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHON_VERSION="${PYTHON_VERSION:-3.9}"
+PYTHON_VERSION="${PYTHON_VERSION:-$(cat "$ROOT_DIR/.python-version")}"
 UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
 POETRY_BIN="${POETRY_BIN:-$HOME/.local/bin/poetry}"
 
