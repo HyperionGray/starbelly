@@ -27,6 +27,7 @@ collection pipeline.
     websocket_api
     protobuf
     development
+    repo_hygiene
     internals
     changelog
 
