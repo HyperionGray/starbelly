@@ -24,47 +24,41 @@ This document summarizes the actions taken to address findings from the Amazon Q
 
 **Impact:** Provides clear guidance for secure deployment and ongoing security maintenance.
 
-### 2. SSL Certificate Verification Documentation
+### 2. SSL Certificate Verification Controls
 
 **File:** `starbelly/downloader.py`  
 **Line:** 261
 
-**Change:** Added security comment documenting the SSL verification being disabled:
+**Change:** Added policy-driven TLS verification in the downloader:
 ```python
-# SECURITY NOTE: SSL verification is disabled to allow crawling
-# sites with self-signed or invalid certificates. This makes the
-# crawler vulnerable to MITM attacks. See docs/SECURITY.md for
-# details and recommendations for secure deployment.
-# TODO: Make SSL verification configurable per-policy
+verify_ssl = self._policy.transport_security.should_verify_ssl(url)
+session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
 **Rationale:**
-- SSL verification is intentionally disabled to allow crawling sites with self-signed certificates
-- This is a valid use case for a web crawler but introduces security risks
-- Documentation makes the trade-off explicit for operators
-- TODO added for future enhancement to make this configurable
+- TLS verification is now configurable per policy
+- Default remains `false` for backward compatibility with existing deployments
+- Operators can enable strict verification when needed
 
 **Impact:** Minimal code change; maximum documentation impact.
 
-### 3. Pickle Deserialization Documentation
+### 3. Paused Job State Serialization Hardening
 
 **File:** `starbelly/job.py`  
 **Line:** 328
 
-**Change:** Added security comment documenting the pickle usage:
+**Change:** Switched new paused-job `old_urls` storage to JSON-safe payloads with
+backward-compatible reads for legacy pickle values:
 ```python
-# SECURITY NOTE: Using pickle for deserialization. This assumes the
-# database is in a trusted environment. If the database is compromised,
-# malicious pickle data could execute arbitrary code.
-# See docs/SECURITY.md for secure deployment recommendations.
-# TODO: Consider replacing pickle with JSON serialization
+old_urls = _serialize_old_urls(job.old_urls)
+# ...
+old_urls = _deserialize_old_urls(job_doc['old_urls'])
 ```
 
 **Rationale:**
-- Pickle is used to serialize/deserialize URL sets from RethinkDB
-- Database is assumed to be in a trusted environment
-- Documentation makes the security assumption explicit
-- TODO added for future migration to safer serialization
+- New paused jobs avoid pickle writes
+- Legacy paused jobs remain resumable without migration downtime
+- Invalid persisted payloads are handled safely by reinitializing from seeds
 
 **Impact:** Minimal code change; clarifies security assumptions.
 
@@ -117,19 +111,21 @@ If you discover a security vulnerability, please email acaceres@hyperiongray.com
 
 **Impact:** Makes security information discoverable; provides responsible disclosure path.
 
-## Issues Identified But Not Addressed
+## Issues Identified But Not Fully Addressed
 
-### 1. Configurable SSL Verification
+### 1. Per-domain SSL Verification Overrides
 
-**Status:** Documented but not implemented  
-**Reason:** Requires significant changes to policy system and database schema  
-**Recommendation:** Implement in future release with proper testing
+**Status:** Partially addressed  
+**Current State:** Implemented policy-level TLS verification toggle
+(`transport_security.verify_ssl`), with safe backward-compatible default (`false`).  
+**Remaining Work:** Add per-domain/per-rule TLS verification controls.
 
-### 2. Pickle to JSON Migration
+### 2. Full Pickle Removal for Paused Job State
 
-**Status:** Documented but not implemented  
-**Reason:** Requires data migration strategy for existing jobs  
-**Recommendation:** Plan migration path for major version upgrade
+**Status:** Partially addressed  
+**Current State:** New paused jobs use JSON-safe serialization for `old_urls`; legacy
+pickle payloads remain readable for backward compatibility.  
+**Remaining Work:** Migrate historical paused jobs and remove pickle fallback.
 
 ### 3. HTML Parsing Timeouts
 
@@ -215,13 +211,13 @@ Before merging to production:
 - [ ] Monitor logs for oversized response warnings
 
 ### Short-term (Next Release)
-- [ ] Implement configurable SSL verification in policy system
+- [ ] Add per-domain SSL verification controls
 - [ ] Add HTML parsing timeout with Trio fail_after
 - [ ] Implement basic input validation on API endpoints
 - [ ] Add dependency vulnerability scanning to CI/CD
 
 ### Long-term (Major Version)
-- [ ] Migrate from pickle to JSON for URL set storage
+- [ ] Remove pickle fallback after migration completion
 - [ ] Implement certificate pinning for known domains
 - [ ] Comprehensive input validation framework
 - [ ] Security audit and penetration testing

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
+import base64
+import binascii
 import hashlib
 import itertools
 import logging
@@ -19,6 +21,56 @@ from .version import __version__
 
 logger = logging.getLogger(__name__)
 r = RethinkDB()
+_OLD_URLS_FORMAT = 'base64-url-hashes-v1'
+
+
+def _serialize_old_urls(old_urls):
+    '''
+    Serialize URL-hash bytes into a JSON-safe dictionary.
+
+    :param set[bytes] old_urls:
+    :rtype: dict
+    '''
+    values = sorted(base64.b64encode(old_url).decode('ascii')
+        for old_url in old_urls)
+    return {
+        'format': _OLD_URLS_FORMAT,
+        'values': values,
+    }
+
+
+def _deserialize_old_urls(serialized_old_urls):
+    '''
+    Deserialize old URL hashes from either JSON or legacy pickle format.
+
+    :param serialized_old_urls:
+    :rtype: set[bytes]
+    '''
+    if isinstance(serialized_old_urls, dict):
+        if serialized_old_urls.get('format') != _OLD_URLS_FORMAT:
+            raise ValueError('Unsupported old_urls format')
+        values = serialized_old_urls.get('values')
+        if not isinstance(values, list):
+            raise ValueError('old_urls.values must be a list')
+        old_urls = set()
+        for value in values:
+            if not isinstance(value, str):
+                raise ValueError('old_urls entry must be a string')
+            old_urls.add(base64.b64decode(value.encode('ascii'), validate=True))
+        return old_urls
+
+    # Backward compatibility for paused jobs written with pickle.
+    if isinstance(serialized_old_urls, (bytes, bytearray)):
+        return pickle.loads(serialized_old_urls)
+
+    # Some databases may round-trip binary as latin1 strings.
+    if isinstance(serialized_old_urls, str):
+        try:
+            return pickle.loads(serialized_old_urls.encode('latin1'))
+        except Exception as exc:
+            raise ValueError('Unsupported string old_urls payload') from exc
+
+    raise ValueError('Unsupported old_urls payload type')
 
 
 class CrawlDurationExceeded(Exception):
@@ -234,7 +286,7 @@ class CrawlManager:
         logger.info('%r Pausing job_id=%s…', self, job.id[:8])
         await job.stop()
         run_state = RunState.PAUSED
-        old_urls = pickle.dumps(job.old_urls)
+        old_urls = _serialize_old_urls(job.old_urls)
         await self._db.pause_job(job.id, old_urls)
         self._stats_tracker.set_run_state(job.id, run_state)
         event = JobStateEvent(job.id, job.schedule_id, run_state,
@@ -325,15 +377,18 @@ class CrawlManager:
         job_id = job_doc['id']
         policy = Policy(job_doc['policy'], __version__, job_doc['seeds'])
         try:
-            # SECURITY NOTE: Using pickle for deserialization. This assumes the
-            # database is in a trusted environment. If the database is compromised,
-            # malicious pickle data could execute arbitrary code.
-            # See docs/SECURITY.md for secure deployment recommendations.
-            # TODO: Consider replacing pickle with JSON serialization
-            old_urls = pickle.loads(job_doc['old_urls'])
+            old_urls = _deserialize_old_urls(job_doc['old_urls'])
         except KeyError:
             # If old URLs are not in the job_doc, then this is a new job and
             # we should intialize old_urls to the seed URLs.
+            old_urls = set()
+            for seed in job_doc['seeds']:
+                url_can = policy.url_normalization.normalize(seed)
+                hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
+                old_urls.add(hash_.digest())
+        except (ValueError, binascii.Error, pickle.UnpicklingError, EOFError):
+            logger.warning('%r Failed to deserialize old_urls for job_id=%s. '
+                'Reinitializing from seed URLs.', self, job_id[:8])
             old_urls = set()
             for seed in job_doc['seeds']:
                 url_can = policy.url_normalization.normalize(seed)

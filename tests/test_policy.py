@@ -11,6 +11,7 @@ from starbelly.policy import (
     PolicyMimeTypeRules,
     PolicyProxyRules,
     PolicyRobotsTxt,
+    PolicyTransportSecurity,
     PolicyValidationError,
     PolicyUrlNormalization,
     PolicyUrlRules,
@@ -707,6 +708,17 @@ def test_policy_user_agent_invalid():
         PolicyUserAgents([{'name': ''}], version='1.0.0')
 
 
+def test_policy_transport_security_default_and_enabled():
+    ts_default = PolicyTransportSecurity({})
+    assert not ts_default.should_verify_ssl('https://example.com')
+
+    ts_enabled = PolicyTransportSecurity({'verify_ssl': True})
+    assert ts_enabled.should_verify_ssl('https://example.com')
+
+    with pytest.raises(PolicyValidationError):
+        PolicyTransportSecurity({'verify_ssl': 'yes'})
+
+
 def test_policy_constructor():
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc) + timedelta(minutes=1)
@@ -726,6 +738,9 @@ def test_policy_constructor():
         'proxy_rules': [
             {'proxy_url': 'socks5://localhost:1234'},
         ],
+        'transport_security': {
+            'verify_ssl': True,
+        },
         'robots_txt': {
             'usage': 'IGNORE',
         },
@@ -748,6 +763,8 @@ def test_policy_constructor():
     assert isinstance(policy.limits, PolicyLimits)
     assert isinstance(policy.mime_type_rules, PolicyMimeTypeRules)
     assert isinstance(policy.proxy_rules, PolicyProxyRules)
+    assert isinstance(policy.transport_security, PolicyTransportSecurity)
+    assert policy.transport_security.should_verify_ssl('https://example.com')
     assert isinstance(policy.robots_txt, PolicyRobotsTxt)
     assert isinstance(policy.url_normalization, PolicyUrlNormalization)
     assert isinstance(policy.url_rules, PolicyUrlRules)

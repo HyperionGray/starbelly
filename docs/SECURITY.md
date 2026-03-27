@@ -6,16 +6,17 @@ This document contains security findings from the Amazon Q Code Review (2026-01-
 
 ## Critical Findings
 
-### 1. SSL Certificate Verification Disabled
+### 1. SSL Certificate Verification Configurable by Policy
 
 **Location:** `starbelly/downloader.py:261`
 
-**Issue:** SSL certificate verification is disabled for all non-SOCKS connections:
+**Issue:** Historically SSL certificate verification was disabled for all non-SOCKS connections:
 ```python
-session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+verify_ssl = self._policy.transport_security.should_verify_ssl(url)
+session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
-**Risk Level:** CRITICAL
+**Risk Level:** MEDIUM (policy-dependent)
 
 **Security Impact:**
 - The application is vulnerable to Man-in-the-Middle (MITM) attacks
@@ -29,54 +30,55 @@ As a web crawler, Starbelly may need to crawl websites with:
 - Expired certificates  
 - Invalid certificate chains
 
-**Recommendations:**
-1. **Short-term:** Enable SSL verification by default with an optional policy setting to disable it per-domain or per-crawl
-2. **Medium-term:** Implement certificate pinning for known domains
-3. **Long-term:** Add certificate validation bypass only for explicitly whitelisted domains
+**Current Behavior:**
+1. TLS verification is now policy-controlled through ``transport_security.verify_ssl``.
+2. Default remains ``false`` for backward compatibility with existing crawler deployments.
+3. Operators can explicitly enable verification for higher-security crawls.
 
-**Proposed Fix:**
+**Recommendations:**
+1. Prefer ``transport_security.verify_ssl = true`` for trusted, controlled targets.
+2. Consider certificate pinning for known domains.
+3. Add per-domain TLS override support in a future release.
+
+**Implementation:**
 ```python
-# Add to Policy configuration
-verify_ssl = self._policy.ssl_verification.get_verify_ssl(url)
+# transport_security.verify_ssl defaults to False for compatibility.
+verify_ssl = self._policy.transport_security.should_verify_ssl(url)
 session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
-### 2. Pickle Deserialization of Database Data
+### 2. Paused Job URL State Serialization
 
 **Location:** `starbelly/job.py:328`
 
-**Issue:** Using `pickle.loads()` to deserialize data from the database:
+**Issue:** Historically, paused job URL state used pickle deserialization from the database:
 ```python
-old_urls = pickle.loads(job_doc['old_urls'])
+old_urls = _deserialize_old_urls(job_doc['old_urls'])
 ```
 
-**Risk Level:** MEDIUM
+**Risk Level:** LOW-MEDIUM
 
 **Security Impact:**
-- If the database is compromised, attackers could execute arbitrary code
-- Pickle can deserialize malicious objects that execute code during deserialization
-- No validation of the deserialized data structure
+- Pickle deserialization can execute arbitrary code if fed malicious payloads
+- Attack surface depends on integrity of paused-job data in the database
 
-**Mitigation Factors:**
-- Data comes from RethinkDB which should be in a trusted environment
-- Database access requires authentication
-- Attack surface is limited to database compromise scenarios
+**Current Mitigations:**
+- New paused jobs are serialized as JSON-safe dictionaries with base64-encoded hashes
+- Legacy pickle payloads are still accepted for backward compatibility
+- Invalid payloads are rejected and job state is safely reinitialized from seeds
 
 **Recommendations:**
-1. **Preferred:** Replace pickle with JSON serialization for URL sets
-2. **Alternative:** Use restricted unpickler with allowlist of safe classes
-3. **Minimum:** Document the security assumption that database is trusted
+1. Continue migration by backfilling legacy pickle records to JSON format.
+2. Remove pickle fallback in a future major release once migration is complete.
+3. Keep database access strictly controlled and audited.
 
-**Proposed Fix:**
+**Implementation:**
 ```python
-# Replace pickle with JSON for URL storage
-# Convert set to list for JSON serialization
-old_urls_list = list(job.old_urls)
-old_urls_json = json.dumps(old_urls_list)
+# New paused jobs use JSON-safe dict storage:
+payload = _serialize_old_urls(job.old_urls)
 
-# On load:
-old_urls_list = json.loads(job_doc['old_urls'])
-old_urls = set(old_urls_list)
+# Reads support both JSON-safe payloads and legacy pickle data:
+old_urls = _deserialize_old_urls(job_doc['old_urls'])
 ```
 
 ## Medium Priority Findings
@@ -212,18 +214,18 @@ Some dependencies may have known vulnerabilities:
 ## Recommendations Summary
 
 ### Immediate Actions (Critical)
-1. Document SSL verification disabled - why and risks
+1. Prefer ``transport_security.verify_ssl = true`` for trusted crawls
 2. Add security warnings to README
-3. Consider adding SSL verification policy option
+3. Plan migration to remove legacy pickle fallback for paused jobs
 
 ### Short-term Actions (High Priority)
-1. Replace pickle with JSON for URL set serialization
+1. Backfill legacy pickle paused-job rows into JSON-safe format
 2. Add response size limits before parsing
 3. Add parsing timeouts
 4. Implement input validation on API endpoints
 
 ### Long-term Actions (Medium Priority)
-1. Implement configurable SSL verification per policy
+1. Add per-domain SSL verification overrides
 2. Add certificate pinning for known domains
 3. Implement comprehensive input validation framework
 4. Set up automated dependency vulnerability scanning

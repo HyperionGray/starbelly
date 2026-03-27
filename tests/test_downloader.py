@@ -40,7 +40,7 @@ def make_stats():
     }
 
 
-def make_policy(proxy=None):
+def make_policy(proxy=None, verify_ssl=False):
     ''' Make a sample policy. '''
     dt = datetime(2018,12,31,13,47,00)
     doc = {
@@ -61,6 +61,9 @@ def make_policy(proxy=None):
             {'save': False},
         ],
         'proxy_rules': proxy or [],
+        'transport_security': {
+            'verify_ssl': verify_ssl,
+        },
         'robots_txt': {
             'usage': 'IGNORE',
         },
@@ -78,6 +81,16 @@ def make_policy(proxy=None):
         ]
     }
     return Policy(doc, '1.0.0', ['https://seeds.example'])
+
+
+def test_transport_security_policy():
+    policy_default = make_policy()
+    assert not policy_default.transport_security.should_verify_ssl(
+        'https://example.com')
+
+    policy_verify = make_policy(verify_ssl=True)
+    assert policy_verify.transport_security.should_verify_ssl(
+        'https://example.com')
 
 
 def test_request():

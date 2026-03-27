@@ -135,6 +135,8 @@ class Policy:
         self.limits = PolicyLimits(doc['limits'])
         self.mime_type_rules = PolicyMimeTypeRules(doc['mime_type_rules'])
         self.proxy_rules = PolicyProxyRules(doc['proxy_rules'])
+        self.transport_security = PolicyTransportSecurity(
+            doc.get('transport_security', dict()))
         self.robots_txt = PolicyRobotsTxt(doc['robots_txt'])
         self.url_normalization = PolicyUrlNormalization(
             doc['url_normalization'])
@@ -156,11 +158,36 @@ class Policy:
         policy.limits = self.limits
         policy.mime_type_rules = PolicyMimeTypeRules(rules)
         policy.proxy_rules = self.proxy_rules
+        policy.transport_security = self.transport_security
         policy.robots_txt = self.robots_txt
         policy.url_normalization = self.url_normalization
         policy.url_rules = self.url_rules
         policy.user_agents = self.user_agents
         return policy
+
+
+class PolicyTransportSecurity:
+    ''' Controls TLS verification behavior for outbound HTTP requests. '''
+
+    def __init__(self, doc):
+        '''
+        Initialize from a database document.
+
+        :param dict doc: A database document.
+        '''
+        verify_ssl = doc.get('verify_ssl', False)
+        if not isinstance(verify_ssl, bool):
+            _invalid('transport_security.verify_ssl must be true or false')
+        self._verify_ssl = verify_ssl
+
+    def should_verify_ssl(self, _target_url=None):
+        '''
+        Return true if TLS certificates should be verified.
+
+        :param str _target_url: Reserved for future per-domain policy support.
+        :rtype: bool
+        '''
+        return self._verify_ssl
 
 
 class PolicyAuthentication:

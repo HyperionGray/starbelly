@@ -26,7 +26,6 @@ This implementation successfully addresses the Amazon Q Code Review findings by:
 - Added comprehensive security comment documenting the risk
 - Explained rationale (web crawler needs to access sites with self-signed certs)
 - Documented in `docs/SECURITY.md` with detailed analysis
-- Added TODO for future configurable SSL verification
 
 **Current State:**
 ```python
@@ -34,8 +33,10 @@ This implementation successfully addresses the Amazon Q Code Review findings by:
 # sites with self-signed or invalid certificates. This makes the
 # crawler vulnerable to MITM attacks. See docs/SECURITY.md for
 # details and recommendations for secure deployment.
-# TODO: Make SSL verification configurable per-policy
-session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+# SSL verification is now configurable per policy.
+# To verify certs for a crawl, set:
+# transport_security.verify_ssl = true
+session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
 **Why Not Fixed Completely:**
@@ -60,7 +61,6 @@ session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 - Added security comment documenting the assumption
 - Explained the trust requirement for database
 - Documented in `docs/SECURITY.md` with migration recommendations
-- Added TODO for future JSON migration
 
 **Current State:**
 ```python
@@ -68,8 +68,9 @@ session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 # database is in a trusted environment. If the database is compromised,
 # malicious pickle data could execute arbitrary code.
 # See docs/SECURITY.md for secure deployment recommendations.
-# TODO: Consider replacing pickle with JSON serialization
-old_urls = pickle.loads(job_doc['old_urls'])
+# old_urls now uses JSON-safe storage for newly paused jobs.
+# Legacy pickled values remain readable for backward compatibility.
+old_urls = _deserialize_old_urls(job_doc['old_urls'])
 ```
 
 **Why Not Fixed Completely:**
@@ -314,14 +315,14 @@ The application makes these security assumptions:
 
 ### Short-term (Next Release)
 
-1. ⏳ Implement configurable SSL verification
+1. ⏳ Add per-domain TLS verification controls
 2. ⏳ Add HTML parsing timeouts
 3. ⏳ Implement input validation on API endpoints
 4. ⏳ Add dependency vulnerability scanning to CI/CD
 
 ### Long-term (Major Version)
 
-1. ⏳ Migrate from pickle to JSON serialization
+1. ⏳ Remove pickle fallback after migration completion
 2. ⏳ Implement certificate pinning
 3. ⏳ Comprehensive input validation framework
 4. ⏳ Security audit and penetration testing
@@ -330,7 +331,7 @@ The application makes these security assumptions:
 
 This implementation successfully addresses the Amazon Q Code Review findings with minimal, surgical changes that:
 
-✅ **Document security trade-offs** - Operators now understand SSL and pickle risks  
+✅ **Document and implement key security controls** - Operators can enable TLS verification per policy; safer old_urls serialization is now used for paused jobs  
 ✅ **Prevent DoS attacks** - 10MB size limits protect against malicious documents  
 ✅ **Maintain compatibility** - Zero breaking changes, fully backward compatible  
 ✅ **Provide roadmap** - Clear path forward for future security enhancements  

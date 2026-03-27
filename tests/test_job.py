@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import base64
 import logging
 import pickle
 from unittest.mock import Mock
@@ -9,10 +10,12 @@ import trio
 from . import AsyncMock, asyncio_loop, fail_after
 from starbelly.frontier import FrontierExhaustionError
 from starbelly.job import (
+    _OLD_URLS_FORMAT,
     PipelineTerminator,
     RunState,
     StatsTracker,
     CrawlManager,
+    _deserialize_old_urls,
 )
 
 
@@ -221,8 +224,13 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     state_event = await recv_channel.receive()
     assert state_event.run_state == RunState.PAUSED
     assert manager_db.pause_job.call_args[0] == job_id
+    serialized_old_urls = manager_db.pause_job.call_args[1]
+    assert serialized_old_urls['format'] == _OLD_URLS_FORMAT
     # There are two "old URLs": the seed URLs.
-    assert len(pickle.loads(manager_db.pause_job.call_args[1])) == 2
+    assert len(serialized_old_urls['values']) == 2
+    for value in serialized_old_urls['values']:
+        assert isinstance(value, str)
+        assert len(base64.b64decode(value.encode('ascii'), validate=True)) == 16
     assert stats_tracker.snapshot()[0]['run_state'] == RunState.PAUSED
 
     # Now resume and wait for the running event.
@@ -237,3 +245,10 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     assert state_event.run_state == RunState.CANCELLED
     assert manager_db.finish_job.call_args[0] == job_id
     assert manager_db.finish_job.call_args[1] == RunState.CANCELLED
+
+
+def test_deserialize_old_urls_legacy_pickle_bytes():
+    old_urls = {b'1234567890abcdef', b'fedcba0987654321'}
+    payload = pickle.dumps(old_urls)
+    restored = _deserialize_old_urls(payload)
+    assert restored == old_urls
