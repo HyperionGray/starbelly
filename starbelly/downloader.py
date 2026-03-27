@@ -258,12 +258,11 @@ class Downloader:
             session_args['connector'] = aiohttp_socks.SocksConnector.from_url(
                 proxy_url, rdns=rdns)
         else:
-            # SECURITY NOTE: SSL verification is disabled to allow crawling
-            # sites with self-signed or invalid certificates. This makes the
-            # crawler vulnerable to MITM attacks. See docs/SECURITY.md for
-            # details and recommendations for secure deployment.
-            # TODO: Make SSL verification configurable per-policy
-            session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+            # SECURITY NOTE: SSL verification defaults to False for
+            # backward compatibility. Set policy.verify_ssl to True to enforce
+            # certificate validation for direct HTTPS requests.
+            session_args['connector'] = aiohttp.TCPConnector(
+                verify_ssl=self._policy.verify_ssl)
 
         user_agent = self._policy.user_agents.get_user_agent()
         session_args['headers'] = {'User-Agent': user_agent}

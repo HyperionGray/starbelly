@@ -491,6 +491,89 @@ def test_policy_proxy_invalid_url_scheme():
         ])
 
 
+def test_policy_verify_ssl_default_false():
+    policy = Policy({
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc),
+        'authentication': {'enabled': True},
+        'limits': {'max_cost': 10},
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'robots_txt': {'usage': 'IGNORE'},
+        'url_normalization': {'enabled': True, 'strip_parameters': []},
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [{'name': 'Test User Agent'}],
+    }, version='1.0.0', seeds=[])
+    assert not policy.verify_ssl
+
+
+def test_policy_verify_ssl_true():
+    policy = Policy({
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc),
+        'authentication': {'enabled': True},
+        'limits': {'max_cost': 10},
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'verify_ssl': True,
+        'robots_txt': {'usage': 'IGNORE'},
+        'url_normalization': {'enabled': True, 'strip_parameters': []},
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [{'name': 'Test User Agent'}],
+    }, version='1.0.0', seeds=[])
+    assert policy.verify_ssl
+
+
+def test_policy_verify_ssl_invalid():
+    with pytest.raises(PolicyValidationError):
+        Policy({
+            'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+            'name': 'Test',
+            'created_at': datetime.now(timezone.utc),
+            'updated_at': datetime.now(timezone.utc),
+            'authentication': {'enabled': True},
+            'limits': {'max_cost': 10},
+            'mime_type_rules': [
+                {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+                {'save': False},
+            ],
+            'proxy_rules': [
+                {'proxy_url': 'socks5://localhost:1234'},
+            ],
+            'verify_ssl': 'true',
+            'robots_txt': {'usage': 'IGNORE'},
+            'url_normalization': {'enabled': True, 'strip_parameters': []},
+            'url_rules': [
+                {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+                 'pattern': '^https?://({SEED_DOMAINS})/'},
+                {'action': 'MULTIPLY', 'amount': 0},
+            ],
+            'user_agents': [{'name': 'Test User Agent'}],
+        }, version='1.0.0', seeds=[])
+
+
 def test_policy_robots_invalid_usage():
     with pytest.raises(PolicyValidationError):
         robots = PolicyRobotsTxt(doc={})

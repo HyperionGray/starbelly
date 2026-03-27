@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import hashlib
+import io
 import itertools
+import json
 import logging
 import pickle
 
@@ -40,6 +42,97 @@ class RunState:
 
 
 FINISHED_STATES = RunState.COMPLETED, RunState.CANCELLED
+
+
+OLD_URLS_FORMAT_VERSION = 1
+
+
+class _SafeOldUrlsUnpickler(pickle.Unpickler):
+    '''
+    Restricted unpickler for legacy ``old_urls`` data.
+
+    This is only used as a backward-compatibility bridge for old paused jobs
+    that still have pickled state in the database.
+    '''
+    _ALLOWED_BUILTINS = {'set', 'frozenset', 'bytes'}
+
+    def find_class(self, module, name):
+        if module == 'builtins' and name in self._ALLOWED_BUILTINS:
+            return getattr(__import__(module), name)
+        raise pickle.UnpicklingError(
+            f'Unsupported class in legacy old_urls payload: {module}.{name}')
+
+
+def _serialize_old_urls(old_urls):
+    '''
+    Serialize old URL hashes to JSON for safe storage.
+
+    :param set old_urls: Set of URL hashes (bytes).
+    :returns: JSON payload.
+    :rtype: str
+    '''
+    hashes = list()
+    for url_hash in old_urls:
+        if not isinstance(url_hash, (bytes, bytearray)):
+            raise ValueError('old_urls must contain bytes')
+        hashes.append(bytes(url_hash).hex())
+
+    return json.dumps({
+        'version': OLD_URLS_FORMAT_VERSION,
+        'encoding': 'hex',
+        'hashes': sorted(hashes),
+    })
+
+
+def _load_legacy_old_urls(old_urls_bytes):
+    '''
+    Load legacy pickled old URL hashes with a restricted unpickler.
+
+    :param bytes old_urls_bytes:
+    :returns: Set of URL hashes (bytes).
+    :rtype: set
+    '''
+    unpickler = _SafeOldUrlsUnpickler(io.BytesIO(bytes(old_urls_bytes)))
+    decoded = unpickler.load()
+    if not isinstance(decoded, (set, frozenset)):
+        raise ValueError('Legacy old_urls payload must deserialize to a set')
+
+    old_urls = set()
+    for url_hash in decoded:
+        if not isinstance(url_hash, (bytes, bytearray)):
+            raise ValueError('Legacy old_urls values must be bytes')
+        old_urls.add(bytes(url_hash))
+    return old_urls
+
+
+def _deserialize_old_urls(old_urls_data):
+    '''
+    Deserialize old URL hashes from JSON or legacy pickle formats.
+
+    :param old_urls_data: Serialized old URL hashes.
+    :returns: Set of URL hashes (bytes).
+    :rtype: set
+    '''
+    if isinstance(old_urls_data, str):
+        doc = json.loads(old_urls_data)
+        if not isinstance(doc, dict):
+            raise ValueError('old_urls JSON payload must be an object')
+        if doc.get('version') != OLD_URLS_FORMAT_VERSION:
+            raise ValueError('Unsupported old_urls JSON version')
+        if doc.get('encoding') != 'hex':
+            raise ValueError('Unsupported old_urls JSON encoding')
+        hashes = doc.get('hashes')
+        if not isinstance(hashes, list):
+            raise ValueError('old_urls JSON payload is missing hashes list')
+        return {bytes.fromhex(url_hash) for url_hash in hashes}
+
+    if isinstance(old_urls_data, (bytes, bytearray)):
+        logger.warning('Loading legacy pickled old_urls state; migrate by '
+            'pausing job again to write JSON old_urls.')
+        return _load_legacy_old_urls(old_urls_data)
+
+    raise ValueError('Unsupported old_urls data type: {}'
+        .format(type(old_urls_data).__name__))
 
 
 @dataclass
@@ -234,7 +327,7 @@ class CrawlManager:
         logger.info('%r Pausing job_id=%s…', self, job.id[:8])
         await job.stop()
         run_state = RunState.PAUSED
-        old_urls = pickle.dumps(job.old_urls)
+        old_urls = _serialize_old_urls(job.old_urls)
         await self._db.pause_job(job.id, old_urls)
         self._stats_tracker.set_run_state(job.id, run_state)
         event = JobStateEvent(job.id, job.schedule_id, run_state,
@@ -324,14 +417,10 @@ class CrawlManager:
         '''
         job_id = job_doc['id']
         policy = Policy(job_doc['policy'], __version__, job_doc['seeds'])
-        try:
-            # SECURITY NOTE: Using pickle for deserialization. This assumes the
-            # database is in a trusted environment. If the database is compromised,
-            # malicious pickle data could execute arbitrary code.
-            # See docs/SECURITY.md for secure deployment recommendations.
-            # TODO: Consider replacing pickle with JSON serialization
-            old_urls = pickle.loads(job_doc['old_urls'])
-        except KeyError:
+        old_urls_data = job_doc.get('old_urls')
+        if old_urls_data is not None:
+            old_urls = _deserialize_old_urls(old_urls_data)
+        else:
             # If old URLs are not in the job_doc, then this is a new job and
             # we should intialize old_urls to the seed URLs.
             old_urls = set()

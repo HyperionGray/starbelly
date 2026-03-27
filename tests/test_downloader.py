@@ -61,6 +61,7 @@ def make_policy(proxy=None):
             {'save': False},
         ],
         'proxy_rules': proxy or [],
+        'verify_ssl': False,
         'robots_txt': {
             'usage': 'IGNORE',
         },

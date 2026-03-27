@@ -122,6 +122,21 @@ cases, you may want to proxy requests through an intermediary. The *Proxy Rules*
 specify which proxy server should be used for which request, similar to the *URL
 Rules* above.
 
+TLS Verification
+================
+
+By default, Starbelly disables TLS certificate verification for direct HTTP(S)
+requests so it can crawl targets with self-signed or otherwise invalid
+certificates. This is convenient for some crawling environments but increases
+the risk of man-in-the-middle attacks.
+
+You can enable TLS certificate verification in a policy by setting
+``verify_ssl`` to ``true`` in the policy document. When enabled, direct HTTPS
+requests validate certificates using the system trust store.
+
+SOCKS proxy traffic is not affected by this setting in the downloader, since
+those connections use the SOCKS connector path.
+
 MIME Type Rules
 ===============
 

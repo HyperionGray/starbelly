@@ -61,6 +61,8 @@ class Policy:
             list()), pb.mime_type_rules)
         PolicyProxyRules.convert_doc_to_pb(doc.get('proxy_rules', list()),
             pb.proxy_rules)
+        if 'verify_ssl' in pb.DESCRIPTOR.fields_by_name:
+            pb.verify_ssl = doc.get('verify_ssl', False)
         PolicyRobotsTxt.convert_doc_to_pb(doc.get('robots_txt', dict()),
             pb.robots_txt)
         PolicyUrlNormalization.convert_doc_to_pb(doc.get('url_normalization',
@@ -86,6 +88,7 @@ class Policy:
             'limits': dict(),
             'mime_type_rules': list(),
             'proxy_rules': list(),
+            'verify_ssl': False,
             'robots_txt': dict(),
             'url_normalization': dict(),
             'url_rules': list(),
@@ -107,6 +110,8 @@ class Policy:
         PolicyMimeTypeRules.convert_pb_to_doc(pb.mime_type_rules,
             doc['mime_type_rules'])
         PolicyProxyRules.convert_pb_to_doc(pb.proxy_rules, doc['proxy_rules'])
+        if 'verify_ssl' in pb.DESCRIPTOR.fields_by_name:
+            doc['verify_ssl'] = pb.verify_ssl
         PolicyRobotsTxt.convert_pb_to_doc(pb.robots_txt, doc['robots_txt'])
         PolicyUrlNormalization.convert_pb_to_doc(pb.url_normalization,
             doc['url_normalization'])
@@ -135,6 +140,10 @@ class Policy:
         self.limits = PolicyLimits(doc['limits'])
         self.mime_type_rules = PolicyMimeTypeRules(doc['mime_type_rules'])
         self.proxy_rules = PolicyProxyRules(doc['proxy_rules'])
+        verify_ssl = doc.get('verify_ssl', False)
+        if not isinstance(verify_ssl, bool):
+            _invalid('verify_ssl must be true or false')
+        self.verify_ssl = verify_ssl
         self.robots_txt = PolicyRobotsTxt(doc['robots_txt'])
         self.url_normalization = PolicyUrlNormalization(
             doc['url_normalization'])
@@ -156,6 +165,7 @@ class Policy:
         policy.limits = self.limits
         policy.mime_type_rules = PolicyMimeTypeRules(rules)
         policy.proxy_rules = self.proxy_rules
+        policy.verify_ssl = self.verify_ssl
         policy.robots_txt = self.robots_txt
         policy.url_normalization = self.url_normalization
         policy.url_rules = self.url_rules

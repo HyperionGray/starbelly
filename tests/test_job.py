@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import json
 import logging
 import pickle
 from unittest.mock import Mock
@@ -13,6 +14,8 @@ from starbelly.job import (
     RunState,
     StatsTracker,
     CrawlManager,
+    _deserialize_old_urls,
+    _serialize_old_urls,
 )
 
 
@@ -53,6 +56,32 @@ def make_policy_doc():
             {'name': 'Test User Agent'}
         ]
     }
+
+
+def test_old_urls_json_roundtrip():
+    old_urls = {
+        b'\x00' * 16,
+        b'\x01' * 16,
+    }
+    payload = _serialize_old_urls(old_urls)
+    roundtrip = _deserialize_old_urls(payload)
+    assert roundtrip == old_urls
+
+
+def test_old_urls_legacy_pickle_compatibility():
+    old_urls = {
+        b'\x02' * 16,
+        b'\x03' * 16,
+    }
+    payload = pickle.dumps(old_urls)
+    roundtrip = _deserialize_old_urls(payload)
+    assert roundtrip == old_urls
+
+
+def test_old_urls_legacy_pickle_invalid_value():
+    payload = pickle.dumps({'https://example.com/'})
+    with pytest.raises(ValueError):
+        _deserialize_old_urls(payload)
 
 
 @fail_after(3)
@@ -221,8 +250,12 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     state_event = await recv_channel.receive()
     assert state_event.run_state == RunState.PAUSED
     assert manager_db.pause_job.call_args[0] == job_id
+    old_urls_payload = manager_db.pause_job.call_args[1]
+    old_urls_doc = json.loads(old_urls_payload)
+    assert old_urls_doc['version'] == 1
+    assert old_urls_doc['encoding'] == 'hex'
     # There are two "old URLs": the seed URLs.
-    assert len(pickle.loads(manager_db.pause_job.call_args[1])) == 2
+    assert len(old_urls_doc['hashes']) == 2
     assert stats_tracker.snapshot()[0]['run_state'] == RunState.PAUSED
 
     # Now resume and wait for the running event.

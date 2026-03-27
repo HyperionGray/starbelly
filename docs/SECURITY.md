@@ -6,13 +6,14 @@ This document contains security findings from the Amazon Q Code Review (2026-01-
 
 ## Critical Findings
 
-### 1. SSL Certificate Verification Disabled
+### 1. SSL Certificate Verification Defaults to Disabled
 
 **Location:** `starbelly/downloader.py:261`
 
-**Issue:** SSL certificate verification is disabled for all non-SOCKS connections:
+**Issue:** SSL certificate verification is disabled by default for non-SOCKS connections:
 ```python
-session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+session_args['connector'] = aiohttp.TCPConnector(
+    verify_ssl=self._policy.verify_ssl)
 ```
 
 **Risk Level:** CRITICAL
@@ -30,16 +31,9 @@ As a web crawler, Starbelly may need to crawl websites with:
 - Invalid certificate chains
 
 **Recommendations:**
-1. **Short-term:** Enable SSL verification by default with an optional policy setting to disable it per-domain or per-crawl
+1. **Short-term:** Keep policy-level control and consider switching default to enabled in a future major release
 2. **Medium-term:** Implement certificate pinning for known domains
 3. **Long-term:** Add certificate validation bypass only for explicitly whitelisted domains
-
-**Proposed Fix:**
-```python
-# Add to Policy configuration
-verify_ssl = self._policy.ssl_verification.get_verify_ssl(url)
-session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
-```
 
 ### 2. Pickle Deserialization of Database Data
 
@@ -223,7 +217,7 @@ Some dependencies may have known vulnerabilities:
 4. Implement input validation on API endpoints
 
 ### Long-term Actions (Medium Priority)
-1. Implement configurable SSL verification per policy
+1. Consider enabling SSL verification by default in a major release
 2. Add certificate pinning for known domains
 3. Implement comprehensive input validation framework
 4. Set up automated dependency vulnerability scanning
