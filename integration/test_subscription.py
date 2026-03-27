@@ -1,6 +1,6 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+# NOTE: This integration test predates the database query module split and
+# intentionally validates end-to-end behavior across subscription and database
+# layers.
 
 from datetime import datetime, timezone
 import gzip

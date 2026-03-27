@@ -14,5 +14,9 @@ repo-hygiene:
 
 ci-check:
 	python3 tools/repo_hygiene.py --tracked-only
+	@if ! command -v poetry >/dev/null 2>&1; then \
+		echo "Poetry is required for ci-check. Install it with: python3 -m pip install poetry"; \
+		exit 1; \
+	fi
 	poetry install --no-interaction
 	poetry run pytest -q
