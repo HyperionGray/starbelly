@@ -175,7 +175,7 @@ class Connection:
         except DecodeError:
             logger.warning('Closing connection for invalid protobuf message: %s',
                 self._client)
-        except:
+        except Exception:
             logger.error('Connection exception\n%s', traceback.format_exc())
         finally:
             await self._ws.aclose()
