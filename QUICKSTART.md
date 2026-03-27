@@ -26,6 +26,17 @@ The script will:
 3. create a project-local Poetry environment in `.venv`
 4. install the project dependencies
 
+## Validate environment readiness (non-mutating)
+
+Run:
+
+```bash
+./bin/setup-env.sh --check
+```
+
+`--check` only verifies tool/runtime availability and reports readiness. It
+does not install packages, create virtual environments, or modify local state.
+
 ## Use the environment
 
 Activate the environment:
@@ -50,3 +61,5 @@ poetry run make docs
 
 - The original dependency URLs for `formasaurus` and `rethinkdb` are no longer usable, so the project now installs from public package sources.
 - The project currently installs and runs against Python 3.9 for reproducible setup on current machines.
+- If `uv` or `poetry` are already installed on your `PATH`, `setup-env.sh` will
+  use those binaries automatically.

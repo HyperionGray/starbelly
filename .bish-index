@@ -28,8 +28,8 @@
 ./starbelly/frontier.py
 ./starbelly/schedule.py
 ./starbelly/storage.py
-./IMPLEMENTATION_SUMMARY.md
-./STREAMING_API.md
+./docs/implementation/IMPLEMENTATION_SUMMARY.md
+./docs/implementation/STREAMING_API.md
 ./AGENTS.md
 ./README.md
 ./integration/test_subscription.py
