@@ -17,7 +17,7 @@ Starbelly is a user-friendly web crawler that is easy to deploy and configure.
 
 ## Installation
 
-Starbelly is deployed using Docker and Docker Compose. See the [Installation Guide](http://starbelly.readthedocs.io/en/latest/installation.html) for detailed instructions.
+Starbelly is deployed using Docker and Docker Compose. See the [Installation Guide](https://starbelly.readthedocs.io/en/latest/installation.html) for detailed instructions.
 
 Quick start:
 ```bash
@@ -32,11 +32,11 @@ After installation, navigate to your server's address in a web browser. The defa
 - **Username**: admin
 - **Password**: admin
 
-For detailed usage instructions, see the [documentation](http://starbelly.readthedocs.io/en/latest/first_crawl.html).
+For detailed usage instructions, see the [documentation](https://starbelly.readthedocs.io/en/latest/first_crawl.html).
 
 ## Documentation
 
-Complete documentation is available at [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
+Complete documentation is available at [starbelly.readthedocs.io](https://starbelly.readthedocs.io/en/latest/).
 
 ## Examples
 
@@ -44,7 +44,7 @@ Example notebooks and scripts are available in the `notebooks` and `examples` di
 
 ## API
 
-Starbelly provides a WebSocket API for programmatic access. See the [WebSocket API documentation](http://starbelly.readthedocs.io/en/latest/websocket_api.html) for details.
+Starbelly provides a WebSocket API for programmatic access. See the [WebSocket API documentation](https://starbelly.readthedocs.io/en/latest/websocket_api.html) for details.
 
 Python client library: [starbelly-python-client](https://github.com/hyperiongray/starbelly-python-client)
 
