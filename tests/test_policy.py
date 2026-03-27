@@ -752,6 +752,49 @@ def test_policy_constructor():
     assert isinstance(policy.url_normalization, PolicyUrlNormalization)
     assert isinstance(policy.url_rules, PolicyUrlRules)
     assert isinstance(policy.user_agents, PolicyUserAgents)
+    assert not policy.ssl_verification.enabled
+
+
+def test_policy_constructor_ssl_verification_enabled():
+    created_at = datetime.now(timezone.utc)
+    updated_at = datetime.now(timezone.utc) + timedelta(minutes=1)
+    doc = {
+        'id': '01b60eeb-2ac9-4f41-9b0c-47dcbcf637f7',
+        'name': 'Test',
+        'created_at': created_at,
+        'updated_at': updated_at,
+        'authentication': {'enabled': True},
+        'limits': {
+            'max_cost': 10,
+        },
+        'mime_type_rules': [
+            {'match': 'MATCHES', 'pattern': '^text/', 'save': True},
+            {'save': False},
+        ],
+        'proxy_rules': [
+            {'proxy_url': 'socks5://localhost:1234'},
+        ],
+        'ssl_verification': {
+            'enabled': True,
+        },
+        'robots_txt': {
+            'usage': 'IGNORE',
+        },
+        'url_normalization': {
+            'enabled': True,
+            'strip_parameters': ['PHPSESSID'],
+        },
+        'url_rules': [
+            {'action': 'ADD', 'amount': 1, 'match': 'MATCHES',
+             'pattern': '^https?://({SEED_DOMAINS})/'},
+            {'action': 'MULTIPLY', 'amount': 0},
+        ],
+        'user_agents': [
+            {'name': 'Test User Agent'}
+        ]
+    }
+    policy = Policy(doc, version='1.0.0', seeds=[])
+    assert policy.ssl_verification.enabled
 
 
 def test_policy_constructor_blank_name():

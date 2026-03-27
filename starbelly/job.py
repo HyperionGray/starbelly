@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import hashlib
 import itertools
+import json
 import logging
 import pickle
 
@@ -23,6 +24,58 @@ r = RethinkDB()
 
 class CrawlDurationExceeded(Exception):
     ''' The crawl duration limit has been exceeded. '''
+
+
+OLD_URLS_SERIALIZATION_FORMAT = 'starbelly-old-urls-v1'
+
+
+def _seed_old_urls(policy, seeds):
+    ''' Build initial old_urls set from seed URLs. '''
+    old_urls = set()
+    for seed in seeds:
+        url_can = policy.url_normalization.normalize(seed)
+        hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
+        old_urls.add(hash_.digest())
+    return old_urls
+
+
+def _serialize_old_urls(old_urls):
+    '''
+    Serialize URL hash state for paused jobs using a safe JSON format.
+
+    :param set old_urls: A set of bytes hashes.
+    :rtype: str
+    '''
+    return json.dumps({
+        'format': OLD_URLS_SERIALIZATION_FORMAT,
+        'hashes': sorted(hash_.hex() for hash_ in old_urls),
+    })
+
+
+def _deserialize_old_urls(old_urls):
+    '''
+    Deserialize paused URL state.
+
+    Supports the current JSON format and legacy pickle bytes for backward
+    compatibility with already-paused jobs.
+
+    :param str or bytes old_urls:
+    :rtype: set
+    '''
+    if isinstance(old_urls, str):
+        payload = json.loads(old_urls)
+        if payload.get('format') != OLD_URLS_SERIALIZATION_FORMAT:
+            raise ValueError('Unknown old_urls format')
+        hashes = payload.get('hashes', [])
+        if not isinstance(hashes, list):
+            raise ValueError('old_urls hashes must be a list')
+        return {bytes.fromhex(hash_) for hash_ in hashes}
+
+    if isinstance(old_urls, (bytes, bytearray)):
+        return pickle.loads(old_urls)
+
+    raise ValueError('Unsupported old_urls type: {}'
+        .format(type(old_urls).__name__))
 
 
 class RunState:
@@ -234,7 +287,7 @@ class CrawlManager:
         logger.info('%r Pausing job_id=%s…', self, job.id[:8])
         await job.stop()
         run_state = RunState.PAUSED
-        old_urls = pickle.dumps(job.old_urls)
+        old_urls = _serialize_old_urls(job.old_urls)
         await self._db.pause_job(job.id, old_urls)
         self._stats_tracker.set_run_state(job.id, run_state)
         event = JobStateEvent(job.id, job.schedule_id, run_state,
@@ -325,20 +378,15 @@ class CrawlManager:
         job_id = job_doc['id']
         policy = Policy(job_doc['policy'], __version__, job_doc['seeds'])
         try:
-            # SECURITY NOTE: Using pickle for deserialization. This assumes the
-            # database is in a trusted environment. If the database is compromised,
-            # malicious pickle data could execute arbitrary code.
-            # See docs/SECURITY.md for secure deployment recommendations.
-            # TODO: Consider replacing pickle with JSON serialization
-            old_urls = pickle.loads(job_doc['old_urls'])
+            old_urls = _deserialize_old_urls(job_doc['old_urls'])
         except KeyError:
             # If old URLs are not in the job_doc, then this is a new job and
             # we should intialize old_urls to the seed URLs.
-            old_urls = set()
-            for seed in job_doc['seeds']:
-                url_can = policy.url_normalization.normalize(seed)
-                hash_ = hashlib.blake2b(url_can.encode('ascii'), digest_size=16)
-                old_urls.add(hash_.digest())
+            old_urls = _seed_old_urls(policy, job_doc['seeds'])
+        except Exception:
+            logger.exception('%r Failed to deserialize old_urls for job_id=%s',
+                self, job_id[:8])
+            old_urls = _seed_old_urls(policy, job_doc['seeds'])
 
         # Set up channels
         frontier_send = self._rate_limiter.get_request_channel()

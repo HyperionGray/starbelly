@@ -135,6 +135,8 @@ class Policy:
         self.limits = PolicyLimits(doc['limits'])
         self.mime_type_rules = PolicyMimeTypeRules(doc['mime_type_rules'])
         self.proxy_rules = PolicyProxyRules(doc['proxy_rules'])
+        self.ssl_verification = PolicySslVerification(
+            doc.get('ssl_verification', dict()))
         self.robots_txt = PolicyRobotsTxt(doc['robots_txt'])
         self.url_normalization = PolicyUrlNormalization(
             doc['url_normalization'])
@@ -156,11 +158,45 @@ class Policy:
         policy.limits = self.limits
         policy.mime_type_rules = PolicyMimeTypeRules(rules)
         policy.proxy_rules = self.proxy_rules
+        policy.ssl_verification = self.ssl_verification
         policy.robots_txt = self.robots_txt
         policy.url_normalization = self.url_normalization
         policy.url_rules = self.url_rules
         policy.user_agents = self.user_agents
         return policy
+
+
+class PolicySslVerification:
+    ''' Configure TLS certificate verification for HTTP downloads. '''
+
+    def __init__(self, doc):
+        '''
+        Initialize from a database document.
+
+        This field is optional and defaults to disabled verification for
+        backward compatibility with historical crawler behavior.
+
+        :param dict or bool doc: A database document or bool toggle.
+        '''
+        if isinstance(doc, bool):
+            self._enabled = doc
+            return
+        if not isinstance(doc, dict):
+            _invalid('SSL verification settings must be a mapping or bool')
+
+        enabled = doc.get('enabled', doc.get('verify_ssl', False))
+        if not isinstance(enabled, bool):
+            _invalid('SSL verification setting "enabled" must be true or false')
+        self._enabled = enabled
+
+    @property
+    def enabled(self):
+        '''
+        Whether TLS certificate verification is enabled.
+
+        :rtype: bool
+        '''
+        return self._enabled
 
 
 class PolicyAuthentication:

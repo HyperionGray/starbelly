@@ -341,8 +341,7 @@ class CrawlManagerDb:
         Set a job as paused.
 
         :param str job_id: The ID of the job to pause.
-        :param bytes old_urls: A pickled set of URLs that have been seen so far
-            in the crawl.
+        :param str old_urls: Serialized URL-hash state from the crawl (JSON).
         '''
         job_query = (
             r.table('job')

@@ -16,33 +16,28 @@ This implementation successfully addresses the Amazon Q Code Review findings by:
 
 ## Security Issues Addressed
 
-### 1. SSL Certificate Verification - DOCUMENTED ✅
+### 1. SSL Certificate Verification - IMPLEMENTED ✅
 
-**Status:** Documented with security warnings  
+**Status:** Implemented with per-policy configuration  
 **Risk Level:** CRITICAL  
 **Location:** `starbelly/downloader.py:261`
 
 **Action Taken:**
-- Added comprehensive security comment documenting the risk
-- Explained rationale (web crawler needs to access sites with self-signed certs)
-- Documented in `docs/SECURITY.md` with detailed analysis
-- Added TODO for future configurable SSL verification
+- Added optional `policy.ssl_verification.enabled` configuration
+- Wired downloader connector to `self._policy.ssl_verification.enabled`
+- Preserved backward compatibility (default remains disabled)
+- Added tests validating TLS connector behavior for both settings
 
 **Current State:**
 ```python
-# SECURITY NOTE: SSL verification is disabled to allow crawling
-# sites with self-signed or invalid certificates. This makes the
-# crawler vulnerable to MITM attacks. See docs/SECURITY.md for
-# details and recommendations for secure deployment.
-# TODO: Make SSL verification configurable per-policy
-session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+verify_ssl = self._policy.ssl_verification.enabled
+session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
-**Why Not Fixed Completely:**
-- Requires policy system changes (database schema modifications)
-- Needs comprehensive testing with various certificate scenarios
-- Breaking change for existing deployments
-- Future work planned for configurable per-domain SSL verification
+**Backward Compatibility:**
+- Existing policies without `ssl_verification` continue using disabled verification
+- No schema migration required for current deployments
+- Future enhancement can add per-domain certificate policies
 
 **Mitigation:**
 - Operators are now aware of the security trade-off
@@ -50,33 +45,27 @@ session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 - Assumes deployment in trusted network environment
 - Can be mitigated by network-level security controls
 
-### 2. Pickle Deserialization - DOCUMENTED ✅
+### 2. Pickle Deserialization - PARTIALLY FIXED ✅
 
-**Status:** Documented with security assumptions  
+**Status:** New writes migrated to JSON with legacy fallback  
 **Risk Level:** MEDIUM  
 **Location:** `starbelly/job.py:328`
 
 **Action Taken:**
-- Added security comment documenting the assumption
-- Explained the trust requirement for database
-- Documented in `docs/SECURITY.md` with migration recommendations
-- Added TODO for future JSON migration
+- Replaced pause-state serialization writes with JSON format
+- Added format marker (`starbelly-old-urls-v1`) and validation
+- Kept compatibility fallback for legacy pickled `old_urls`
+- Added tests covering JSON payload and legacy pickle deserialization
 
 **Current State:**
 ```python
-# SECURITY NOTE: Using pickle for deserialization. This assumes the
-# database is in a trusted environment. If the database is compromised,
-# malicious pickle data could execute arbitrary code.
-# See docs/SECURITY.md for secure deployment recommendations.
-# TODO: Consider replacing pickle with JSON serialization
-old_urls = pickle.loads(job_doc['old_urls'])
+old_urls = _deserialize_old_urls(job_doc['old_urls'])
 ```
 
-**Why Not Fixed Completely:**
-- Requires data migration for existing jobs in database
-- Needs testing to ensure URL set serialization/deserialization correctness
-- Performance implications need evaluation
-- Future work planned for major version upgrade
+**Why Partially Fixed:**
+- Existing paused jobs may still contain old pickle payloads
+- Legacy fallback remains to avoid breaking resume for those jobs
+- Optional follow-up migration can rewrite historical paused job rows to JSON
 
 **Mitigation:**
 - Database access requires authentication
@@ -314,14 +303,14 @@ The application makes these security assumptions:
 
 ### Short-term (Next Release)
 
-1. ⏳ Implement configurable SSL verification
-2. ⏳ Add HTML parsing timeouts
-3. ⏳ Implement input validation on API endpoints
-4. ⏳ Add dependency vulnerability scanning to CI/CD
+1. ⏳ Add HTML parsing timeouts
+2. ⏳ Implement input validation on API endpoints
+3. ⏳ Add dependency vulnerability scanning to CI/CD
+4. ⏳ Add per-domain SSL/certificate policy controls
 
 ### Long-term (Major Version)
 
-1. ⏳ Migrate from pickle to JSON serialization
+1. ⏳ Migrate any remaining legacy paused-job pickle rows to JSON-only
 2. ⏳ Implement certificate pinning
 3. ⏳ Comprehensive input validation framework
 4. ⏳ Security audit and penetration testing

@@ -10,15 +10,16 @@ This document contains security findings from the Amazon Q Code Review (2026-01-
 
 **Location:** `starbelly/downloader.py:261`
 
-**Issue:** SSL certificate verification is disabled for all non-SOCKS connections:
+**Issue (historical):** SSL certificate verification was previously hardcoded off for all non-SOCKS connections. It is now policy-configurable:
 ```python
-session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+verify_ssl = self._policy.ssl_verification.enabled
+session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
 **Risk Level:** CRITICAL
 
 **Security Impact:**
-- The application is vulnerable to Man-in-the-Middle (MITM) attacks
+- When SSL verification is disabled, the application is vulnerable to Man-in-the-Middle (MITM) attacks
 - Attackers could intercept and modify HTTPS traffic
 - Credentials and sensitive data transmitted over HTTPS could be compromised
 - No validation that the server is who it claims to be
@@ -30,14 +31,14 @@ As a web crawler, Starbelly may need to crawl websites with:
 - Invalid certificate chains
 
 **Recommendations:**
-1. **Short-term:** Enable SSL verification by default with an optional policy setting to disable it per-domain or per-crawl
+1. **Implemented:** SSL verification is now configurable per policy via `ssl_verification.enabled`
 2. **Medium-term:** Implement certificate pinning for known domains
 3. **Long-term:** Add certificate validation bypass only for explicitly whitelisted domains
 
-**Proposed Fix:**
+**Implemented Fix:**
 ```python
-# Add to Policy configuration
-verify_ssl = self._policy.ssl_verification.get_verify_ssl(url)
+# Read from policy configuration
+verify_ssl = self._policy.ssl_verification.enabled
 session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 ```
 
@@ -45,9 +46,9 @@ session_args['connector'] = aiohttp.TCPConnector(verify_ssl=verify_ssl)
 
 **Location:** `starbelly/job.py:328`
 
-**Issue:** Using `pickle.loads()` to deserialize data from the database:
+**Issue (historical):** Using `pickle.loads()` to deserialize data from the database:
 ```python
-old_urls = pickle.loads(job_doc['old_urls'])
+old_urls = _deserialize_old_urls(job_doc['old_urls'])
 ```
 
 **Risk Level:** MEDIUM
@@ -63,20 +64,18 @@ old_urls = pickle.loads(job_doc['old_urls'])
 - Attack surface is limited to database compromise scenarios
 
 **Recommendations:**
-1. **Preferred:** Replace pickle with JSON serialization for URL sets
-2. **Alternative:** Use restricted unpickler with allowlist of safe classes
-3. **Minimum:** Document the security assumption that database is trusted
+1. **Implemented:** New paused-job state uses JSON serialization for URL hash sets
+2. **Implemented:** Legacy pickle payloads are still accepted for backward compatibility
+3. **Ongoing:** Continue migration until legacy pickle payloads are no longer present
 
 **Proposed Fix:**
 ```python
-# Replace pickle with JSON for URL storage
-# Convert set to list for JSON serialization
-old_urls_list = list(job.old_urls)
-old_urls_json = json.dumps(old_urls_list)
-
-# On load:
-old_urls_list = json.loads(job_doc['old_urls'])
-old_urls = set(old_urls_list)
+# Store URL hashes in JSON payload with explicit format version
+payload = {
+    "format": "starbelly-old-urls-v1",
+    "hashes": sorted(hash_.hex() for hash_ in old_urls),
+}
+old_urls_json = json.dumps(payload)
 ```
 
 ## Medium Priority Findings
@@ -217,17 +216,16 @@ Some dependencies may have known vulnerabilities:
 3. Consider adding SSL verification policy option
 
 ### Short-term Actions (High Priority)
-1. Replace pickle with JSON for URL set serialization
-2. Add response size limits before parsing
-3. Add parsing timeouts
-4. Implement input validation on API endpoints
+1. Add response size limits before parsing
+2. Add parsing timeouts
+3. Implement input validation on API endpoints
+4. Continue retiring legacy pickle payload support after migration window
 
 ### Long-term Actions (Medium Priority)
-1. Implement configurable SSL verification per policy
-2. Add certificate pinning for known domains
-3. Implement comprehensive input validation framework
-4. Set up automated dependency vulnerability scanning
-5. Regular security audits and penetration testing
+1. Add certificate pinning for known domains
+2. Implement comprehensive input validation framework
+3. Set up automated dependency vulnerability scanning
+4. Regular security audits and penetration testing
 
 ## Security Assumptions
 

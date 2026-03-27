@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import json
 import logging
 import pickle
 from unittest.mock import Mock
@@ -13,6 +14,8 @@ from starbelly.job import (
     RunState,
     StatsTracker,
     CrawlManager,
+    OLD_URLS_SERIALIZATION_FORMAT,
+    _deserialize_old_urls,
 )
 
 
@@ -221,8 +224,10 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     state_event = await recv_channel.receive()
     assert state_event.run_state == RunState.PAUSED
     assert manager_db.pause_job.call_args[0] == job_id
-    # There are two "old URLs": the seed URLs.
-    assert len(pickle.loads(manager_db.pause_job.call_args[1])) == 2
+    # There are two "old URLs": the seed URLs, serialized in JSON.
+    pause_payload = json.loads(manager_db.pause_job.call_args[1])
+    assert pause_payload['format'] == OLD_URLS_SERIALIZATION_FORMAT
+    assert len(pause_payload['hashes']) == 2
     assert stats_tracker.snapshot()[0]['run_state'] == RunState.PAUSED
 
     # Now resume and wait for the running event.
@@ -237,3 +242,10 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     assert state_event.run_state == RunState.CANCELLED
     assert manager_db.finish_job.call_args[0] == job_id
     assert manager_db.finish_job.call_args[1] == RunState.CANCELLED
+
+
+def test_deserialize_old_urls_legacy_pickle():
+    hashes = {b'\x00' * 16, b'\x01' * 16}
+    payload = pickle.dumps(hashes)
+    restored = _deserialize_old_urls(payload)
+    assert restored == hashes

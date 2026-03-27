@@ -145,7 +145,7 @@ jobs:
           # Check for TODO/FIXME comments
           echo "" >> /tmp/gpt5-analysis.md
           echo "#### Technical Debt Indicators:" >> /tmp/gpt5-analysis.md
-          todo_count=$(grep -r "TODO\|FIXME\|HACK\|XXX" . --include="*.py" --include="*.js" --include="*.ts" --include="*.java" --include="*.go" 2>/dev/null | wc -l || echo "0")
+          todo_count=$(rg -n "TODO|FIXME|HACK|XXX" . --glob "*.py" --glob "*.js" --glob "*.ts" --glob "*.java" --glob "*.go" | wc -l || echo "0")
           echo "- TODO/FIXME/HACK comments found: $todo_count" >> /tmp/gpt5-analysis.md
           
           # Security Analysis

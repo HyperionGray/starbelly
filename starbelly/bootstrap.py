@@ -102,7 +102,7 @@ class Bootstrap:
             robots_txt_manager = RobotsTxtManager(db_pool, rate_limiter)
 
             # Create a tracker for job stats and initialize with jobs that are
-            # unfinished or recently finishe.d
+            # unfinished or recently finished.
             recent_period = timedelta(hours=24)
             recent_dt = datetime.now(tz=timezone.utc) - recent_period
             stats_tracker = StatsTracker(recent_period)

@@ -1,6 +1,7 @@
 from datetime import datetime
 from functools import partial
 from unittest.mock import Mock
+from unittest.mock import patch
 
 import aiohttp
 import pytest
@@ -40,7 +41,7 @@ def make_stats():
     }
 
 
-def make_policy(proxy=None):
+def make_policy(proxy=None, ssl_verification=None):
     ''' Make a sample policy. '''
     dt = datetime(2018,12,31,13,47,00)
     doc = {
@@ -61,6 +62,11 @@ def make_policy(proxy=None):
             {'save': False},
         ],
         'proxy_rules': proxy or [],
+        'ssl_verification': (
+            {'enabled': ssl_verification}
+            if ssl_verification is not None else
+            {'enabled': False}
+        ),
         'robots_txt': {
             'usage': 'IGNORE',
         },
@@ -304,3 +310,26 @@ async def test_socks_proxy_get(asyncio_loop, nursery):
     assert stats['item_count'] == 1
     assert stats['http_success_count'] == 1
     assert stats['http_status_counts'][200] == 1
+
+
+async def test_tcp_connector_uses_policy_ssl_verification(asyncio_loop):
+    class FakeSession:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        async def close(self):
+            pass
+
+    for expected in (False, True):
+        policy = make_policy(ssl_verification=expected)
+        request_send, request_recv = trio.open_memory_channel(0)
+        response_send, _ = trio.open_memory_channel(0)
+        dl = Downloader('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', policy,
+            response_send, request_recv, trio.Semaphore(1), Mock(),
+            make_stats())
+        request = make_request('https://test.example/foo', method='HEAD')
+        with patch('starbelly.downloader.aiohttp.TCPConnector') as connector, \
+                patch('starbelly.downloader.aiohttp.ClientSession',
+                      FakeSession):
+            await dl._download_asyncio(request)
+        assert connector.call_args.kwargs['verify_ssl'] is expected
