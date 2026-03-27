@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Added
 - Added comprehensive documentation files (CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md, SECURITY.md)
+
+### Changed
 - Enhanced README.md with additional sections
 
 ## [2.0.0-dev] - 2019-XX-XX
