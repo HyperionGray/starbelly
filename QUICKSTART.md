@@ -50,3 +50,26 @@ poetry run make docs
 
 - The original dependency URLs for `formasaurus` and `rethinkdb` are no longer usable, so the project now installs from public package sources.
 - The project currently installs and runs against Python 3.9 for reproducible setup on current machines.
+
+## Configuration file selection
+
+Starbelly now supports explicit configuration path selection without editing
+`starbelly/config.py`.
+
+Resolution order is:
+
+1. `get_config(config_files=[...])`
+2. `STARBELLY_CONFIG_FILES` (multiple files separated by `:` on Linux/macOS)
+3. `get_config(config_dir=...)`
+4. `STARBELLY_CONFIG_DIR`
+5. default project `conf/system.ini` + `conf/local.ini`
+
+Examples:
+
+```bash
+# Use one alternate config directory containing system.ini + local.ini
+export STARBELLY_CONFIG_DIR=/etc/starbelly
+
+# Or provide explicit files in precedence order
+export STARBELLY_CONFIG_FILES=/etc/starbelly/system.ini:/etc/starbelly/local.ini
+```
