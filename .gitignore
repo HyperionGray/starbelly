@@ -10,3 +10,7 @@ README.html
 .bish.sqlite
 **/.bish-index
 **/.bish.sqlite
+*~
+**/*~
+.DS_Store
+**/.DS_Store

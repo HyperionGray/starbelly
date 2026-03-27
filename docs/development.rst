@@ -150,6 +150,19 @@ To obtain a shell inside that container, run:
 You can use the same technique to get a shell inside the ``starbelly-dev-db`` or
 ``starbelly-dev-web`` containers.
 
+Run CI Checks Locally
+---------------------
+
+Before pushing changes, run the same command sequence used by the CI workflow:
+
+.. code::
+
+    $ make ci-check
+
+This runs repository hygiene checks (for stray files like backup artifacts and
+legacy ``.bish-*`` indexes), installs dependencies with Poetry, and executes
+the test suite.
+
 Build Documentation
 -------------------
 

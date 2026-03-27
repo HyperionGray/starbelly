@@ -8,6 +8,28 @@ Learn more at
 [![Coverage](https://img.shields.io/coveralls/github/HyperionGray/starbelly.svg?style=flat-square)](https://coveralls.io/github/HyperionGray/starbelly)
 [![Read the Docs](https://img.shields.io/readthedocs/starbelly.svg)](https://starbelly.readthedocs.io)
 
+## Local CI Parity Checks
+
+The repository includes a local check path that mirrors the GitHub Actions CI
+workflow:
+
+```bash
+make ci-check
+```
+
+This runs:
+
+1. Repository hygiene checks to block common stray artifacts (for example
+   editor backup files and legacy ``.bish-*`` files)
+2. ``poetry install --no-interaction``
+3. ``poetry run pytest -q``
+
+For a lightweight cleanup-only pass, run:
+
+```bash
+make repo-hygiene
+```
+
 
 # LICENSE
 
