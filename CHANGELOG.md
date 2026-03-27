@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Enhanced README.md with additional sections
 
-## [2.0.0-dev] - 2019-XX-XX
+## [2.0.0-dev]
 
 ### Changed
 - Massive rewrite of Starbelly's I/O to use Trio instead of asyncio
