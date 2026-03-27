@@ -16,9 +16,9 @@ This implementation successfully addresses the Amazon Q Code Review findings by:
 
 ## Security Issues Addressed
 
-### 1. SSL Certificate Verification - DOCUMENTED ✅
+### 1. SSL Certificate Verification - IMPLEMENTED ✅
 
-**Status:** Documented with security warnings  
+**Status:** Implemented as configurable per-policy control  
 **Risk Level:** CRITICAL  
 **Location:** `starbelly/downloader.py:261`
 
@@ -26,23 +26,21 @@ This implementation successfully addresses the Amazon Q Code Review findings by:
 - Added comprehensive security comment documenting the risk
 - Explained rationale (web crawler needs to access sites with self-signed certs)
 - Documented in `docs/SECURITY.md` with detailed analysis
-- Added TODO for future configurable SSL verification
+- Added policy-level `verify_ssl` setting (default: false)
 
 **Current State:**
 ```python
-# SECURITY NOTE: SSL verification is disabled to allow crawling
-# sites with self-signed or invalid certificates. This makes the
-# crawler vulnerable to MITM attacks. See docs/SECURITY.md for
-# details and recommendations for secure deployment.
-# TODO: Make SSL verification configurable per-policy
-session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
+# SECURITY NOTE: SSL verification defaults to False for
+# backward compatibility. Set policy.verify_ssl to True to enforce
+# certificate validation for direct HTTPS requests.
+session_args['connector'] = aiohttp.TCPConnector(
+    verify_ssl=self._policy.verify_ssl)
 ```
 
-**Why Not Fixed Completely:**
-- Requires policy system changes (database schema modifications)
-- Needs comprehensive testing with various certificate scenarios
-- Breaking change for existing deployments
-- Future work planned for configurable per-domain SSL verification
+**Implementation Notes:**
+- Backward compatible default (`verify_ssl=False`) preserves existing behavior
+- Policy opt-in enables certificate validation where security requirements are strict
+- Existing policy documents continue to load without schema migration
 
 **Mitigation:**
 - Operators are now aware of the security trade-off
@@ -50,9 +48,9 @@ session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 - Assumes deployment in trusted network environment
 - Can be mitigated by network-level security controls
 
-### 2. Pickle Deserialization - DOCUMENTED ✅
+### 2. Pickle Deserialization - PARTIALLY IMPLEMENTED ✅
 
-**Status:** Documented with security assumptions  
+**Status:** New writes use JSON; legacy pickle reads retained for compatibility  
 **Risk Level:** MEDIUM  
 **Location:** `starbelly/job.py:328`
 
@@ -60,23 +58,23 @@ session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 - Added security comment documenting the assumption
 - Explained the trust requirement for database
 - Documented in `docs/SECURITY.md` with migration recommendations
-- Added TODO for future JSON migration
+- Implemented JSON serialization for paused job URL hash state
+- Added restricted unpickler for legacy pickled records
 
 **Current State:**
 ```python
-# SECURITY NOTE: Using pickle for deserialization. This assumes the
-# database is in a trusted environment. If the database is compromised,
-# malicious pickle data could execute arbitrary code.
-# See docs/SECURITY.md for secure deployment recommendations.
-# TODO: Consider replacing pickle with JSON serialization
-old_urls = pickle.loads(job_doc['old_urls'])
+if isinstance(old_urls_data, str):
+    # New JSON format
+    old_urls = _deserialize_old_urls(old_urls_data)
+elif isinstance(old_urls_data, (bytes, bytearray)):
+    # Legacy compatibility path with restricted unpickler
+    old_urls = _load_legacy_old_urls(old_urls_data)
 ```
 
-**Why Not Fixed Completely:**
-- Requires data migration for existing jobs in database
-- Needs testing to ensure URL set serialization/deserialization correctness
-- Performance implications need evaluation
-- Future work planned for major version upgrade
+**Implementation Notes:**
+- Existing pickled paused jobs can still resume safely
+- Pausing a resumed legacy job rewrites old URL state in JSON format
+- A full database migration can later remove the legacy compatibility path
 
 **Mitigation:**
 - Database access requires authentication
@@ -195,7 +193,7 @@ The application makes these security assumptions:
 
 2. **Security Documentation**
    - In-line comments explaining security trade-offs
-   - TODOs for future security improvements
+   - Updated guidance after implementing policy-level SSL and JSON serialization
    - References to comprehensive documentation
 
 ## Testing and Validation
@@ -314,10 +312,10 @@ The application makes these security assumptions:
 
 ### Short-term (Next Release)
 
-1. ⏳ Implement configurable SSL verification
-2. ⏳ Add HTML parsing timeouts
-3. ⏳ Implement input validation on API endpoints
-4. ⏳ Add dependency vulnerability scanning to CI/CD
+1. ⏳ Add HTML parsing timeouts
+2. ⏳ Implement input validation on API endpoints
+3. ⏳ Add dependency vulnerability scanning to CI/CD
+4. ⏳ Evaluate defaulting `verify_ssl` to true in a major release
 
 ### Long-term (Major Version)
 

@@ -24,47 +24,42 @@ This document summarizes the actions taken to address findings from the Amazon Q
 
 **Impact:** Provides clear guidance for secure deployment and ongoing security maintenance.
 
-### 2. SSL Certificate Verification Documentation
+### 2. SSL Certificate Verification (Policy-Controlled)
 
 **File:** `starbelly/downloader.py`  
 **Line:** 261
 
-**Change:** Added security comment documenting the SSL verification being disabled:
+**Change:** Added policy-level SSL verification control in downloader:
 ```python
-# SECURITY NOTE: SSL verification is disabled to allow crawling
-# sites with self-signed or invalid certificates. This makes the
-# crawler vulnerable to MITM attacks. See docs/SECURITY.md for
-# details and recommendations for secure deployment.
-# TODO: Make SSL verification configurable per-policy
+session_args['connector'] = aiohttp.TCPConnector(
+    verify_ssl=self._policy.verify_ssl)
 ```
 
 **Rationale:**
 - SSL verification is intentionally disabled to allow crawling sites with self-signed certificates
 - This is a valid use case for a web crawler but introduces security risks
 - Documentation makes the trade-off explicit for operators
-- TODO added for future enhancement to make this configurable
+- Added policy-level `verify_ssl` setting (defaults to `False` for compatibility)
 
 **Impact:** Minimal code change; maximum documentation impact.
 
-### 3. Pickle Deserialization Documentation
+### 3. Old URL State Serialization Hardening
 
 **File:** `starbelly/job.py`  
 **Line:** 328
 
-**Change:** Added security comment documenting the pickle usage:
+**Change:** Replaced default pickle serialization with JSON and added safe legacy compatibility:
 ```python
-# SECURITY NOTE: Using pickle for deserialization. This assumes the
-# database is in a trusted environment. If the database is compromised,
-# malicious pickle data could execute arbitrary code.
-# See docs/SECURITY.md for secure deployment recommendations.
-# TODO: Consider replacing pickle with JSON serialization
+old_urls = _serialize_old_urls(job.old_urls)
+old_urls = _deserialize_old_urls(job_doc['old_urls'])
 ```
 
 **Rationale:**
 - Pickle is used to serialize/deserialize URL sets from RethinkDB
 - Database is assumed to be in a trusted environment
 - Documentation makes the security assumption explicit
-- TODO added for future migration to safer serialization
+- Paused job state now stores JSON payloads by default
+- Legacy pickle payloads are still readable through a restricted unpickler
 
 **Impact:** Minimal code change; clarifies security assumptions.
 
@@ -117,27 +112,15 @@ If you discover a security vulnerability, please email acaceres@hyperiongray.com
 
 **Impact:** Makes security information discoverable; provides responsible disclosure path.
 
-## Issues Identified But Not Addressed
+## Issues Still Open
 
-### 1. Configurable SSL Verification
-
-**Status:** Documented but not implemented  
-**Reason:** Requires significant changes to policy system and database schema  
-**Recommendation:** Implement in future release with proper testing
-
-### 2. Pickle to JSON Migration
-
-**Status:** Documented but not implemented  
-**Reason:** Requires data migration strategy for existing jobs  
-**Recommendation:** Plan migration path for major version upgrade
-
-### 3. HTML Parsing Timeouts
+### 1. HTML Parsing Timeouts
 
 **Status:** Documented but not implemented  
 **Reason:** Trio-based timeouts require careful integration with async parsing  
 **Recommendation:** Implement with comprehensive testing
 
-### 4. Comprehensive Input Validation
+### 2. Comprehensive Input Validation
 
 **Status:** Documented but not implemented  
 **Reason:** Requires API contract changes and extensive testing  
@@ -215,13 +198,11 @@ Before merging to production:
 - [ ] Monitor logs for oversized response warnings
 
 ### Short-term (Next Release)
-- [ ] Implement configurable SSL verification in policy system
 - [ ] Add HTML parsing timeout with Trio fail_after
 - [ ] Implement basic input validation on API endpoints
 - [ ] Add dependency vulnerability scanning to CI/CD
 
 ### Long-term (Major Version)
-- [ ] Migrate from pickle to JSON for URL set storage
 - [ ] Implement certificate pinning for known domains
 - [ ] Comprehensive input validation framework
 - [ ] Security audit and penetration testing
