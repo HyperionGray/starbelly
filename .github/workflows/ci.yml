@@ -4,9 +4,37 @@ on:
   pull_request:
   push:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
-  test:
+  quality:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: "pip"
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install "poetry==1.8.5"
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction
+
+      - name: Run quality checks
+        run: |
+          poetry check
+          poetry run python -m compileall starbelly tests tools integration
+
+  unit-tests:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,4 +62,4 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest -q
+          poetry run pytest -q tests/
