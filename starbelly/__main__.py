@@ -151,6 +151,13 @@ def get_args():
         '--error-log',
         help='Copy error logs to the specified file.'
     )
+    arg_parser.add_argument(
+        '--config',
+        action='append',
+        default=[],
+        metavar='FILE',
+        help='Load an additional config file. May be used multiple times.'
+    )
     return arg_parser.parse_args()
 
 
@@ -158,7 +165,7 @@ def main():
     ''' Set up watchdog or run starbelly. '''
     args = get_args()
     configure_logging(args.log_level, args.error_log)
-    config = get_config()
+    config = get_config(extra_files=args.config)
 
     if args.reload and os.getenv('WATCHDOG_RUNNING') is None:
         reloader = Reloader()

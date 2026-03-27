@@ -64,3 +64,43 @@ well as customize rate limits for specific domains. This allows you to specify
 lower rate limits for domains that can handle higher traffic. For example, you
 might crawl web servers on your corporate intranet faster than you crawl a
 public internet server.
+
+Configuration File Overrides
+============================
+
+By default, Starbelly loads configuration from:
+
+1. ``conf/system.ini``
+2. ``conf/local.ini``
+
+You can override values by adding additional config files that are loaded
+after the defaults.
+
+Environment variable
+--------------------
+
+Set ``STARBELLY_CONFIG`` to one or more file paths (separated by your platform's
+path separator) to load extra files:
+
+.. code-block:: bash
+
+    export STARBELLY_CONFIG=/etc/starbelly/override.ini
+
+Command-line option
+-------------------
+
+Use ``--config`` to append one or more extra config files at startup:
+
+.. code-block:: bash
+
+    python -m starbelly --config /etc/starbelly/override.ini
+    python -m starbelly --config /etc/starbelly/staging.ini --config /etc/starbelly/secrets.ini
+
+When both are used, values are applied in this order:
+
+1. ``conf/system.ini``
+2. ``conf/local.ini``
+3. ``STARBELLY_CONFIG`` files
+4. ``--config`` files
+
+Later files override earlier files on a per-key basis.
