@@ -9,7 +9,6 @@ import time
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from .bootstrap import Bootstrap
 from .config import get_config, get_path
 from .version import __version__
 
@@ -177,6 +176,7 @@ def main():
         signal.signal(signal.SIGTERM, reloader.shutdown)
         reloader.run()
     else:
+        from .bootstrap import Bootstrap
         bootstrap = Bootstrap(config, args)
         bootstrap.run()
     return 0
