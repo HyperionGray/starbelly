@@ -1,18 +1,20 @@
-# TODO I wrote this before I started putting all of the database queries into
-# a separate module. This could be modified into a unit test and probably
-# grouped into the test_server.py module.
+"""Integration tests for job sync subscriptions.
+
+These tests intentionally exercise the RethinkDB query path end-to-end for the
+subscription protocol, including sync-token resume behavior and compression
+handling.
+"""
 
 from datetime import datetime, timezone
 import gzip
 import logging
-from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
 from rethinkdb import RethinkDB
 import trio
 
-from . import db_pool, fail_after
+from . import fail_after
 from starbelly.db import SubscriptionDb
 from starbelly.job import JobStateEvent, RunState
 from starbelly.starbelly_pb2 import ServerMessage, SubscriptionClosed
@@ -29,7 +31,8 @@ async def job_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create("job").run(conn)
     yield r.table("job")
-    await r.table_drop("job").run(conn)
+    async with db_pool.connection() as conn:
+        await r.table_drop("job").run(conn)
 
 
 @pytest.fixture
@@ -41,7 +44,8 @@ async def response_table(db_pool):
         ).run(conn)
         await r.table("response").index_wait("job_sync").run(conn)
     yield r.table("response")
-    await r.table_drop("response").run(conn)
+    async with db_pool.connection() as conn:
+        await r.table_drop("response").run(conn)
 
 
 @pytest.fixture
@@ -49,7 +53,8 @@ async def response_body_table(db_pool):
     async with db_pool.connection() as conn:
         await r.table_create("response_body").run(conn)
     yield r.table("response_body")
-    await r.table_drop("response_body").run(conn)
+    async with db_pool.connection() as conn:
+        await r.table_drop("response_body").run(conn)
 
 
 class MockWebsocket:
