@@ -9,9 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added comprehensive documentation files (CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md, SECURITY.md)
+- Added `--version` flag to the Starbelly CLI.
+- Added support for layered configuration overrides via `STARBELLY_CONFIG` and repeated `--config` CLI arguments.
 
 ### Changed
 - Enhanced README.md with additional sections
+- Documented CLI configuration precedence and override behavior.
+
+### Fixed
+- Removed an outdated TODO marker and unused import from `integration/test_subscription.py`.
+
+### Removed
+- Removed stray backup file `.github/copilot-instructions.md~`.
 
 ## [2.0.0-dev]
 
