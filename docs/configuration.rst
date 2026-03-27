@@ -17,6 +17,44 @@ solve all crawling problems.
 The configuration items are all contained in the *Configuration* submenu on the
 left side of the interface.
 
+Runtime Configuration Files
+===========================
+
+Starbelly still supports the default configuration files:
+
+- ``conf/system.ini``
+- ``conf/local.ini``
+
+For containerized and automation deployments, you can now override where
+configuration is loaded from at runtime.
+
+Command-line options
+--------------------
+
+- ``--config-dir``: directory containing ``system.ini`` and ``local.ini``
+- ``--config-files``: explicit file list separated by your platform path
+  separator (``:`` on Linux/macOS, ``;`` on Windows)
+
+Environment variables
+---------------------
+
+- ``STARBELLY_CONFIG_DIR``: directory containing ``system.ini`` and
+  ``local.ini``
+- ``STARBELLY_CONFIG_FILES``: explicit file list separated by the platform path
+  separator
+
+Precedence
+----------
+
+When more than one source is provided, Starbelly resolves configuration files
+in this order (highest priority first):
+
+1. ``--config-files``
+2. ``STARBELLY_CONFIG_FILES``
+3. ``--config-dir``
+4. ``STARBELLY_CONFIG_DIR``
+5. default ``conf/system.ini`` and ``conf/local.ini``
+
 CAPTCHA Solvers
 ===============
 

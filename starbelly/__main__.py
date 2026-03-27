@@ -143,6 +143,15 @@ def get_args():
         help='The TCP port to bind to (default: 8000)'
     )
     arg_parser.add_argument(
+        '--config-dir',
+        help='Directory containing system.ini and local.ini.'
+    )
+    arg_parser.add_argument(
+        '--config-files',
+        help='Custom config files as an os.pathsep-delimited list. '
+             'Overrides --config-dir.'
+    )
+    arg_parser.add_argument(
         '--reload',
         action='store_true',
         help='Auto-reload when code or static assets are modified.'
@@ -158,7 +167,13 @@ def main():
     ''' Set up watchdog or run starbelly. '''
     args = get_args()
     configure_logging(args.log_level, args.error_log)
-    config = get_config()
+    config_files = None
+    if args.config_files:
+        config_files = [
+            path for path in args.config_files.split(os.pathsep)
+            if path.strip()
+        ]
+    config = get_config(config_files=config_files, config_dir=args.config_dir)
 
     if args.reload and os.getenv('WATCHDOG_RUNNING') is None:
         reloader = Reloader()

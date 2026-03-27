@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2019-XX-XX
 
+### Added
+- Runtime configuration file overrides via `--config-dir`, `--config-files`,
+  `STARBELLY_CONFIG_DIR`, and `STARBELLY_CONFIG_FILES`
+
 ### Changed
 - Massive rewrite of Starbelly's I/O to use Trio instead of asyncio
 - Upgrade web client to Dart 2 and Angular 5
