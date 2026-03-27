@@ -19,6 +19,7 @@ from starbelly.server.subscription import (
     subscribe_task_monitor,
     unsubscribe,
 )
+from starbelly.subscription import UnknownSubscriptionError
 from starbelly.starbelly_pb2 import (
     CaptchaSolverAntigateCharacters,
     JobRunState as PbRunState,
@@ -515,11 +516,24 @@ async def test_subscription():
     await subscribe_task_monitor(command4, response4, subscription_manager)
     assert response4.new_subscription.subscription_id == 4
 
-    # Unsubscrive to task monitor
+    # Unsubscribe existing subscription
     command5 = RequestUnsubscribe()
     command5.subscription_id = 5
     await unsubscribe(command5, subscription_manager)
     assert subscription_manager.cancel_subscription.called
+
+
+@fail_after(3)
+async def test_unsubscribe_unknown_subscription():
+    subscription_manager = Mock()
+    subscription_manager.cancel_subscription.side_effect = (
+        UnknownSubscriptionError('No active subscription with ID=999')
+    )
+    command = RequestUnsubscribe()
+    command.subscription_id = 999
+    with pytest.raises(InvalidRequestException) as exc_info:
+        await unsubscribe(command, subscription_manager)
+    assert str(exc_info.value) == 'No active subscription with ID=999'
 
 
 @fail_after(3)

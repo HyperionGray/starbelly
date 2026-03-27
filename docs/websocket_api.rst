@@ -70,6 +70,8 @@ an event to the client containing the job status data and the corresponding
 subscription ID. The client can close the subscription by sending another
 request. The server will stop sending event messages and will send a response
 indicating that the subscription has been cancelled.
+If the client attempts to unsubscribe with an unknown subscription ID, the
+response will be marked as failed and will include an error message.
 
 Protobuf is a binary serialization format that supports common data types like
 integers, strings, lists, and maps. It is similar in purpose to JSON, but

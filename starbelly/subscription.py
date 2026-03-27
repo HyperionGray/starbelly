@@ -24,6 +24,10 @@ class SyncTokenError(Exception):
     stream type. """
 
 
+class UnknownSubscriptionError(Exception):
+    """A subscription ID does not exist for this connection."""
+
+
 class SyncTokenInt(metaclass=ABCMeta):
     """
     A sync token that stores a 64 bit integer. The first byte contains a literal
@@ -44,7 +48,7 @@ class SyncTokenInt(metaclass=ABCMeta):
         try:
             type_, val = struct.unpack(cls.FORMAT, token)
         except:
-            raise SyncTokenError("Cannot decocde SyncTokenInt: {}".format(token))
+            raise SyncTokenError("Cannot decode SyncTokenInt: {}".format(token))
         if type_ != cls.TOKEN_NUM:
             raise SyncTokenError("Invalid SyncTokenInt: type={}".format(type_))
         return val
@@ -82,7 +86,13 @@ class SubscriptionManager:
         """
         Cancel a subscription.
         """
-        self._subscriptions.pop(subscription_id).cancel()
+        try:
+            subscription = self._subscriptions.pop(subscription_id)
+        except KeyError as exc:
+            raise UnknownSubscriptionError(
+                "No active subscription with ID={}".format(subscription_id)
+            ) from exc
+        subscription.cancel()
 
     def subscribe_job_sync(self, job_id, compression_ok, job_state_recv, sync_token):
         """
@@ -387,7 +397,6 @@ class JobSyncSubscription:
 
     async def _set_initial_job_status(self):
         """ Query database for initial job status and update internal state. """
-        logger.info(dir(self._db))
         run_state = await self._db.get_job_run_state(self._job_id)
         logging.debug("%r Initial job state: %s", self, run_state)
         self._job_completed = run_state in FINISHED_STATES
