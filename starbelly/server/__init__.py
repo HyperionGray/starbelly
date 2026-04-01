@@ -6,6 +6,7 @@ import inspect
 import logging
 import operator
 from time import time
+import traceback
 from urllib.parse import urlparse
 
 import dateutil.parser
@@ -171,8 +172,11 @@ class Connection:
                         name='Request Handler')
         except ConnectionClosed:
             logger.info('Connection closed for %s', self._client)
-        except:
-            logger.exception('Connection exception')
+        except DecodeError:
+            logger.warning('Closing connection for invalid protobuf message: %s',
+                self._client)
+        except Exception:
+            logger.error('Connection exception\n%s', traceback.format_exc())
         finally:
             await self._ws.aclose()
 
@@ -248,9 +252,9 @@ class Connection:
             logger.error('Request ERROR %s %s (%s)', command_name,
                 self._client, error_message)
             message.response.error_message = error_message
-        except:
-            logger.exception('Exception while handling request:\n%r',
-                request)
+        except Exception:
+            logger.error('Exception while handling request:\n%r\n%s',
+                request, traceback.format_exc())
             message.response.error_message = 'A server exception occurred'
 
         message_data = message.SerializeToString()

@@ -4,7 +4,7 @@ import logging
 import random
 
 import aiohttp
-import cchardet
+import chardet as charset_detector
 import formasaurus
 import trio
 import trio_asyncio
@@ -15,7 +15,7 @@ from .downloader import DownloadRequest
 
 
 logger = logging.getLogger(__name__)
-chardet = lambda s: cchardet.detect(s).get("encoding")
+chardet = lambda s: charset_detector.detect(s).get("encoding")
 
 
 def get_captcha_image_element(form):
