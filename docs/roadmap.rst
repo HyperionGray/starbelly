@@ -2,9 +2,10 @@ Roadmap
 =======
 
 This roadmap captures the next logical work after the recent streaming API and
-documentation push. It is based on the current README, the architecture notes
-in ``START_HERE.md``, the implementation summaries in the repository root, and
-the most recent merged work on streaming subscriptions.
+documentation push. It is based on the root-level ``README.md``, the
+architecture notes in the root-level ``START_HERE.md``, the implementation
+summaries in the repository root, and the most recent merged work on streaming
+subscriptions.
 
 Current Direction
 -----------------
@@ -43,14 +44,15 @@ Next Incremental Milestones
 ---------------------------
 
 1. Make TLS verification configurable per policy
-   ``SECURITY_SUMMARY.md`` documents disabled certificate verification as a
-   deliberate trade-off. Making this policy-driven is the clearest security
-   improvement that aligns with the crawler's existing policy architecture.
+   The root-level ``SECURITY_SUMMARY.md`` documents disabled certificate
+   verification as a deliberate trade-off. Making this policy-driven is the
+   clearest security improvement that aligns with the crawler's existing policy
+   architecture.
 
 2. Replace pickle-based job state with a safer serialized format
-   ``SECURITY_SUMMARY.md`` also documents pickle deserialization as trusted
-   environment debt. A small migration plan for JSON or another safe format is
-   a good follow-on maintenance task.
+   The root-level ``SECURITY_SUMMARY.md`` also documents pickle
+   deserialization as trusted environment debt. A small migration plan for JSON
+   or another safe format is a good follow-on maintenance task.
 
 3. Improve the Python client story
    ``docs/websocket_api.rst`` describes the Python client library as basic and
