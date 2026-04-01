@@ -11,41 +11,25 @@ We release patches for security vulnerabilities for the following versions:
 
 ## Reporting a Vulnerability
 
-We take the security of Starbelly seriously. If you believe you have found a security vulnerability, please report it to us as described below.
+If you discover a security vulnerability within Starbelly, please send an email to the maintainers at Hyperion Gray (acaceres@hyperiongray.com). All security vulnerabilities will be promptly addressed.
 
-### How to Report
-
-**Please do not report security vulnerabilities through public GitHub issues.**
-
-Instead, please report them via email to acaceres@hyperiongray.com.
-
-You should receive a response within 48 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
+Please do not publicly disclose the issue until it has been addressed by the team.
 
 ### What to Include
 
-Please include the following information in your report:
+When reporting a vulnerability, please include:
 
-- Type of issue (e.g., buffer overflow, SQL injection, cross-site scripting, etc.)
-- Full paths of source file(s) related to the manifestation of the issue
-- The location of the affected source code (tag/branch/commit or direct URL)
-- Any special configuration required to reproduce the issue
-- Step-by-step instructions to reproduce the issue
-- Proof-of-concept or exploit code (if possible)
-- Impact of the issue, including how an attacker might exploit it
+- Description of the vulnerability
+- Steps to reproduce the issue
+- Potential impact
+- Any suggested fixes (if available)
 
-### What to Expect
+We appreciate your efforts to responsibly disclose your findings and will make every effort to acknowledge your contributions.
 
-After you submit a report, we will:
+## Security Update Process
 
-1. Acknowledge receipt of your vulnerability report
-2. Confirm the problem and determine affected versions
-3. Audit code to find any potential similar problems
-4. Prepare fixes for all supported releases
-
-## Preferred Languages
-
-We prefer all communications to be in English.
-
-## Policy
-
-We follow the principle of Coordinated Vulnerability Disclosure.
+1. The security report is received and assigned to a primary handler
+2. The problem is confirmed and affected versions are determined
+3. Code is audited to find any similar problems
+4. Fixes are prepared for all supported releases
+5. New versions are released and announcements are made

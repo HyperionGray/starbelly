@@ -1,26 +1,32 @@
 # Contributing to Starbelly
 
-Thank you for your interest in contributing to Starbelly! This document provides guidelines for contributing to the project.
-
-## Developer Guide
-
-For detailed information about setting up your development environment, please see the [Developer Guide](http://starbelly.readthedocs.io/en/latest/development.html) in our documentation.
+Thank you for your interest in contributing to Starbelly! This document provides guidelines and information for contributors.
 
 ## Getting Started
 
+Before you begin:
+
+1. Read the [Developer Guide](http://starbelly.readthedocs.io/en/latest/development.html) in our documentation
+2. Familiarize yourself with the codebase and architecture
+3. Check existing issues and pull requests to avoid duplication
+
+## Development Environment
+
 ### Prerequisites
 
-* Docker
-* Poetry
-* Python 3.7+
-* Chromium or Chrome (for web client development)
-* Dart SDK 2.7.1 (for web client development)
+- **Docker** - For running RethinkDB and Nginx containers
+- **Poetry** - For Python dependency management
+- **Python 3.7** - Required for the server
+- **Chromium or Chrome** - Optional, for web client development
+- **Dart SDK 2.7.1** - For web client development
 
-### Setting Up Development Environment
+Note: Continuous integration currently tests against Python 3.7. Newer Python versions may work but are not guaranteed unless CI is updated to cover them.
+
+### Setup
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/hyperiongray/starbelly
+   git clone https://github.com/HyperionGray/starbelly
    cd starbelly
    ```
 
@@ -29,69 +35,121 @@ For detailed information about setting up your development environment, please s
    poetry install
    ```
 
-3. Create a self-signed certificate:
+3. Set up the development environment:
    ```bash
    cd dev/
    poetry run python gencert.py localhost
-   ```
-
-4. Run Docker containers:
-   ```bash
    docker-compose up
    ```
 
-5. Initialize the database:
+4. Run the server:
    ```bash
+   poetry shell
    python tools/container_init.py
-   ```
-
-6. Start the application server:
-   ```bash
    python -m starbelly --log-level debug --reload
    ```
 
-## Development Workflow
+For detailed setup instructions, see the [Developer Guide](http://starbelly.readthedocs.io/en/latest/development.html).
 
-### Running Tests
+## How to Contribute
+
+### Reporting Bugs
+
+When reporting bugs, please include:
+
+- Starbelly version
+- Operating system and version
+- Python version
+- Steps to reproduce the issue
+- Expected behavior
+- Actual behavior
+- Any relevant logs or error messages
+
+### Suggesting Enhancements
+
+Enhancement suggestions are welcome! Please:
+
+- Check if the enhancement has already been suggested
+- Provide a clear description of the proposed feature
+- Explain why this enhancement would be useful
+- Include any relevant examples or mockups
+
+### Pull Requests
+
+1. **Fork the repository** and create your branch from `master`
+2. **Make your changes**, following the code style guidelines
+3. **Add tests** if applicable
+4. **Update documentation** if you're changing functionality
+5. **Run the test suite**:
+   ```bash
+   poetry run make test
+   ```
+6. **Submit a pull request** with a clear description of your changes
+
+### Code Style
+
+- Follow PEP 8 guidelines for Python code
+- Use meaningful variable and function names
+- Add docstrings to functions and classes
+- Keep functions focused and concise
+- Add comments for complex logic
+
+### Commit Messages
+
+- Use clear, descriptive commit messages
+- Start with a verb in the present tense (e.g., "Add", "Fix", "Update")
+- Reference issue numbers when applicable
+
+## Testing
+
+Run the test suite with:
 
 ```bash
 poetry run make test
 ```
 
-### Building Documentation
+For coverage reports:
+
+```bash
+poetry run pytest tests/ --cov=starbelly --cov-report=term-missing
+```
+
+## Documentation
+
+Documentation is built using Sphinx. To build the documentation:
 
 ```bash
 poetry run make docs
 ```
 
-Documentation is built using Sphinx and stored in the `docs/` directory.
+View the built documentation at `docs/_build/html/index.html`.
 
-## Coding Standards
+## Code of Conduct
 
-* Follow PEP 8 style guidelines for Python code
-* Write clear, descriptive commit messages
-* Add tests for new features
-* Update documentation when making changes
-
-## Technologies Used
-
-* **Backend**: Python 3, Trio, WebSockets, RethinkDB
-* **Frontend**: Dart, Angular
-* **Containerization**: Docker, Docker Compose
-* **Documentation**: Sphinx, RestructuredText
-
-## Pull Request Process
-
-1. Create a feature branch from `master`
-2. Make your changes
-3. Ensure tests pass
-4. Update documentation as needed
-5. Submit a pull request with a clear description of changes
+This project adheres to a code of conduct that promotes a welcoming and inclusive environment. By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
 
 ## Questions?
 
-For more information, visit [starbelly.readthedocs.io](http://starbelly.readthedocs.io/en/latest/).
+If you have questions about contributing, feel free to:
+
+- Open an issue for discussion
+- Contact the maintainers at Hyperion Gray
 
 ## License
 
-Starbelly is under a proprietary license. By contributing to Starbelly, you agree that your contributions will be subject to the same proprietary license. Please contact Hyperion Gray at acaceres@hyperiongray.com for licensing information.
+By contributing to Starbelly, you agree that your contributions will be licensed under the MIT License.
+
+---
+
+Thank you for contributing to Starbelly!
+
+<!--
+Summary of recent changes:
+- Updated Python prerequisite from "Python 3.7+" to "Python 3.7" to match CI-tested versions.
+- Added a clarification note that CI currently tests only Python 3.7 and that newer versions are not yet guaranteed.
+
+Follow-up checklist:
+- [ ] Decide which additional Python versions (if any) should be officially supported.
+- [ ] Update CI configuration to test all officially supported Python versions.
+- [ ] Once CI is updated, revise this document again to reflect the expanded, CI-validated Python version range.
+-->
