@@ -109,11 +109,22 @@ if len(response.body) > MAX_BODY_SIZE_FOR_PARSING:
 ```
 
 **Impact:**
-- Prevents memory exhaustion from maliciously large responses
+- Reduces parsing work for maliciously large responses (does not cap download buffering)
 - 10MB limit is reasonable for legitimate web pages
 - Does not affect normal crawling operations
-- Adds defensive protection with minimal overhead
+- Adds defensive protection at the parsing stage with minimal overhead
 
+<!--
+Summary of change:
+- Clarified documentation so the parsing size guard is not described as preventing
+  memory exhaustion, but as reducing parsing work for oversized responses.
+
+Follow-up checklist:
+- [ ] Review downloader implementation to determine whether a streaming strategy
+      or hard download-size cap is needed to further mitigate memory exhaustion risk.
+- [ ] Update SECURITY_SUMMARY.md again if additional download-layer safeguards
+      are implemented, to keep documentation aligned with behavior.
+-->
 ## Vulnerabilities Discovered
 
 ### CodeQL Security Scan Results
