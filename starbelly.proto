@@ -1,0 +1,612 @@
+syntax = "proto2";
+
+message CaptchaSolver {
+  optional bytes solver_id = 1;
+  optional string name = 2;
+  optional string created_at = 3;
+  optional string updated_at = 4;
+  oneof SolverType {
+    CaptchaSolverAntigate antigate = 5;
+  }
+}
+
+message CaptchaSolverAntigate {
+  optional string service_url = 1;
+  optional string api_key = 2;
+  optional bool require_phrase = 3;
+  optional bool case_sensitive = 4;
+  optional CaptchaSolverAntigateCharacters characters = 5;
+  optional bool require_math = 6;
+  optional int32 min_length = 7;
+  optional int32 max_length = 8;
+}
+
+message CrawlResponse {
+  optional bytes body = 1;
+  optional string completed_at = 2;
+  optional string content_type = 3;
+  optional double cost = 4;
+  optional double duration = 5;
+  optional string exception = 6;
+  repeated Header headers = 7;
+  optional bool is_compressed = 8;
+  optional bool is_success = 9;
+  optional bytes job_id = 10;
+  optional string started_at = 11;
+  optional int32 status_code = 12;
+  optional string url = 13;
+  optional string url_can = 14;
+}
+
+message Header {
+  optional string key = 1;
+  optional string value = 2;
+}
+
+message DomainLogin {
+  optional string domain = 1;
+  optional string login_url = 2;
+  optional string login_test = 3;
+  repeated DomainLoginUser users = 5;
+}
+
+message DomainLoginUser {
+  optional string username = 1;
+  optional string password = 2;
+  optional bool working = 3;
+}
+
+// Emitted when a policy is added, updated, or deleted.
+message PolicyEvent {
+  enum EventType {
+    ADDED = 1;
+    UPDATED = 2;
+    DELETED = 3;
+  }
+  optional EventType event_type = 1;
+  optional bytes policy_id = 2;
+  optional string name = 3;
+}
+
+// Emitted when a schedule is added, updated, or deleted.
+message ScheduleEvent {
+  enum EventType {
+    ADDED = 1;
+    UPDATED = 2;
+    DELETED = 3;
+  }
+  optional EventType event_type = 1;
+  optional bytes schedule_id = 2;
+  optional string schedule_name = 3;
+}
+
+// Emitted when a domain login is added, updated, or deleted.
+message DomainLoginEvent {
+  enum EventType {
+    ADDED = 1;
+    UPDATED = 2;
+    DELETED = 3;
+  }
+  optional EventType event_type = 1;
+  optional string domain = 2;
+}
+
+message Event {
+  required int32 subscription_id = 1;
+  oneof Body {
+    JobList job_list = 2;
+    ScheduleList schedule_list = 7;
+    ResourceFrame resource_frame = 3;
+    SubscriptionClosed subscription_closed = 4;
+    SyncItem sync_item = 5;
+    TaskTree task_tree = 6;
+    PolicyEvent policy_event = 8;
+    ScheduleEvent schedule_event = 9;
+    DomainLoginEvent domain_login_event = 10;
+  }
+}
+
+message Job {
+  required bytes job_id = 1;
+  repeated string seeds = 2;
+  optional Policy policy = 3;
+  optional string name = 4;
+  repeated string tags = 5;
+  optional JobRunState run_state = 6;
+  optional string started_at = 7;
+  optional string completed_at = 8;
+  optional int32 item_count = 9 [default = -1];
+  optional int32 http_success_count = 10 [default = -1];
+  optional int32 http_error_count = 11 [default = -1];
+  optional int32 exception_count = 12 [default = -1];
+  map<int32, int32> http_status_counts = 13;
+}
+
+message JobList {
+  repeated Job jobs = 1;
+}
+
+message Schedule {
+  optional bytes schedule_id = 1;
+  optional string created_at = 2;
+  optional string updated_at = 3;
+  optional bool enabled = 4;
+  optional ScheduleTimeUnit time_unit = 5;
+  optional int32 num_units = 6;
+  optional ScheduleTiming timing = 7;
+  optional string schedule_name = 8;
+  optional string job_name = 9;
+  repeated string seeds = 10;
+  optional bytes policy_id = 11;
+  repeated string tags = 12;
+  optional int32 job_count = 13;
+}
+
+message ScheduleList {
+  repeated Schedule schedules = 1;
+}
+
+message Page {
+  optional int32 limit = 1 [default = 10];
+  optional int32 offset = 2;
+}
+
+message Policy {
+  optional bytes policy_id = 1;
+  optional string name = 2;
+  optional string created_at = 3;
+  optional string updated_at = 4;
+  optional bytes captcha_solver_id = 14;
+  optional PolicyAuthentication authentication = 6;
+  optional PolicyLimits limits = 7;
+  repeated PolicyProxyRule proxy_rules = 8;
+  repeated PolicyMimeTypeRule mime_type_rules = 9;
+  optional PolicyRobotsTxt robots_txt = 10;
+  optional PolicyUrlNormalization url_normalization = 13;
+  repeated PolicyUrlRule url_rules = 11;
+  repeated PolicyUserAgent user_agents = 12;
+}
+
+message PolicyAuthentication {
+  optional bool enabled = 1;
+}
+
+message PolicyLimits {
+  optional double max_cost = 1;
+  optional double max_duration = 2;
+  optional int32 max_items = 3;
+}
+
+message PolicyMimeTypeRule {
+  optional string pattern = 1;
+  optional PatternMatch match = 2;
+  optional bool save = 3;
+}
+
+message PolicyProxyRule {
+  optional string pattern = 1;
+  optional PatternMatch match = 2;
+  optional string proxy_url = 3;
+}
+
+message PolicyRobotsTxt {
+  required PolicyRobotsTxt.Usage usage = 1;
+  enum Usage {
+    OBEY = 1;
+    INVERT = 2;
+    IGNORE = 3;
+  }
+}
+
+message PolicyUrlNormalization {
+  optional bool enabled = 1;
+  repeated string strip_parameters = 2;
+}
+
+message PolicyUrlRule {
+  optional string pattern = 1;
+  optional PatternMatch match = 2;
+  optional PolicyUrlRule.Action action = 3;
+  optional double amount = 4;
+  enum Action {
+    ADD = 1;
+    MULTIPLY = 2;
+  }
+}
+
+message PolicyUserAgent {
+  required string name = 1;
+}
+
+message Request {
+  required int32 request_id = 1;
+  oneof Command {
+    RequestDeleteCaptchaSolver delete_captcha_solver = 31;
+    RequestGetCaptchaSolver get_captcha_solver = 28;
+    RequestListCaptchaSolvers list_captcha_solvers = 29;
+    RequestSetCaptchaSolver set_captcha_solver = 30;
+    RequestDeleteJob delete_job = 3;
+    RequestGetJob get_job = 6;
+    RequestGetJobItems get_job_items = 7;
+    RequestListJobs list_jobs = 11;
+    RequestSetJob set_job = 16;
+    RequestDeleteSchedule delete_schedule = 24;
+    RequestGetSchedule get_schedule = 25;
+    RequestListSchedules list_schedules = 26;
+    RequestListScheduleJobs list_schedule_jobs = 32;
+    RequestSetSchedule set_schedule = 27;
+    RequestDeletePolicy delete_policy = 4;
+    RequestGetPolicy get_policy = 8;
+    RequestListPolicies list_policies = 12;
+    RequestSetPolicy set_policy = 17;
+    RequestDeleteDomainLogin delete_domain_login = 2;
+    RequestGetDomainLogin get_domain_login = 5;
+    RequestListDomainLogins list_domain_logins = 10;
+    RequestSetDomainLogin set_domain_login = 15;
+    RequestListRateLimits list_rate_limits = 9;
+    RequestSetRateLimit set_rate_limit = 18;
+    RequestPerformanceProfile performance_profile = 13;
+    RequestSubscribeJobStatus subscribe_job_status = 19;
+    RequestSubscribeJobSync subscribe_job_sync = 20;
+    RequestSubscribeResourceMonitor subscribe_resource_monitor = 21;
+    RequestSubscribeTaskMonitor subscribe_task_monitor = 22;
+    RequestUnsubscribe unsubscribe = 23;
+    RequestSubscribePolicyList subscribe_policy_list = 33;
+    RequestSubscribeScheduleList subscribe_schedule_list = 34;
+    RequestSubscribeDomainLoginList subscribe_domain_login_list = 35;
+  }
+}
+
+message Response {
+  required int32 request_id = 1;
+  required bool is_success = 2;
+  optional string error_message = 3;
+  oneof Body {
+    CaptchaSolver solver = 22;
+    ResponseNewCaptchaSolver new_solver = 24;
+    ResponseListCaptchaSolvers list_captcha_solvers = 23;
+    DomainLogin domain_login = 5;
+    DomainLoginUser domain_login_user = 6;
+    ResponseListDomainLogins list_domain_logins = 9;
+    Job job = 7;
+    ResponseNewJob new_job = 14;
+    ResponseListItems list_items = 10;
+    ResponseListJobs list_jobs = 11;
+    Schedule schedule = 19;
+    ResponseNewSchedule new_schedule = 21;
+    ResponseListSchedules list_schedules = 20;
+    ResponseListScheduleJobs list_schedule_jobs = 25;
+    Policy policy = 8;
+    ResponseNewPolicy new_policy = 15;
+    ResponseListPolicies list_policies = 12;
+    ResponseListRateLimits list_rate_limits = 13;
+    ResponseNewSubscription new_subscription = 16;
+    ResponsePerformanceProfile performance_profile = 17;
+  }
+}
+
+message RequestDeleteCaptchaSolver {
+  optional bytes solver_id = 1;
+}
+
+message RequestGetCaptchaSolver {
+  required bytes solver_id = 1;
+}
+
+message RequestListCaptchaSolvers {
+  optional Page page = 1;
+}
+
+message ResponseListCaptchaSolvers {
+  repeated CaptchaSolver solvers = 1;
+  optional int32 total = 2;
+}
+
+message RequestSetCaptchaSolver {
+  optional CaptchaSolver solver = 1;
+}
+
+message ResponseNewCaptchaSolver {
+  required bytes solver_id = 1;
+}
+
+message RequestDeleteDomainLogin {
+  optional string domain = 1;
+}
+
+message RequestGetDomainLogin {
+  required string domain = 1;
+}
+
+message RequestListDomainLogins {
+  optional Page page = 1;
+}
+
+message ResponseListDomainLogins {
+  repeated DomainLogin logins = 1;
+  optional int32 total = 2;
+}
+
+message RequestSetDomainLogin {
+  optional DomainLogin login = 1;
+}
+
+message RequestDeleteJob {
+  required bytes job_id = 1;
+}
+
+message RequestGetJob {
+  required bytes job_id = 1;
+}
+
+message RequestListJobs {
+  optional Page page = 1;
+  optional string started_after = 2;
+  optional string tag = 3;
+  optional bytes schedule_id = 4;
+}
+
+message ResponseListJobs {
+  repeated Job jobs = 1;
+  optional int32 total = 2;
+}
+
+message RequestSetJob {
+  optional bytes job_id = 1;
+  optional JobRunState run_state = 2;
+  optional bytes policy_id = 3;
+  repeated string seeds = 4;
+  optional string name = 5;
+  repeated string tags = 6;
+}
+
+message ResponseNewJob {
+  required bytes job_id = 1;
+}
+
+message RequestGetJobItems {
+  required bytes job_id = 1;
+  optional bool include_success = 2;
+  optional bool include_error = 3;
+  optional bool include_exception = 4;
+  optional bool compression_ok = 5 [default = true];
+  optional Page page = 6;
+}
+
+message ResponseListItems {
+  repeated CrawlResponse items = 1;
+  optional int32 total = 2;
+}
+
+message RequestDeleteSchedule {
+  required bytes schedule_id = 1;
+}
+
+message RequestGetSchedule {
+  required bytes schedule_id = 1;
+}
+
+message RequestListSchedules {
+  optional Page page = 1;
+}
+
+message ResponseListSchedules {
+  repeated Schedule schedules = 1;
+  optional int32 total = 2;
+}
+
+message RequestListScheduleJobs {
+  required bytes schedule_id = 1;
+  optional Page page = 2;
+}
+
+message ResponseListScheduleJobs {
+  repeated Job jobs = 1;
+  optional int32 total = 2;
+}
+
+message RequestSetSchedule {
+  optional Schedule schedule = 1;
+}
+
+message ResponseNewSchedule {
+  required bytes schedule_id = 1;
+}
+
+message RequestDeletePolicy {
+  required bytes policy_id = 1;
+}
+
+message RequestGetPolicy {
+  required bytes policy_id = 1;
+}
+
+message RequestListPolicies {
+  optional Page page = 1;
+}
+
+message ResponseListPolicies {
+  repeated Policy policies = 1;
+  optional int32 total = 2;
+}
+
+message RequestSetPolicy {
+  required Policy policy = 1;
+}
+
+message ResponseNewPolicy {
+  required bytes policy_id = 1;
+}
+
+message RateLimit {
+  optional string name = 1;
+  optional float delay = 2;
+  optional bytes token = 3;
+  optional string domain = 4;
+}
+
+message RequestListRateLimits {
+  optional Page page = 1;
+}
+
+message ResponseListRateLimits {
+  repeated RateLimit rate_limits = 1;
+  optional int32 total = 2;
+}
+
+message RequestSetRateLimit {
+  optional string domain = 1;
+  optional float delay = 2;
+}
+
+message RequestPerformanceProfile {
+  optional double duration = 1 [default = 5];
+  optional string sort_by = 2 [default = "total_time"];
+  optional int32 top_n = 3;
+}
+
+message PerformanceProfileFunction {
+  optional string file = 1;
+  optional int32 line_number = 2;
+  optional string function = 3;
+  optional int32 calls = 4;
+  optional int32 non_recursive_calls = 5;
+  optional double total_time = 6;
+  optional double cumulative_time = 7;
+}
+
+message ResponsePerformanceProfile {
+  optional int32 total_calls = 1;
+  optional double total_time = 2;
+  repeated PerformanceProfileFunction functions = 3;
+}
+
+message RequestSubscribeJobStatus {
+  optional double min_interval = 1 [default = 1];
+}
+
+message RequestSubscribeJobSync {
+  required bytes job_id = 1;
+  optional bytes sync_token = 2;
+  optional bool compression_ok = 3 [default = true];
+}
+
+message SyncItem {
+  required CrawlResponse item = 1;
+  required bytes token = 2;
+}
+
+message ServerMessage {
+  oneof MessageType {
+    Event event = 1;
+    Response response = 2;
+  }
+}
+
+message RequestSubscribeResourceMonitor {
+  optional int32 history = 1 [default = 300];
+}
+
+message RequestSubscribeTaskMonitor {
+  optional double period = 1 [default = 3];
+}
+
+message ResponseNewSubscription {
+  required int32 subscription_id = 1;
+}
+
+message RequestUnsubscribe {
+  required int32 subscription_id = 1;
+}
+
+message SubscriptionClosed {
+  required SubscriptionClosed.Reason reason = 1;
+  optional string message = 2;
+  enum Reason {
+    COMPLETE = 1;
+    ERROR = 2;
+  }
+}
+
+message ResourceFrame {
+  optional string timestamp = 1;
+  repeated ResourceFrameCpu cpus = 2;
+  optional ResourceFrameMemory memory = 3;
+  repeated ResourceFrameDisk disks = 4;
+  repeated ResourceFrameNetwork networks = 5;
+  repeated ResourceFrameJob jobs = 6;
+  optional int32 current_downloads = 7;
+  optional int32 maximum_downloads = 8;
+  optional int32 rate_limiter = 9;
+}
+
+message ResourceFrameCpu {
+  optional double usage = 1;
+}
+
+message ResourceFrameJob {
+  optional bytes job_id = 1;
+  optional string name = 2;
+  optional int32 current_downloads = 3;
+}
+
+message ResourceFrameDisk {
+  optional string mount = 1;
+  optional int64 used = 2;
+  optional int64 total = 3;
+}
+
+message ResourceFrameMemory {
+  optional int64 used = 1;
+  optional int64 total = 2;
+}
+
+message ResourceFrameNetwork {
+  optional string name = 1;
+  optional int64 sent = 2;
+  optional int64 received = 3;
+}
+
+message TaskTree {
+  optional string name = 1;
+  repeated TaskTree subtasks = 2;
+}
+
+// New subscription request messages
+message RequestSubscribePolicyList {}
+message RequestSubscribeScheduleList {}
+message RequestSubscribeDomainLoginList {}
+
+enum CaptchaSolverAntigateCharacters {
+  ALPHANUMERIC = 1;
+  NUMBERS_ONLY = 2;
+  ALPHA_ONLY = 3;
+}
+
+enum JobRunState {
+  CANCELLED = 1;
+  COMPLETED = 2;
+  PAUSED = 3;
+  PENDING = 4;
+  RUNNING = 5;
+  DELETED = 6;
+}
+
+enum ScheduleTimeUnit {
+  MINUTES = 1;
+  HOURS = 2;
+  DAYS = 3;
+  WEEKS = 4;
+  MONTHS = 5;
+  YEARS = 6;
+}
+
+enum ScheduleTiming {
+  AFTER_PREVIOUS_JOB_FINISHED = 1;
+  REGULAR_INTERVAL = 2;
+}
+
+enum PatternMatch {
+  MATCHES = 1;
+  DOES_NOT_MATCH = 2;
+}
