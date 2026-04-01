@@ -2,7 +2,7 @@ import hashlib
 import logging
 
 from bs4 import BeautifulSoup
-import cchardet
+import chardet as charset_detector
 import feedparser
 import mimeparse
 import trio
@@ -11,7 +11,7 @@ import yarl
 
 
 logger = logging.getLogger(__name__)
-chardet = lambda s: cchardet.detect(s).get('encoding')
+chardet = lambda s: charset_detector.detect(s).get('encoding')
 
 # Maximum response body size to parse (10MB) - prevents DoS from large documents
 MAX_BODY_SIZE_FOR_PARSING = 10 * 1024 * 1024
@@ -222,9 +222,9 @@ def _extract_html(response):
 
         try:
             parsed_href = yarl.URL(href)
-        except:
-            logger.exception('Rejecting malformed URL base=%s url=%s',
-                str(response.url), href)
+        except Exception:
+            logger.warning('Rejecting malformed URL base=%s url=%s',
+                str(response.url), href, exc_info=True)
             continue
 
         absolute_href = base_url.join(parsed_href)

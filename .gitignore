@@ -3,6 +3,11 @@
 .coverage.*
 .ipynb_checkpoints
 .pytest_cache
+.venv/
 .vscode
 __pycache__
 README.html
+.bish-index
+.bish.sqlite
+**/.bish-index
+**/.bish.sqlite
