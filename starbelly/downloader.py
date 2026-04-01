@@ -262,7 +262,6 @@ class Downloader:
             # sites with self-signed or invalid certificates. This makes the
             # crawler vulnerable to MITM attacks. See docs/SECURITY.md for
             # details and recommendations for secure deployment.
-            # TODO: Make SSL verification configurable per-policy
             session_args['connector'] = aiohttp.TCPConnector(verify_ssl=False)
 
         user_agent = self._policy.user_agents.get_user_agent()
