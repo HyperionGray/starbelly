@@ -6,7 +6,12 @@ Starbelly is a user-friendly web crawler that is easy to deploy and configure.
 [![Coverage](https://img.shields.io/coveralls/github/HyperionGray/starbelly.svg?style=flat-square)](https://coveralls.io/github/HyperionGray/starbelly)
 [![Read the Docs](https://img.shields.io/readthedocs/starbelly.svg)](https://starbelly.readthedocs.io)
 
-## Features
+## Security
+
+For information about security considerations and best practices for deploying Starbelly, please see [docs/SECURITY.md](docs/SECURITY.md).
+
+If you discover a security vulnerability, please email acaceres@hyperiongray.com rather than opening a public issue.
+
 
 - **Policy-Based Crawling**: Define custom crawl policies to control crawler behavior
 - **Graphical User Interface**: Easy-to-use web interface for managing crawls
