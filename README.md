@@ -61,4 +61,3 @@ For commercial support or inquiries, please contact Hyperion Gray at acaceres@hy
 ---
 
 <a href="https://www.hyperiongray.com/?pk_campaign=github&pk_kwd=starbelly"><img alt="define hyperion gray" width="500px" src="https://hyperiongray.s3.amazonaws.com/define-hg.svg"></a>
-
