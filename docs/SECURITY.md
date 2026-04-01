@@ -85,30 +85,23 @@ old_urls = set(old_urls_list)
 
 **Location:** `starbelly/extractor.py`
 
-**Issue:** BeautifulSoup parsing has no timeout or size limits
+**Issue:** BeautifulSoup parsing enforces a maximum body size via `MAX_BODY_SIZE_FOR_PARSING`, but there is still no parsing timeout, leaving CPU-bound parsing as a remaining risk.
 
 **Risk Level:** LOW-MEDIUM
 
 **Security Impact:**
-- Large or maliciously crafted HTML could cause denial of service
-- Memory exhaustion from parsing extremely large documents
-- CPU exhaustion from deeply nested HTML structures
+- Large or maliciously crafted HTML (up to the configured size limit) could still cause denial of service
+- CPU exhaustion from deeply nested or pathologically structured HTML
+- Potential head-of-line blocking if a single parse monopolizes the event loop
 
 **Recommendations:**
-1. Add maximum response body size check before parsing
-2. Implement parsing timeout using async timeout context
-3. Limit recursion depth for HTML tree traversal
+1. Implement parsing timeout using an async timeout context
+2. Limit recursion depth or traversal complexity for HTML tree processing
+3. Periodically review and document the `MAX_BODY_SIZE_FOR_PARSING` value to ensure it balances coverage and resource usage
 
 **Proposed Fix:**
 ```python
-# Add size limit
-MAX_BODY_SIZE_FOR_PARSING = 10 * 1024 * 1024  # 10MB
-
-if len(response.body) > MAX_BODY_SIZE_FOR_PARSING:
-    logger.warning(f'Skipping large response: {len(response.body)} bytes')
-    return
-
-# Add parsing timeout
+# Add parsing timeout around BeautifulSoup to avoid CPU-bound hangs
 with trio.fail_after(30):  # 30 second timeout
     soup = BeautifulSoup(response.body, 'lxml')
 ```
