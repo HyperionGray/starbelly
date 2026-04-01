@@ -157,7 +157,7 @@ class SubscriptionManager:
         Subscribe to crawl job sync.
 
         :param float period:
-        :param trio.hazmat.Task root_task:
+    :param trio.lowlevel.Task root_task:
         :returns: A subscription ID.
         :rtype: int
         """
@@ -612,7 +612,7 @@ class TaskMonitorSubscription:
         :param trio_websocket.WebSocketConnection websocket: A WebSocket to send
             events to.
         :param float period: The amount of time to wait in between events.
-        :param trio.hazmat.Task root_task: The root task to build a task tree
+    :param trio.lowlevel.Task root_task: The root task to build a task tree
             from.
         """
         self._id = id_
