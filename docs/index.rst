@@ -29,6 +29,7 @@ collection pipeline.
     development
     internals
     changelog
+    daily_progress_2026_03_28
 
 .. image:: https://hyperiongray.s3.amazonaws.com/define-hg.svg
     :target: https://www.hyperiongray.com/?pk_campaign=github&pk_kwd=agnostic
