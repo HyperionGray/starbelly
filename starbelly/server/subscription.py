@@ -1,6 +1,6 @@
 from uuid import UUID
 
-import trio.hazmat
+import trio.lowlevel
 
 from . import api_handler
 
@@ -39,7 +39,7 @@ async def subscribe_resource_monitor(command, response, resource_monitor,
 @api_handler
 async def subscribe_task_monitor(command, response, subscription_manager):
     ''' Handle the subscribe task monitor command. '''
-    root_task = trio.hazmat.current_root_task()
+    root_task = trio.lowlevel.current_root_task()
     sub_id = subscription_manager.subscribe_task_monitor(command.period,
         root_task)
     response.new_subscription.subscription_id = sub_id
