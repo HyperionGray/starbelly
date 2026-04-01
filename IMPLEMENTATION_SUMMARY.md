@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation adds a streaming API infrastructure to Starbelly, allowing the UI to subscribe to real-time data changes instead of polling the database directly. The foundation is complete and follows existing patterns, but requires protobuf schema updates to be fully functional.
+This implementation adds a streaming API infrastructure to Starbelly, allowing the UI to subscribe to real-time data changes instead of polling the database directly. The server-side implementation is now complete for policy, schedule, and domain-login list subscriptions, including protobuf schema support and focused tests. The remaining work is adoption in clients/UI and extension of the pattern to additional resource types.
 
 ## What Was Implemented
 
@@ -68,6 +68,15 @@ Demonstrates:
 - Processing change events
 - Managing multiple subscriptions
 
+### 7. Protobuf Schema and Test Coverage
+**Files**: `starbelly.proto`, `starbelly/starbelly_pb2.py`, `tests/test_subscription_streaming.py`
+
+The follow-up work that originally blocked this feature has now landed:
+- Protobuf event messages for policies, schedules, and domain logins
+- Protobuf request messages for the three new subscription commands
+- Regenerated Python protobuf bindings
+- Focused tests covering add, update, delete, ordering, and cancellation behavior
+
 ## Architecture
 
 ```
@@ -129,126 +138,33 @@ The subscription detects:
 - **UPDATE**: Both `old_val` and `new_val` have data
 - **DELETE**: `old_val` has data, `new_val` is None
 
-## What's Required to Complete
+## Current Status and Next Logical Improvements
 
-### Protobuf Schema Updates
+### Completed
 
-The implementation references protobuf message types that don't exist yet. These need to be added to the `.proto` file:
+- The protobuf schema now contains `PolicyEvent`, `ScheduleEvent`, `DomainLoginEvent`, and the corresponding subscribe request messages
+- The generated Python bindings are in sync with the schema
+- Focused streaming tests exist in `tests/test_subscription_streaming.py`
 
-#### 1. Event Messages
+### Highest-Value Next Steps
 
-```protobuf
-message PolicyEvent {
-    enum EventType {
-        ADDED = 1;
-        UPDATED = 2;
-        DELETED = 3;
-    }
-    EventType event_type = 1;
-    string policy_id = 2;
-    string name = 3;
-    // Add other policy fields as needed
-}
+1. **Move clients/UI to the new streams**
+   - Replace polling-based refresh loops for policies, schedules, and domain logins
+   - Treat the subscription feed as the source of truth for list updates
 
-message ScheduleEvent {
-    enum EventType {
-        ADDED = 1;
-        UPDATED = 2;
-        DELETED = 3;
-    }
-    EventType event_type = 1;
-    bytes schedule_id = 2;
-    string schedule_name = 3;
-    // Add other schedule fields as needed
-}
+2. **Add WebSocket-level integration coverage**
+   - Exercise the full handler-to-subscription path over the socket boundary
+   - Verify initial delivery and change propagation with realistic request/response flow
 
-message DomainLoginEvent {
-    enum EventType {
-        ADDED = 1;
-        UPDATED = 2;
-        DELETED = 3;
-    }
-    EventType event_type = 1;
-    string domain = 2;
-    // Add other login fields as needed
-}
-```
+3. **Extend the pattern to more list resources**
+   - Good next candidates: captcha solvers and rate limits
+   - Reuse the same `SubscriptionDb` + subscription class + handler pattern
 
-#### 2. Update Event Message
+4. **Keep examples and docs current**
+   - Update operator/client-facing docs as more resources adopt streaming
+   - Avoid reintroducing stale “protobuf work still pending” guidance
 
-```protobuf
-message Event {
-    int32 subscription_id = 1;
-    oneof EventType {
-        // existing events...
-        PolicyEvent policy_event = X;       // Use next available number
-        ScheduleEvent schedule_event = Y;
-        DomainLoginEvent domain_login_event = Z;
-    }
-}
-```
-
-#### 3. Request Messages
-
-```protobuf
-message RequestSubscribePolicyList {}
-message RequestSubscribeScheduleList {}
-message RequestSubscribeDomainLoginList {}
-```
-
-#### 4. Update Request Message
-
-```protobuf
-message Request {
-    int32 request_id = 1;
-    oneof Command {
-        // existing commands...
-        RequestSubscribePolicyList subscribe_policy_list = X;
-        RequestSubscribeScheduleList subscribe_schedule_list = Y;
-        RequestSubscribeDomainLoginList subscribe_domain_login_list = Z;
-    }
-}
-```
-
-#### 5. Regenerate Python Code
-
-```bash
-protoc --python_out=. starbelly.proto
-```
-
-This generates an updated `starbelly_pb2.py` with the new message types.
-
-### Testing
-
-After protobuf updates, add integration tests:
-
-```python
-# Test initial data delivery
-async def test_policy_subscription_initial_data(db_pool):
-    # Insert policies
-    # Subscribe
-    # Verify initial policies received
-
-# Test add events  
-async def test_policy_subscription_add_event(db_pool):
-    # Subscribe
-    # Add a policy
-    # Verify ADD event received
-
-# Test update events
-async def test_policy_subscription_update_event(db_pool):
-    # Subscribe
-    # Update a policy
-    # Verify UPDATE event received
-
-# Test delete events
-async def test_policy_subscription_delete_event(db_pool):
-    # Subscribe
-    # Delete a policy
-    # Verify DELETE event received
-```
-
-### UI Integration
+### UI Integration Direction
 
 Update the UI to use subscriptions instead of polling:
 
@@ -337,7 +253,7 @@ Total: ~644 lines added, 0 lines removed
 
 ## Conclusion
 
-The streaming API infrastructure is complete and ready for use once protobuf schemas are updated. The implementation:
+The streaming API infrastructure is complete and ready for client adoption. The implementation:
 
 ✅ Follows existing patterns (JobSyncSubscription, JobStatusSubscription)
 ✅ Uses RethinkDB's native changefeed functionality
@@ -347,10 +263,9 @@ The streaming API infrastructure is complete and ready for use once protobuf sch
 ✅ Is extensible to other data types
 
 Next steps:
-1. Update protobuf schemas
-2. Regenerate Python code
-3. Add integration tests
-4. Update UI to consume subscriptions
-5. Performance testing
+1. Update UI to consume subscriptions
+2. Add WebSocket-level integration tests
+3. Extend the pattern to more list resources
+4. Performance testing
 
 The foundation enables replacing all UI database queries with efficient real-time streams.
