@@ -5,8 +5,8 @@ Example client demonstrating the streaming API usage.
 This example shows how to subscribe to policy, schedule, and domain login
 updates using the new streaming API.
 
-NOTE: This requires the protobuf definitions to be completed first.
-See STREAMING_API.md for details on what protobuf changes are needed.
+NOTE: The protobuf definitions for these subscriptions now exist.
+See STREAMING_API.md for the current message flow and follow-up work.
 """
 
 def main():
@@ -14,8 +14,8 @@ def main():
     print("Starbelly Streaming API Example")
     print("=" * 50)
     print()
-    print("NOTE: This example requires protobuf definitions to be completed.")
-    print("See ../STREAMING_API.md for implementation details.")
+    print("NOTE: The protobuf definitions for these subscriptions are present.")
+    print("See ../STREAMING_API.md for the current implementation details.")
     print()
     print("The streaming API provides:")
     print("  - Real-time updates when data changes")

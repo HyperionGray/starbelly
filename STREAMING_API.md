@@ -85,98 +85,19 @@ async def subscribe_domain_login_list(response, subscription_manager):
     '''Handle the subscribe domain login list command.'''
 ```
 
-## What's Needed for Complete Implementation
+## Current Status
 
-### Protobuf Message Definitions
+The protobuf event/request messages for policy, schedule, and domain-login subscriptions are now present in `starbelly.proto`, and the generated Python bindings are checked in with the rest of the server code. Focused tests covering the new subscription classes live in `tests/test_subscription_streaming.py`.
 
-The current implementation references protobuf event types that don't yet exist. To complete this, you need to:
+The remaining work is primarily outside the core server implementation:
 
-1. **Add event message definitions** to the `.proto` file (source file for starbelly_pb2.py):
-
-```protobuf
-message PolicyEvent {
-    enum EventType {
-        ADDED = 1;
-        UPDATED = 2;
-        DELETED = 3;
-    }
-    EventType event_type = 1;
-    string policy_id = 2;
-    string name = 3;
-    // Add other policy fields as needed
-}
-
-message ScheduleEvent {
-    enum EventType {
-        ADDED = 1;
-        UPDATED = 2;
-        DELETED = 3;
-    }
-    EventType event_type = 1;
-    bytes schedule_id = 2;
-    string schedule_name = 3;
-    // Add other schedule fields as needed
-}
-
-message DomainLoginEvent {
-    enum EventType {
-        ADDED = 1;
-        UPDATED = 2;
-        DELETED = 3;
-    }
-    EventType event_type = 1;
-    string domain = 2;
-    // Add other login fields as needed
-}
-```
-
-2. **Update the Event message** to include these new event types:
-
-```protobuf
-message Event {
-    int32 subscription_id = 1;
-    oneof EventType {
-        // existing events...
-        PolicyEvent policy_event = X;
-        ScheduleEvent schedule_event = Y;
-        DomainLoginEvent domain_login_event = Z;
-    }
-}
-```
-
-3. **Regenerate the Python protobuf** file:
-
-```bash
-protoc --python_out=. starbelly.proto
-```
-
-### Request Message Definitions
-
-Add request messages for the new subscription commands:
-
-```protobuf
-message RequestSubscribePolicyList {}
-message RequestSubscribeScheduleList {}
-message RequestSubscribeDomainLoginList {}
-```
-
-And add them to the Request message oneof:
-
-```protobuf
-message Request {
-    int32 request_id = 1;
-    oneof Command {
-        // existing commands...
-        RequestSubscribePolicyList subscribe_policy_list = X;
-        RequestSubscribeScheduleList subscribe_schedule_list = Y;
-        RequestSubscribeDomainLoginList subscribe_domain_login_list = Z;
-    }
-}
-```
+1. Move client/UI list views onto the streaming API instead of polling
+2. Add WebSocket-level integration tests for the new handlers
+3. Extend the same pattern to additional list-style resources
 
 ## Usage Example
 
-Once protobuf definitions are complete, clients can subscribe like this:
+With the current protobuf definitions, clients can subscribe like this:
 
 ```python
 # Client code example
@@ -240,4 +161,4 @@ Tests should cover:
 6. Connection errors and recovery
 7. Multiple concurrent subscriptions
 
-Example test structure is provided in tests/test_subscription.py.
+Example test structure is provided in `tests/test_subscription_streaming.py`.
