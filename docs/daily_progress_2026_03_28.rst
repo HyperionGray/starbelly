@@ -79,7 +79,8 @@ Actionable Task List
 --------------------
 
 - [ ] Add a policy-level setting for TLS certificate verification and default
-      it to the current behavior.
+      it to the current disabled-verification behavior so existing crawler
+      deployments keep working.
 - [ ] Add focused tests for subscription startup snapshots, disconnect
       handling, and cancellation paths.
 - [ ] Refactor ``integration/test_subscription.py`` to use shared query
