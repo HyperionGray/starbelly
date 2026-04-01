@@ -155,8 +155,8 @@ If you discover a security vulnerability, please email acaceres@hyperiongray.com
 
 2. **Code Review:** Manual review of all changes confirms minimal impact
    - No breaking API changes
-   - No behavioral changes to existing functionality
-   - Only additions: comments, documentation, and defensive checks
+   - Behavioral change: HTTP responses with bodies larger than 10MB are now skipped for extraction due to `MAX_BODY_SIZE_FOR_PARSING`
+   - Functional behavior for responses under 10MB is unchanged; other modifications are limited to comments, documentation, and defensive checks
 
 3. **Test Impact Analysis:**
    - Existing tests do not create bodies larger than 10MB
