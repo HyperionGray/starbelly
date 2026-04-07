@@ -95,7 +95,7 @@ class CrawlStorage:
 
             body_hash = hashlib.blake2b(response.body, digest_size=16).digest()
             if compress_body:
-                body = await trio.run_sync_in_worker_thread(functools.partial(
+                body = await trio.to_thread.run_sync(functools.partial(
                     gzip.compress, response.body, compresslevel=6))
             else:
                 body = response.body
