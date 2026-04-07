@@ -16,11 +16,11 @@ Before you begin:
 
 - **Docker** - For running RethinkDB and Nginx containers
 - **Poetry** - For Python dependency management
-- **Python 3.7** - Required for the server
+- **Python 3.9** - Required for the server
 - **Chromium or Chrome** - Optional, for web client development
 - **Dart SDK 2.7.1** - For web client development
 
-Note: Continuous integration currently tests against Python 3.7. Newer Python versions may work but are not guaranteed unless CI is updated to cover them.
+Note: Continuous integration currently tests against Python 3.9. Newer Python versions may work but are not guaranteed unless CI is updated to cover them.
 
 ### Setup
 
@@ -145,11 +145,12 @@ Thank you for contributing to Starbelly!
 
 <!--
 Summary of recent changes:
-- Updated Python prerequisite from "Python 3.7+" to "Python 3.7" to match CI-tested versions.
-- Added a clarification note that CI currently tests only Python 3.7 and that newer versions are not yet guaranteed.
+- Updated Python prerequisite to "Python 3.9" to match pyproject.toml requirement (>=3.9,<3.10).
+- Added a clarification note that CI currently tests only Python 3.9 and that newer versions are not yet guaranteed.
 
 Follow-up checklist:
 - [ ] Decide which additional Python versions (if any) should be officially supported.
 - [ ] Update CI configuration to test all officially supported Python versions.
 - [ ] Once CI is updated, revise this document again to reflect the expanded, CI-validated Python version range.
+- [ ] Consider upgrading trio and trio-asyncio dependencies to support Python 3.10+.
 -->
