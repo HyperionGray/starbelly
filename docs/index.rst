@@ -26,6 +26,7 @@ collection pipeline.
     administration
     websocket_api
     protobuf
+    roadmap
     development
     internals
     changelog
