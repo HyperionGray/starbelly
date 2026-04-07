@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Updated deprecated `trio.hazmat` references to `trio.lowlevel` across server, subscription, and test modules
+- Replaced deprecated `trio.run_sync_in_worker_thread` with `trio.to_thread.run_sync` in extractor, storage, and login modules
+- Replaced removed `trio.MultiError.catch` with `strict_exception_groups=False` nursery parameter in job runner
+- Fixed `DownloadResponse.is_success` to accept all 2xx status codes instead of only 200
+- Added missing `read_sitemaps` and `obey_crawl_delay` fields to `PolicyRobotsTxt` protobuf schema
+- Regenerated `starbelly_pb2.py` from updated proto definition
+
 ### Added
 - Added comprehensive documentation files (CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md, SECURITY.md)
 
