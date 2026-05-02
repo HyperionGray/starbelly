@@ -518,28 +518,21 @@ class CrawlJob:
 
         :returns: Runs until this job finishes.
         '''
-        def exc_filter(exc):
-            ''' Filter out Cancelled exceptions raised by the nursery. '''
-            if isinstance(exc, trio.Cancelled):
-                return None
-            return exc
+        async with trio.open_nursery() as nursery:
+            self._cancel_scope = nursery.cancel_scope
+            logger.info('%r Running...', self)
+            nursery.start_soon(self._frontier.run, name='Frontier')
+            nursery.start_soon(self._downloader.run, name='Downloader')
+            nursery.start_soon(self._extractor.run, name='Extractor')
+            nursery.start_soon(self._storage.run, name='Storage')
+            nursery.start_soon(self._terminator.run, name='Terminator')
 
-        with trio.MultiError.catch(exc_filter):
-            async with trio.open_nursery() as nursery:
-                self._cancel_scope = nursery.cancel_scope
-                logger.info('%r Running...', self)
-                nursery.start_soon(self._frontier.run, name='Frontier')
-                nursery.start_soon(self._downloader.run, name='Downloader')
-                nursery.start_soon(self._extractor.run, name='Extractor')
-                nursery.start_soon(self._storage.run, name='Storage')
-                nursery.start_soon(self._terminator.run, name='Terminator')
-
-                # After starting background tasks, this task enforces the
-                # maximum crawl duration.
-                if self._policy.limits.max_duration:
-                    await trio.sleep(self._policy.limits.max_duration)
-                    raise CrawlDurationExceeded()
-                await trio.sleep_forever()
+            # After starting background tasks, this task enforces the
+            # maximum crawl duration.
+            if self._policy.limits.max_duration:
+                await trio.sleep(self._policy.limits.max_duration)
+                raise CrawlDurationExceeded()
+            await trio.sleep_forever()
 
         self._stopped.set()
 
