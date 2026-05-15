@@ -13,7 +13,7 @@ beautifulsoup4 = "==4.9.1"
 chardet = "==3.0.4"
 feedparser = "^6.0.12"
 formasaurus = {version = "^0.9.0", extras = ["with-deps"]}
-lxml = "==4.9.4"
+lxml = "==6.1.0"
 protobuf = "==5.29.6"
 psutil = "==5.7.0"
 python-dateutil = "==2.8.1"
