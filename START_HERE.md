@@ -413,8 +413,7 @@ These require understanding specific components:
 6. **Add streaming API for more data types**:
    - Location: `starbelly/subscription.py`, `starbelly/db.py`
    - See `STREAMING_API.md` and `IMPLEMENTATION_SUMMARY.md`
-   - Protobuf schema updates needed (separate repo)
-   - Currently has policies, schedules, domain_logins
+   - The base pattern is already implemented for policies, schedules, and domain logins
    - Could add: captcha solvers, rate limits, user accounts
 
 ### Difficult Tasks
@@ -480,7 +479,7 @@ Check these locations for improvement opportunities:
 - **TODO comments in code**: `grep -r "TODO" starbelly/`
 - **FIXME comments**: `grep -r "FIXME" starbelly/`
 - **GitHub Issues**: Check the issue tracker
-- **IMPLEMENTATION_SUMMARY.md**: Lists incomplete features
+- **IMPLEMENTATION_SUMMARY.md**: Captures the current streaming status and next follow-up work
 
 ### Testing Your Changes
 
