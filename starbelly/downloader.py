@@ -88,7 +88,7 @@ class DownloadResponse:
 
     @property
     def is_success(self):
-        return self.status_code == 200
+        return self.status_code is not None and 200 <= self.status_code < 300
 
     @property
     def is_exception(self):
