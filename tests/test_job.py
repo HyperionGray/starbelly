@@ -62,6 +62,15 @@ async def test_start_job(asyncio_loop, nursery):
     policy_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     rate_limiter = Mock()
     rate_limiter.remove_job = AsyncMock()
+    # add_job must return a real ReceiveChannel (async iterable) so that
+    # Downloader.run() can do ``async for request in recv_channel``.
+    _dl_send, _dl_recv = trio.open_memory_channel(0)
+    rate_limiter.add_job = Mock(return_value=_dl_recv)
+    # get_request_channel / get_reset_channel must also be real channels
+    _req_send, _req_recv = trio.open_memory_channel(0)
+    rate_limiter.get_request_channel = Mock(return_value=_req_send)
+    _rst_send, _rst_recv = trio.open_memory_channel(0)
+    rate_limiter.get_reset_channel = Mock(return_value=_rst_send)
     stats_tracker = StatsTracker(timedelta(seconds=60))
     robots_txt_manager = Mock()
     manager_db = Mock()
@@ -79,6 +88,7 @@ async def test_start_job(asyncio_loop, nursery):
     extractor_db = Mock()
     storage_db = Mock()
     login_db = Mock()
+    login_db.get_login = AsyncMock(return_value=None)
     crawl_manager = CrawlManager(rate_limiter, stats_tracker,
         robots_txt_manager, manager_db, frontier_db, extractor_db, storage_db,
         login_db)
@@ -183,6 +193,12 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
 
     rate_limiter = Mock()
     rate_limiter.remove_job = AsyncMock()
+    _dl_send, _dl_recv = trio.open_memory_channel(0)
+    rate_limiter.add_job = Mock(return_value=_dl_recv)
+    _req_send, _req_recv = trio.open_memory_channel(0)
+    rate_limiter.get_request_channel = Mock(return_value=_req_send)
+    _rst_send, _rst_recv = trio.open_memory_channel(0)
+    rate_limiter.get_reset_channel = Mock(return_value=_rst_send)
     stats_tracker = StatsTracker(timedelta(seconds=60))
     robots_txt_manager = Mock()
     manager_db = Mock()
@@ -202,6 +218,7 @@ async def test_pause_resume_cancel(asyncio_loop, nursery):
     extractor_db = Mock()
     storage_db = Mock()
     login_db = Mock()
+    login_db.get_login = AsyncMock(return_value=None)
     crawl_manager = CrawlManager(rate_limiter, stats_tracker,
         robots_txt_manager, manager_db, frontier_db, extractor_db, storage_db,
         login_db)
