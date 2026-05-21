@@ -518,13 +518,7 @@ class CrawlJob:
 
         :returns: Runs until this job finishes.
         '''
-        def exc_filter(exc):
-            ''' Filter out Cancelled exceptions raised by the nursery. '''
-            if isinstance(exc, trio.Cancelled):
-                return None
-            return exc
-
-        with trio.MultiError.catch(exc_filter):
+        try:
             async with trio.open_nursery() as nursery:
                 self._cancel_scope = nursery.cancel_scope
                 logger.info('%r Running...', self)
@@ -540,6 +534,14 @@ class CrawlJob:
                     await trio.sleep(self._policy.limits.max_duration)
                     raise CrawlDurationExceeded()
                 await trio.sleep_forever()
+        except BaseExceptionGroup as eg:
+            # Filter out Cancelled exceptions raised when the nursery's
+            # cancel scope is cancelled (e.g. via stop()).  Re-raise any
+            # remaining non-Cancelled exceptions.
+            remaining = [e for e in eg.exceptions
+                         if not isinstance(e, trio.Cancelled)]
+            if remaining:
+                raise BaseExceptionGroup(eg.message, remaining) from None
 
         self._stopped.set()
 
