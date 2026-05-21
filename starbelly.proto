@@ -196,6 +196,8 @@ message PolicyRobotsTxt {
     INVERT = 2;
     IGNORE = 3;
   }
+  optional bool read_sitemaps = 2;
+  optional bool obey_crawl_delay = 3;
 }
 
 message PolicyUrlNormalization {
