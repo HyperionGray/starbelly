@@ -5,14 +5,14 @@ from uuid import UUID
 
 import pytest
 import trio
-import trio.hazmat
+import trio.lowlevel
 from trio_websocket import open_websocket, serve_websocket
 
 from . import assert_elapsed, assert_max_elapsed, assert_min_elapsed
 from starbelly.job import StatsTracker
 from starbelly.starbelly_pb2 import JobRunState, ServerMessage
+from starbelly.backoff import ExponentialBackoff
 from starbelly.subscription import (
-    ExponentialBackoff,
     JobStatusSubscription,
     ResourceMonitorSubscription,
     SyncTokenError,
@@ -317,7 +317,7 @@ async def test_resource_subscription(autojump_clock, nursery):
 
 async def test_task_monitor(autojump_clock, nursery):
     # To simplify testing, we pick the current task as the root task:
-    root_task = trio.hazmat.current_task()
+    root_task = trio.lowlevel.current_task()
     websocket = MockWebsocket()
     subscription = TaskMonitorSubscription(id_=1, websocket=websocket,
         period=2.0, root_task=root_task)
